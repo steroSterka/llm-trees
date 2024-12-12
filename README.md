@@ -44,7 +44,7 @@ python -m llm_trees.cli generate [OPTIONS]
 - `--dataset`: Dataset name (default: `penguins`)
 - `--method`: The LLM method to use (choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`, required)
 - `--temperature`: Temperature for the LLM (default: `1`)
-- `--iter`: Iteration counter (default: `-1`)
+- `--iter`: Iteration counter (default: `0`)
 - `--force_decision_tree`: Force the generation of a decision tree
 - `--include_description`: Include feature descriptions of the dataset in the prompt
 - `--llm_dialogue`: Enable LLM dialogue mode
@@ -71,7 +71,7 @@ python -m llm_trees.cli eval_induction [OPTIONS]
 - `--dataset`: Dataset name (default: `penguins`)
 - `--method`: The LLM method to use (choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`, required)
 - `--temperature`: Temperature for the LLM (default: `1`)
-- `--iter`: Iteration counter (default: `-1`)
+- `--iter`: Iteration counter (default: `0`)
 - `--num_iters`: Number of iterations (default: `5`)
 - `--train_split`: Train/test split ratio (default: `0.67`)
 - `--force_decision_tree`: Force the generation of a decision tree
@@ -101,7 +101,7 @@ python -m llm_trees.cli eval_embedding [OPTIONS]
 - `--dataset`: Dataset name (default: `penguins`)
 - `--method`: The LLM method to use (choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`, required)
 - `--temperature`: Temperature for the LLM (default: `1`)
-- `--iter`: Iteration counter (default: `-1`)
+- `--iter`: Iteration counter (default: `0`)
 - `--num_iters`: Number of iterations (default: `5`)
 - `--train_split`: Train/test split ratio (default: `0.67`)
 - `--append_raw_features`: Append raw features to the embeddings
