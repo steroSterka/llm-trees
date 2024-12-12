@@ -82,8 +82,13 @@ def save_plot(approach: str, score: str, split: str, dataset: str, plot_type: st
         eval_results = pd.read_csv(f"results/{approach}_results.csv")
 
 
-    if plot_type == "boxplot" and dataset != "public":
-        data = eval_results[(eval_results["split"] == split) & (eval_results["dataset"] == dataset)]
+    if plot_type == "boxplot":
+        if dataset == "public":
+            data = eval_results[(eval_results["split"] == split) & (eval_results["dataset"] != "acl") & (
+                        eval_results["dataset"] != "posttrauma")]
+        else:
+            data = eval_results[(eval_results["split"] == split) & (eval_results["dataset"] == dataset)]
+
         data.loc[:, "method"] = data["method"].map(method_names)
 
         plt.figure()
@@ -96,14 +101,14 @@ def save_plot(approach: str, score: str, split: str, dataset: str, plot_type: st
         if score == "f1_score":
             plt.ylabel("F1-score")
             for file_format in ["pdf", "svg", "eps"]:
-                plt.savefig(f"plots/{plot_type}_{approach}_{dataset}_f1.{file_format}",
+                plt.savefig(f"plots/{plot_type}_{approach}_{dataset}_{score}.{file_format}",
                             format=file_format, dpi=800)
         elif score == "accuracy":
             plt.ylabel("Balanced accuracy")
             for file_format in ["pdf", "svg", "eps"]:
                 plt.savefig(f"plots/{plot_type}_{approach}_{dataset}_acc.{file_format}",
                             format=file_format, dpi=800)
-        
+
     elif plot_type == "grouped_boxplot" and approach != "embedding":
         if dataset == "public":
             data = eval_results[(eval_results["dataset"] != "acl") & (eval_results["dataset"] != "posttrauma")]
