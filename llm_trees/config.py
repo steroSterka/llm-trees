@@ -4,17 +4,17 @@ class Config:
 
     root = "." # Root directory for the project
     dataset = "penguins"  # Set the dataset name here
-    method = "gpt"  # Set the method here (options: "gpt", "gemini", "claude")
+    method = "gpt-4o"  # Set the method here (options: "gpt-4o", "gpt-o1", "gemini", "claude")
 
     temperature = 1  # Set the temperature of the llm
 
     # Settings for train/test splits
     iter = 0 # iteration counter
     num_iters = 5 # Number of iterations
-    train_split = 0.66 # Train/test split ratio
+    train_split = 0.67 # Train/test split ratio
 
     # embedding settings
-    append_raw_features = False # Append raw features to the embeddings
+    append_raw_features = True # Append raw features to the embeddings
 
     # LLM prompting settings
     force_decision_tree = True  # If False, generate free-form model
@@ -29,7 +29,7 @@ class Config:
     num_trees = 5
     seed = 42
     generate_tree_if_missing = True
-    regenerating_invalid_trees = False
+    regenerating_invalid_trees = True
     skip_existing = True
 
     def __init__(self, **kwargs):
