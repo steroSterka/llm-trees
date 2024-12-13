@@ -27,9 +27,10 @@ def generate_tree(config):
 
             export_prompting_result(tree_path, prompting_result)
 
-            # avoid quota limit
-            if not ("gpt" in config.method):
-                time.sleep(10)
+            # # avoid quota limit
+            # if not ("gpt" in config.method):
+            #     time.sleep(10)
+
 
 def regenerate_tree(config, e=""):
     tree_path = get_tree_path(config)

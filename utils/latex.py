@@ -1,6 +1,6 @@
 import pandas as pd
 
-from utils.results import calculate_baseline_diff
+from results import calculate_baseline_diff
 
 
 def generate_latex_table(approach: str, score: str, split: str, aggregation: str):

@@ -1,4 +1,4 @@
-import experiments
+from utils import experiments
 
 run_config = {
     "induction": True,
