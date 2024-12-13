@@ -26,6 +26,18 @@ To install the package, use the following command:
 pip install llm_trees
 ```
 
+
+## Configuration
+
+To configure the `.env` file for accessing the LLMs, you need to set the respective API keys based on the model you intend to use. The `.env` file should include the following keys:
+
+- `OPENAI_API_KEY` for GPT models
+- `GOOGLE_CLOUD_PROJECT` for Gemini
+- `ANTHROPIC_API_KEY` for Claude
+
+You only need to provide the key for the model you plan to use. 
+Place the `.env` file in the root directory of your project.
+
 ## Usage
 
 The CLI provides three main commands: `generate`, `eval_induction`, and `eval_embedding`.
@@ -42,20 +54,19 @@ python -m llm_trees.cli generate [OPTIONS]
 
 - `--root`: Root directory for the project (default: `.`)
 - `--dataset`: Dataset name (default: `penguins`)
-- `--method`: The LLM method to use (choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`, required)
+- `--method`: The LLM method to use (default: `gpt-4o`, choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`)
 - `--temperature`: Temperature for the LLM (default: `1`)
-- `--iter`: Iteration counter (default: `-1`)
-- `--force_decision_tree`: Force the generation of a decision tree
-- `--include_description`: Include feature descriptions of the dataset in the prompt
-- `--llm_dialogue`: Enable LLM dialogue mode
-- `--max_tree_depth`: Maximum depth of the decision tree (default: `2`)
+- `--iter`: Iteration counter (default: `0`)
+- `--force_decision_tree`: Force the generation of a decision tree or let the LLM decide (only for induction) (default: `True`)
+- `--include_description`: Include dataset descriptions in the prompt (default: `False`)
+- `--llm_dialogue`: Enable LLM dialogue mode as described in the paper or directly prompting the python code (default: `True`)
+- `--max_tree_depth`: Maximum depth of the decision tree (default: `2`, no maximum depth by selecting `0`)
 - `--num_examples`: Number of examples to provide in the prompt (default: `1`)
 - `--num_retry_llm`: Number of retries for generating a valid tree (default: `10`)
-- `--use_role_prompt`: Use role-based prompts for the LLM
+- `--use_role_prompt`: Use role-based prompts for the LLM (default: `False`)
 - `--seed`: Random seed (default: `42`)
-- `--generate_tree_if_missing`: Generate tree if missing
-- `--regenerating_invalid_trees`: Regenerate invalid trees
-- `--skip_existing`: Skip existing trees
+- `--generate_tree_if_missing`: Generate tree if missing (default: `True`)
+- `--regenerating_invalid_trees`: Regenerate invalid trees (default: `True`)
 
 ### Evaluate Induction
 
@@ -69,23 +80,23 @@ python -m llm_trees.cli eval_induction [OPTIONS]
 
 - `--root`: Root directory for the project (default: `.`)
 - `--dataset`: Dataset name (default: `penguins`)
-- `--method`: The LLM method to use (choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`, required)
+- `--method`: The LLM method to use (default: `gpt-4o`, choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`)
 - `--temperature`: Temperature for the LLM (default: `1`)
-- `--iter`: Iteration counter (default: `-1`)
+- `--iter`: Iteration counter (default: `0`)
 - `--num_iters`: Number of iterations (default: `5`)
 - `--train_split`: Train/test split ratio (default: `0.67`)
-- `--force_decision_tree`: Force the generation of a decision tree
-- `--include_description`: Include feature descriptions of the dataset in the prompt
-- `--llm_dialogue`: Enable LLM dialogue mode
-- `--max_tree_depth`: Maximum depth of the decision tree (default: `2`)
+- `--force_decision_tree`: Force the generation of a decision tree or let the LLM decide (only for induction) (default: `True`)
+- `--include_description`: Include dataset descriptions in the prompt (default: `False`)
+- `--llm_dialogue`: Enable LLM dialogue mode as described in the paper or directly prompting the python code (default: `True`)
+- `--max_tree_depth`: Maximum depth of the decision tree (default: `2`, no maximum depth by selecting `0`)
 - `--num_examples`: Number of examples to provide in the prompt (default: `1`)
 - `--num_retry_llm`: Number of retries for generating a valid tree (default: `10`)
-- `--use_role_prompt`: Use role-based prompts for the LLM
+- `--use_role_prompt`: Use role-based prompts for the LLM (default: `False`)
 - `--num_trees`: Number of trees (default: `5`)
 - `--seed`: Random seed (default: `42`)
-- `--generate_tree_if_missing`: Generate tree if missing
-- `--regenerating_invalid_trees`: Regenerate invalid trees
-- `--skip_existing`: Skip existing trees
+- `--generate_tree_if_missing`: Generate tree if missing (default: `True`)
+- `--regenerating_invalid_trees`: Regenerate invalid trees (default: `True`)
+- `--skip_existing`: Skip existing results and load them from the csv file (default: `True`)
 
 ### Evaluate Embedding
 
@@ -99,44 +110,75 @@ python -m llm_trees.cli eval_embedding [OPTIONS]
 
 - `--root`: Root directory for the project (default: `.`)
 - `--dataset`: Dataset name (default: `penguins`)
-- `--method`: The LLM method to use (choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`, required)
+- `--method`: The LLM method to use (default: `gpt-4o`, choices: `gpt-4o`, `gpt-o1`, `gemini`, `claude`)
 - `--temperature`: Temperature for the LLM (default: `1`)
-- `--iter`: Iteration counter (default: `-1`)
+- `--iter`: Iteration counter (default: `0`)
 - `--num_iters`: Number of iterations (default: `5`)
 - `--train_split`: Train/test split ratio (default: `0.67`)
-- `--append_raw_features`: Append raw features to the embeddings
-- `--force_decision_tree`: Force the generation of a decision tree
-- `--include_description`: Include feature descriptions of the dataset in the prompt
-- `--llm_dialogue`: Enable LLM dialogue mode
-- `--max_tree_depth`: Maximum depth of the decision tree (default: `2`)
+- `--append_raw_features`: Append raw features to the embeddings (default: `True`)
+- `--include_description`: Include feature descriptions of the dataset in the prompt (default: `False`)
+- `--llm_dialogue`: Enable LLM dialogue mode as described in the paper or directly prompting the python code (default: `True`)
+- `--max_tree_depth`: Maximum depth of the decision tree (default: `2`, no maximum depth by selecting `0`)
 - `--num_examples`: Number of examples to provide in the prompt (default: `1`)
 - `--num_retry_llm`: Number of retries for generating a valid tree (default: `10`)
-- `--use_role_prompt`: Use role-based prompts for the LLM
+- `--use_role_prompt`: Use role-based prompts for the LLM (default: `False`)
 - `--num_trees`: Number of trees (default: `5`)
 - `--seed`: Random seed (default: `42`)
-- `--generate_tree_if_missing`: Generate tree if missing
-- `--regenerating_invalid_trees`: Regenerate invalid trees
-- `--skip_existing`: Skip existing trees
+- `--generate_tree_if_missing`: Generate tree if missing (default: `True`)
+- `--regenerating_invalid_trees`: Regenerate invalid trees (default: `True`)
+- `--skip_existing`: Skip existing results and load them from the csv file (default: `True`)
 
 ## Examples
 
 ### Generate Decision Trees
 
 ```sh
-python -m llm_trees.cli generate --method gpt-4o --dataset penguins --temperature 0.7 --num_trees 10
+python -m llm_trees.cli generate --method gpt-4o --dataset penguins --temperature 1.0
 ```
 
 ### Evaluate Induction
 
 ```sh
-python -m llm_trees.cli eval_induction --method gpt-4o --dataset penguins --temperature 0.7
+python -m llm_trees.cli eval_induction --method gpt-4o --dataset penguins --temperature 1.0
 ```
 
 ### Evaluate Embedding
 
 ```sh
-python -m llm_trees.cli eval_embedding --method gpt-4o --dataset penguins --temperature 0.7
+python -m llm_trees.cli eval_embedding --method gpt-4o --dataset penguins --temperature 1.0
 ```
+
+
+## CLI Help
+
+se the `--help` flag for more information.
+
+### Main Command Help
+
+```sh
+python -m llm_trees.cli --help
+```
+
+### Subcommand Help
+
+#### Generate Command
+
+```sh
+python -m llm_trees.cli generate --help
+```
+
+#### Eval Induction Command
+
+```sh
+python -m llm_trees.cli eval_induction --help
+```
+
+#### Eval Embedding Command
+
+```sh
+python -m llm_trees.cli eval_embedding --help
+```
+
 
 ## Run with your own Data
 To integrate your own dataset into the `llm_trees` project, follow these steps:
