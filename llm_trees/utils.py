@@ -1,11 +1,11 @@
 import os
 import re
-import time
 
 import numpy as np
 import pandas as pd
 
 from .config import Config
+from .io import get_data
 from .llms import generate_gpt_tree, generate_claude_tree, generate_gemini_tree
 
 
@@ -238,3 +238,28 @@ def count_keys_in_file(keys, file_paths):
         print(f"An error occurred: {e}")
 
     return counts
+
+
+def get_feature_count(config: Config):
+
+    methods = ["gpt-4o", "gpt-o1", "gemini", "claude"]
+    key_counts = {method: {} for method in methods}
+
+    X, y = get_data(config.root, config.dataset)
+    data_available = X is not None and y is not None
+    if not data_available:
+        raise FileNotFoundError(f"Data not found for dataset: {config.dataset}")
+
+    for method in methods:
+        config.method = method
+        tree_paths = []
+
+        for tree_idx in range(config.num_trees):
+            config.iter = tree_idx
+
+            # Generate trees if not available
+            generate_tree(config)
+            tree_paths.append(get_tree_path(config))
+
+        key_counts[method] = count_keys_in_file(X.keys(), tree_paths)
+    return key_counts

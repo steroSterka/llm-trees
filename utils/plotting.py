@@ -1,9 +1,14 @@
+import os
+
 import matplotlib as mpl
 import matplotlib.pylab as pylab
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
+from llm_trees.config import Config
+from llm_trees.utils import get_feature_count
 
 
 def save_plot(approach: str, score: str, split: str, dataset: str, plot_type: str):
@@ -136,7 +141,61 @@ def save_plot(approach: str, score: str, split: str, dataset: str, plot_type: st
                             format=file_format, dpi=800)
 
 
+def feature_count_analysis(dataset: str = "heart_h", num_trees: int = 5, root:str = "./"):
 
+    config = Config(
+        dataset=dataset,
+        max_tree_depth=0,
+        num_trees=num_trees,
+        root=root,
+    )
+
+    filename = f"key_count_{config.dataset}_{config.num_trees}.png"
+    folder_path = f"../plots/"
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        print(f"Created folder: {os.path.abspath(folder_path)}")
+    save_to = os.path.join(folder_path, filename)
+
+    feature_counts = get_feature_count(config)
+    plot_key_counts(feature_counts, save_to)
+
+
+def plot_key_counts(feature_counts, save_to):
+
+    # Generate the index based on the keys of any model
+    first_model = next(iter(feature_counts))
+    keys = list(feature_counts[first_model].keys())
+    index = np.arange(len(keys))  # Uniform index for the x-axis
+
+    plt.figure(figsize=(12, 5))
+
+    # Plot bars
+    for idx, model in enumerate(feature_counts):
+        feature_count_dict = feature_counts[model]
+        values = [feature_count_dict[key] for key in keys]  # Ensure order matches keys
+
+        bar_width = 0.8 / len(feature_counts)
+        offset = 0.2 * idx  # Adjust bar positions to avoid overlap
+
+        plt.bar(index - 0.4 + offset, values, bar_width, label=model, zorder=2)
+
+    # Change xticks to human-readable format
+    keys = [key.replace("_", " ") for key in keys]
+
+    # Set xticks once using the consistent keys
+    plt.xticks(index, keys, rotation="vertical")
+
+    # Add labels, legend, and grid
+    ax = plt.gca()
+    plt.xlabel("")
+    plt.ylabel("Count")
+    plt.xticks(index, keys, rotation="vertical")
+    plt.legend()
+    ax.legend(loc='best', ncol=1)
+
+    plt.savefig(save_to)
+    print(f"Figure saved to: {save_to}")
 
 
 
@@ -146,10 +205,4 @@ if __name__ == "__main__":
         for score in ["f1_score", "accuracy"]:
             for dataset in ["public", "acl", "posttrauma"]:
                 for plot_type in ["boxplot", "grouped_boxplot"]:
-                    save_plot(
-                        approach,
-                        score,
-                        "67/33",
-                        dataset,
-                        plot_type
-                        )
+                    save_plot(approach, score, "67/33", dataset, plot_type)
