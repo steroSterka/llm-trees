@@ -199,6 +199,50 @@ def plot_key_counts(feature_counts, save_to):
 
 
 
+def number_of_trees_vs_acc(result_path, dataset, x_param, y_metric, split="67/33", save_path=None):
+
+    if not isinstance(result_path, list):
+        result_path = [result_path]
+
+    # Read results of all paths and concatenate the dataframes
+    df = pd.concat([pd.read_csv(path) for path in result_path])
+
+    # Filter for the desired split
+    df = df[df["split"] == split]
+
+    # Filter for the desired dataset
+    df = df[df["dataset"] == dataset]
+
+    # # Filter for no concatenation # TODO
+    # df = df[df["concatenation"] == False]
+
+    plt.figure(figsize=(12, 5))
+
+    # Combine the best entry and the actual score into one column per method
+    for method in df["method"].unique():
+
+        df_filtered = df[df["method"] == method]
+        df_filtered.groupby(x_param)[y_metric].mean().plot(label=method)
+        plt.fill_between(
+            df_filtered.groupby(x_param)[y_metric].mean().index,
+            df_filtered.groupby(x_param)[y_metric].mean() - df_filtered.groupby(x_param)[y_metric].std(),
+            df_filtered.groupby(x_param)[y_metric].mean() + df_filtered.groupby(x_param)[y_metric].std(),
+            alpha=0.2,
+        )
+
+    plt.xticks(df[x_param].unique())
+    plt.legend()
+    plt.ylim(0, 1)
+    plt.ylabel(y_metric.title())
+
+    if save_path:
+        plt.savefig(save_path, format="png", dpi=800)
+
+    plt.show()
+
+
+
+
 if __name__ == "__main__":
 
     for approach in ["induction", "embedding"]:
