@@ -61,6 +61,15 @@ function return_optimal_results(filepath_in, filepath_out, fraction, eval, speci
                     # max_depth=1:2 means that at most 3 features are selected
                     max_depth=1:2,
                 )
+            elseif method == "cart"
+                grid = IAI.GridSearch(
+                    IAI.OptimalTreeClassifier(
+                        localsearch=false,
+                        random_seed=i,
+                    ),
+                    # max_depth=1:2 means that at most 3 features are selected
+                    max_depth=1:2,
+                )
             end
 
             try
