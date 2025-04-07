@@ -15,7 +15,7 @@ You can visualize these results using the `ecml_evaluation.ipynb` notebook.
 
 `llm_trees` is a Python package that allows you to generate and evaluate decision trees using various language models (LLMs) such as GPT (4o and o1), Gemini, and Claude. 
 This package provides a Command Line Interface (CLI) to facilitate these operations. 
-The trees can be evaluated directly (induction) or as embeddings followed by a [multi-layer perceptron classifier](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html) as probe. 
+The trees can be evaluated directly (induction) or as embeddings followed by a [multi-layer perceptron classifier](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html) as a probe. 
 
 
 ## Installation
@@ -116,6 +116,7 @@ python -m llm_trees.cli eval_embedding [OPTIONS]
 - `--num_iters`: Number of iterations (default: `5`)
 - `--train_split`: Train/test split ratio (default: `0.67`)
 - `--append_raw_features`: Append raw features to the embeddings (default: `True`)
+- `--classifier`: The downstream classifier to use (default: `mlp`, choices: `hgbdt`, `lr`)
 - `--include_description`: Include feature descriptions of the dataset in the prompt (default: `False`)
 - `--llm_dialogue`: Enable LLM dialogue mode as described in the paper or directly prompting the python code (default: `True`)
 - `--max_tree_depth`: Maximum depth of the decision tree (default: `2`, no maximum depth by selecting `0`)

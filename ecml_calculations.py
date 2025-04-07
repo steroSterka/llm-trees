@@ -14,6 +14,7 @@ run_config = {
     "setting_9_decision_tree_vs_free_form_induction": True,
     "setting_10_description_induction": True,
     "setting_11_description_embeddings": True,
+    "setting_12_classifier_embeddings": True,
 }
 
 ### Induction Experiments
@@ -41,6 +42,7 @@ if run_config["embedding"]:
         num_examples_list=[1],
         num_trees_list=[5],
         temperature_list=[1],
+        classifier_list=["mlp"],
     )
 
     result_path_dimensions = "./results/embedding_dimensions"
@@ -73,6 +75,7 @@ if run_config["setting_2_tree_depth_embeddings"]:
         append_raw_features_list=[True],
         include_description_list=[False],
         model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        classifier_list=["mlp"],
     )
 
 ### Ablation Setting 3: Number of Trees
@@ -87,6 +90,7 @@ if run_config["setting_3_number_of_trees_embeddings"]:
         append_raw_features_list=[True],
         include_description_list=[False],
         model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        classifier_list=["mlp"],
     )
 
 ### Ablation Setting 4: Temperature Induction
@@ -124,6 +128,7 @@ if run_config["setting_5_temperature_embeddings"]:
         append_raw_features_list=[True],
         include_description_list=[False],
         model_list=["gpt-4o", "gemini", "claude"],
+        classifier_list=["mlp"],
     )
 
 ### Ablation Setting 6: Number of In-Context Examples for Induction
@@ -151,6 +156,7 @@ if run_config["setting_7_number_of_examples_embeddings"]:
         append_raw_features_list=[True],
         include_description_list=[False],
         model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        classifier_list=["mlp"],
     )
 
 ### Ablation Setting 8: Two Embedding Variants
@@ -165,6 +171,7 @@ if run_config["setting_8_append_raw_features"]:
         append_raw_features_list=[False, True],
         include_description_list=[False],
         model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        classifier_list=["mlp"],
     )
 
 ### Ablation Setting 9: Decision Tree vs. Free Form
@@ -207,4 +214,20 @@ if run_config["setting_11_description_embeddings"]:
         include_description_list=[True, False],
         dataset_list=["bankruptcy"],
         model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        classifier_list=["mlp"],
+    )
+
+### Ablation Setting 12: Three Downstream Classifier Variants
+if run_config["setting_12_classifier_embeddings"]:
+    result_path_classifier = "results/ablations/setting_12_optimal_classifier_embeddings.csv"
+    experiments.embeddings(
+        result_path=result_path_classifier,
+        num_trees_list=[5],
+        num_examples_list=[1],
+        max_tree_depth_list=[0],
+        temperature_list=[1],
+        append_raw_features_list=[True],
+        include_description_list=[False],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        classifier_list=["mlp", "hgbdt", "lr"],
     )

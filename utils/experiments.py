@@ -141,6 +141,7 @@ def embeddings(
         result_path="./results/optimization_results.csv",
         dataset_list = None,
         model_list = None,
+        classifier_list = None,
 ):
 
     if model_list is None:
@@ -148,6 +149,9 @@ def embeddings(
 
     if dataset_list is None:
         dataset_list = datasets
+
+    if classifier_list is None:
+        classifier_list = "mlp"
 
     check_inputs(max_tree_depth_list, num_examples_list, result_path, temperature_list, include_description_list)
 
@@ -171,36 +175,38 @@ def embeddings(
                         for temperature in temperature_list:
                             for append_raw_features in append_raw_features_list:
                                 for include_description in include_description_list:
-                                    for split in embedding_splits:
+                                    for classifier in classifier_list:
+                                        for split in embedding_splits:
 
-                                        config = Config(
-                                            append_raw_features=append_raw_features,
-                                            dataset=dataset,
-                                            force_decision_tree=True,
-                                            include_description=include_description,
-                                            max_tree_depth=max_tree_depth,
-                                            method=method,
-                                            num_examples=num_examples,
-                                            num_iters=5,
-                                            num_trees=num_trees,
-                                            root=os.getcwd(),
-                                            train_split=split,
-                                        )
+                                            config = Config(
+                                                classifier=classifier,
+                                                append_raw_features=append_raw_features,
+                                                dataset=dataset,
+                                                force_decision_tree=True,
+                                                include_description=include_description,
+                                                max_tree_depth=max_tree_depth,
+                                                method=method,
+                                                num_examples=num_examples,
+                                                num_iters=5,
+                                                num_trees=num_trees,
+                                                root=os.getcwd(),
+                                                train_split=split,
+                                            )
 
-                                        for iter in range(config.num_iters):
-                                            config.iter = iter
-                                            config.seed = iter
+                                            for iter in range(config.num_iters):
+                                                config.iter = iter
+                                                config.seed = iter
 
-                                            if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt"]:
-                                                config.temperature = temperature[method] if isinstance(temperature, dict) else temperature
+                                                if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt"]:
+                                                    config.temperature = temperature[method] if isinstance(temperature, dict) else temperature
 
-                                            if config.skip_existing and result_handler.is_result_present(config):
-                                                continue  # Skip if result already exists
+                                                if config.skip_existing and result_handler.is_result_present(config):
+                                                    continue  # Skip if result already exists
 
-                                            acc, f1 = eval_embedding(config)
+                                                acc, f1 = eval_embedding(config)
 
-                                            config.iter = iter
-                                            result_handler.log_result(config, acc, f1)
+                                                config.iter = iter
+                                                result_handler.log_result(config, acc, f1)
 
 
 

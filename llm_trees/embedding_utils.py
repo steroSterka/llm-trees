@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
@@ -10,19 +12,6 @@ from sklearn.preprocessing import OneHotEncoder, FunctionTransformer, MinMaxScal
 from .config import Config
 from .utils import predict_tree_from_file, regenerate_tree, get_tree_path, generate_tree
 
-
-class ClassifierConstants:
-    classifier_loss = ["hinge", "log_loss", "modified_huber", "squared_hinge", "perceptron"]
-    classifier_alpha = [0.0001, 0.001, 0.01, 0.1, 1]
-    cv = 3
-    n_jobs = -1
-
-    # Parameter grids for grid search
-    param_grid = {
-            "classifier__hidden_layer_sizes": [10, 25, 50, 75, 100],
-            "classifier__activation": ["logistic", "tanh", "relu"],
-            "classifier__alpha": classifier_alpha,
-        }
 
 def get_preprocessor(config, numerical_features, categorical_features):
     """
@@ -68,15 +57,33 @@ def fit_classifier(config, transformation, X, y):
 
     check_scaling(config, transformation, X)
 
-    # max_iter is not the default value
-    # solver: sgd, adam, lbfgs
-    classifier = MLPClassifier(
-        solver="sgd",
-        max_iter=10000,
-        verbose=False,
-        random_state=config.seed,
-        learning_rate="adaptive",
-    )
+    if config.classifier == "mlp":
+        classifier = MLPClassifier(
+            solver="lbfgs",
+            max_iter=10000,
+            random_state=config.seed,
+        )
+        param_grid = {
+            "classifier__hidden_layer_sizes": [10, 25, 50, 75, 100],
+            "classifier__alpha": [0.0001, 0.001, 0.01, 0.1, 1],
+        }
+
+    elif config.classifier == "hgbdt":
+        classifier = HistGradientBoostingClassifier(
+            random_state=config.seed,
+        )
+        param_grid = {
+            "classifier__min_samples_leaf": [5, 10, 15, 20, 25]
+        }
+
+    elif config.classifier == "lr":
+        classifier = LogisticRegression(
+            max_iter=10000,
+            random_state=config.seed,
+        )
+        param_grid = {
+            "classifier__C": [1, 10, 100, 1000, 10000]
+        }
 
     pipeline = Pipeline([
         ("transformer", transformation),
@@ -85,10 +92,10 @@ def fit_classifier(config, transformation, X, y):
 
     search = GridSearchCV(
         estimator=pipeline,
-        param_grid=ClassifierConstants.param_grid,
+        param_grid=param_grid,
         scoring="f1_macro",
-        cv=ClassifierConstants.cv,
-        n_jobs=ClassifierConstants.n_jobs,
+        cv=3,
+        n_jobs=-1,
     )
 
     search.fit(X, y)

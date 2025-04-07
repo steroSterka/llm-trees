@@ -146,6 +146,7 @@ class EmbeddingAblationResultHandler(ResultHandler):
         fieldnames = [
             "dataset",
             "method",
+            "classifier",
             "concatenation",
             "num_trees",
             "num_examples",
@@ -162,6 +163,7 @@ class EmbeddingAblationResultHandler(ResultHandler):
     def additional_fields(self, config):
         """Return additional fields specific to the embedding experiment."""
         return {
+            "classifier": config.classifier,
             "concatenation": config.append_raw_features,
             "num_trees": config.num_trees,
             "num_examples": config.num_examples,
@@ -176,6 +178,7 @@ class EmbeddingAblationResultHandler(ResultHandler):
         return (
             config.dataset,
             config.method,
+            config.classifier,
             config.append_raw_features,
             config.num_trees,
             config.num_examples,
@@ -191,6 +194,7 @@ class EmbeddingAblationResultHandler(ResultHandler):
         return (
             row["dataset"],
             row["method"],
+            row["classifier"],
             eval(row["concatenation"]),
             eval(row["num_trees"]),
             eval(row["num_examples"]),
@@ -370,15 +374,9 @@ def get_best_results(result_path, x_param, y_metric, split="67/33"):
 
     # Combine the best entry and the actual score into one column per method
     for method in df["method"].unique():
-        # if values are integers, format them as integers
-        if df[y_metric].dtype == "int32":
-            pivot_best_results[f"{method}"] = pivot_best_results.apply(
-                lambda row: f"{row[f'{x_param}_{method}']:.0f} ({row[f'{y_metric}_{method}']:.2f})", axis=1
-            )
-        else:
-            pivot_best_results[f"{method}"] = pivot_best_results.apply(
-                lambda row: f"{row[f'{x_param}_{method}']:.1f} ({row[f'{y_metric}_{method}']:.2f})", axis=1
-            )
+        pivot_best_results[method] = pivot_best_results.apply(
+            lambda row: format_row(row, method, x_param, y_metric), axis=1
+        )
 
     # Drop the separate x_param and y_metric columns
     pivot_best_results = pivot_best_results[[method for method in df["method"].unique()]]
@@ -401,3 +399,17 @@ def format_percentage(value, add_sign=False):
         return f"{sign}{value:.2f}"
     else:
         return f"{value:.2f}"
+
+def format_row(row, method, x_param, y_metric):
+    x_val = row[f"{x_param}_{method}"]
+    y_val = row[f"{y_metric}_{method}"]
+    
+    if isinstance(x_val, int):
+        return f"{x_val:.0f} ({y_val:.2f})"
+    elif isinstance(x_val, float):
+        if x_val.is_integer():
+            return f"{int(x_val)} ({y_val:.2f})"
+        else:
+            return f"{x_val:.1f} ({y_val:.2f})"
+    else:
+        return f"{x_val} ({y_val:.2f})"

@@ -52,6 +52,10 @@ def compute_diffs(approach: str, split:str, aggregation: str, ablation: str):
             "concatenation": [
                 "../results/ablations/setting_8_optimal_append_raw_features_embeddings.csv",
                 [False]
+            ],
+            "classifier": [
+                "../results/ablations/setting_12_optimal_classifier_embeddings.csv",
+                ["hgbdt", "lr"]
             ]
         }
     
@@ -111,7 +115,8 @@ if __name__ == "__main__":
                 "num_examples",
                 "description",
                 "num_trees",
-                "concatenation"
+                "concatenation",
+                "classifier"
             ]
         for ablation in ablations:
             diff = compute_diffs(

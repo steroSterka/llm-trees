@@ -14,6 +14,7 @@ class Config:
     train_split = 0.67 # Train/test split ratio
 
     # embedding settings
+    classifier = "mlp" # Downstream classifier
     append_raw_features = True # Append raw features to the embeddings
 
     # LLM prompting settings
