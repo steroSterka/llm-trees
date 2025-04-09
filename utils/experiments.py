@@ -151,7 +151,7 @@ def embeddings(
         dataset_list = datasets
 
     if classifier_list is None:
-        classifier_list = "mlp"
+        classifier_list = ["mlp"]
 
     check_inputs(max_tree_depth_list, num_examples_list, result_path, temperature_list, include_description_list)
 

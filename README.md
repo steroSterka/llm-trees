@@ -116,7 +116,7 @@ python -m llm_trees.cli eval_embedding [OPTIONS]
 - `--num_iters`: Number of iterations (default: `5`)
 - `--train_split`: Train/test split ratio (default: `0.67`)
 - `--append_raw_features`: Append raw features to the embeddings (default: `True`)
-- `--classifier`: The downstream classifier to use (default: `mlp`, choices: `hgbdt`, `lr`)
+- `--classifier`: The downstream classifier to use (default: `mlp`, choices: `mlp`, `hgbdt`, `lr`)
 - `--include_description`: Include feature descriptions of the dataset in the prompt (default: `False`)
 - `--llm_dialogue`: Enable LLM dialogue mode as described in the paper or directly prompting the python code (default: `True`)
 - `--max_tree_depth`: Maximum depth of the decision tree (default: `2`, no maximum depth by selecting `0`)

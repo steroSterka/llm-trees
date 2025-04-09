@@ -63,7 +63,7 @@ def main():
     parser_eval_embedding.add_argument('--num_iters', type=int, default=5, help="Number of iterations")
     parser_eval_embedding.add_argument('--train_split', type=float, default=0.67, help="Train/test split ratio")
     parser_eval_embedding.add_argument('--append_raw_features', type=bool, default=True, help="Append raw features to the embeddings")
-    parser_eval_embedding.add_argument('--classifier', type=str, default="mlp", choices=['hgbdt', 'lr'], help="The downstream classifier to use (multi-layer perceptron, histogram-based gradient-boosted decision tree, logistic regression)")
+    parser_eval_embedding.add_argument('--classifier', type=str, default="mlp", choices=['mlp','hgbdt', 'lr'], help="The downstream classifier to use (multi-layer perceptron, histogram-based gradient-boosted decision tree, logistic regression)")
     parser_eval_embedding.add_argument('--include_description', type=bool, default=False, help="Include feature descriptions of the dataset in the prompt")
     parser_eval_embedding.add_argument('--llm_dialogue', type=bool, default=True, help="Enable LLM dialogue mode")
     parser_eval_embedding.add_argument('--max_tree_depth', type=int, default=2, help="Maximum depth of the decision tree")
@@ -81,7 +81,7 @@ def main():
     skip_existing = getattr(args, 'skip_existing', True) if args.command != 'generate' else True
     force_decision_tree = getattr(args, 'force_decision_tree', True) if args.command != 'eval_embedding' else True
     append_raw_features = getattr(args, 'append_raw_features', True) if args.command == 'eval_embedding' else True
-    train_split = getattr(args, 'train_split', True) if args.command != 'generate' else True
+    train_split = getattr(args, 'train_split', 0.67) if args.command != 'generate' else 0.67
     classifier = getattr(args, 'classifier', 'mlp') if args.command == 'eval_embedding' else 'mlp'
 
     config = Config(
