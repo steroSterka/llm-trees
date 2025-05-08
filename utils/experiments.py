@@ -1,17 +1,18 @@
 import os
-
 import pandas as pd
 from tqdm import tqdm
-import results
+# import results
 from llm_trees.config import Config
 from llm_trees.embedding_utils import tree_to_embedding
 from llm_trees.embeddings import eval_embedding
 from llm_trees.induction_utils import eval_induction
 from llm_trees.io import get_data
-from llm_trees.utils import get_tree_path, count_keys_in_file
+from llm_trees.utils import (get_tree_path, count_keys_in_file)
+# from utils.results import ResultHandler
+import utils.results as results
 
 datasets = [
-    "acl",
+    # "acl",
     "bankruptcy",
     "boxing1",
     "boxing2",
@@ -24,7 +25,7 @@ datasets = [
     "irish",
     "labor",
     "penguins",
-    "posttrauma",
+    # "posttrauma",
     "vote",
 ]
 
@@ -33,6 +34,10 @@ induction_methods = {
     "gemini": "Gemini 1.5 Pro",
     "gpt-4o": "GPT-4o",
     "gpt-o1": "GPT-o1",
+    "llama3.1:70b": "llama3.1:70b",
+    "deepseek-r1:70b": "deepseek-r1:70b",
+    "qwq:32b-fp16": "qwq:32b-fp16",
+    "gemma3:27b": "gemma3:27b"
 }
 
 embedding_methods = {
@@ -48,6 +53,10 @@ embedding_methods = {
     "et-sv": "Extra Trees\nsupervised",
     "rf-sv": "Random Forest\nsupervised",
     "xg-sv": "XGBoost\nsupervised",
+    "llama3.1:70b": "llama3.1:70b\nunsupervised",
+    "deepseek-r1:70b": "deepseek-r1:70b\nunsupervised",
+    "qwq:32b-fp16": "qwq:32b-fp16\nunsupervised",
+    "gemma3:27b": "gemma3:27b\nunsupervised",
 }
 
 induction_splits = [
@@ -197,7 +206,7 @@ def embeddings(
                                                 config.iter = iter
                                                 config.seed = iter
 
-                                                if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt"]:
+                                                if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt", "llama3.1:70b", "deepseek-r1:70b", "qwq:32b-fp16","gemma3:27b"]:
                                                     config.temperature = temperature[method] if isinstance(temperature, dict) else temperature
 
                                                 if config.skip_existing and result_handler.is_result_present(config):

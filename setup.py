@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'llm_trees=llm_trees.cli:main',
         ],
+
     },
     classifiers=[
         'Programming Language :: Python :: 3',

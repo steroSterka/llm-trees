@@ -67,7 +67,7 @@ def compute_diffs(approach: str, split:str, aggregation: str, ablation: str):
     for score in scores:
         # compute aggregate default score per method
         filter = (default_results["split"] == split) & (default_results["method"] \
-                                                         .isin(["claude", "gemini", "gpt-4o", "gpt-o1"]))
+                                                         .isin(["claude", "gemini", "gpt-4o", "gpt-o1", "gemma3:27b", "gemma3:27b"]))
         score_of_default = default_results[filter] \
             .groupby(["method"]) \
             .agg({score: aggregation})

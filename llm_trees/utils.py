@@ -6,7 +6,7 @@ import pandas as pd
 
 from .config import Config
 from .io import get_data
-from .llms import generate_gpt_tree, generate_claude_tree, generate_gemini_tree
+from .llms import generate_gpt_tree, generate_claude_tree, generate_gemini_tree, generate_local_llm_tree
 
 
 def generate_tree(config):
@@ -22,6 +22,14 @@ def generate_tree(config):
                 prompting_result = generate_claude_tree(config)
             elif config.method == "gemini":
                 prompting_result = generate_gemini_tree(config)
+            if config.method == "llama3.1:70b":
+                prompting_result = generate_local_llm_tree(config)
+            elif config.method == "gemma3:27b":
+                prompting_result = generate_local_llm_tree(config)
+            elif config.method == "deepseek-r1:70b":
+                prompting_result = generate_local_llm_tree(config)
+            elif config.method == "qwq:32b-fp16":
+                prompting_result = generate_local_llm_tree(config)
             else:
                 raise ValueError(f"Unknown model: {config.method}")
 
@@ -42,8 +50,8 @@ def regenerate_tree(config, e=""):
     else:
         raise e
 
-def predict_tree_from_file(config: Config, X):
 
+def predict_tree_from_file(config: Config, X):
     tree_path = get_tree_path(config)
 
     # load tree from txt file
@@ -89,7 +97,8 @@ def predict_tree_from_file(config: Config, X):
     except Exception as e:
         raise e
 
-def postprocess_prompting_result(config:Config, prompting_result):
+
+def postprocess_prompting_result(config: Config, prompting_result):
     if config.llm_dialogue:
         second_answer_start_str = 25 * "#"
         if second_answer_start_str in prompting_result:
@@ -102,11 +111,12 @@ def postprocess_prompting_result(config:Config, prompting_result):
     if len(splitted_result) < 2:
 
         # extract the python code from the response text
-        start_str ="def predict"
+        start_str = "def predict"
         end_str = "return prediction, nodes"
 
         if start_str in prompting_result and end_str in prompting_result:
-            function_str = prompting_result[prompting_result.find(start_str):prompting_result.find(end_str) + len(end_str)] + "\n"
+            function_str = prompting_result[
+                           prompting_result.find(start_str):prompting_result.find(end_str) + len(end_str)] + "\n"
         else:
             raise ValueError("No predict function found in prompting result")
 
@@ -129,8 +139,8 @@ def postprocess_prompting_result(config:Config, prompting_result):
     # if there is "    return prediction, nodes" at the end, cut everything after
     function_end_str = "return prediction, nodes"
     if function_end_str in prompting_result_code:
-        prompting_result_code = prompting_result_code[:prompting_result_code.find(function_end_str) + len(function_end_str)]
-
+        prompting_result_code = prompting_result_code[
+                                :prompting_result_code.find(function_end_str) + len(function_end_str)]
 
     # find the first line that does not start with a space
     lines = prompting_result_code.split("\n")
@@ -147,15 +157,16 @@ def postprocess_prompting_result(config:Config, prompting_result):
             # remove all lines after the first line that does not start with a space
             prompting_result_code = "\n".join(lines[:line_idx])
 
-
     tree_fcn_str = fix_predict_fcn_name(prompting_result_code)
 
     return tree_fcn_str
+
 
 def fix_predict_fcn_name(tree_str):
     pattern = r"def predict_\w+\(.*\):"
     replacement = "def predict(X):"
     return re.sub(pattern, replacement, tree_str)
+
 
 def extract_python_code(response_text):
     """
@@ -185,8 +196,8 @@ def extract_python_code(response_text):
 
     return extracted_code.strip()
 
-def get_tree_path(config):
 
+def get_tree_path(config):
     if config.force_decision_tree:
         tree_file_name = (f"{config.dataset}_"
                           f"{config.method}_"
@@ -195,23 +206,25 @@ def get_tree_path(config):
                           f"temp_{100 * config.temperature:.0f}_"
                           f"maxdepth_{config.max_tree_depth}_"
                           f"iter_{config.iter}.txt")
-    else: # free form
+    else:  # free form
         tree_file_name = (f"{config.dataset}_"
                           f"{config.method}_"
                           f"free_form_"
                           f"temp_{100 * config.temperature:.0f}_"
                           f"iter_{config.iter}.txt")
 
-    if config.llm_dialogue: # i.e. two step tree generation
+    if config.llm_dialogue:  # i.e. two step tree generation
         tree_file_name = tree_file_name.replace(".txt", "_dialogue.txt")
 
     return os.path.join(config.root, "trees", config.dataset, config.method, tree_file_name)
+
 
 def export_prompting_result(tree_path, prompting_result):
     if not os.path.exists(os.path.dirname(tree_path)):
         os.makedirs(os.path.dirname(tree_path), exist_ok=True)
     with open(tree_path, "w") as text_file:
         text_file.write(prompting_result)
+
 
 def count_keys_in_file(keys, file_paths):
     """
@@ -241,7 +254,6 @@ def count_keys_in_file(keys, file_paths):
 
 
 def get_feature_count(config: Config):
-
     methods = ["gpt-4o", "gpt-o1", "gemini", "claude"]
     key_counts = {method: {} for method in methods}
 

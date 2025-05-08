@@ -1,10 +1,10 @@
 import argparse
 import os
 
-from .config import Config
-from .induction_utils import eval_induction
-from .embeddings import eval_embedding
-from .utils import generate_tree, get_tree_path
+from llm_trees.config import Config
+from llm_trees.induction_utils import eval_induction
+from llm_trees.embeddings import eval_embedding
+from llm_trees.utils import generate_tree, get_tree_path
 
 
 def main():
@@ -84,29 +84,31 @@ def main():
     train_split = getattr(args, 'train_split', 0.67) if args.command != 'generate' else 0.67
     classifier = getattr(args, 'classifier', 'mlp') if args.command == 'eval_embedding' else 'mlp'
 
-    config = Config(
-        root=args.root,
-        dataset=args.dataset,
-        method=args.method,
-        temperature=args.temperature,
-        iter=args.iter,
-        num_iters=args.num_iters,
-        train_split=train_split,
-        append_raw_features=append_raw_features,
-        classifier=classifier,
-        force_decision_tree=force_decision_tree,
-        include_description=args.include_description,
-        llm_dialogue=args.llm_dialogue,
-        max_tree_depth=args.max_tree_depth,
-        num_examples=args.num_examples,
-        num_retry_llm=args.num_retry_llm,
-        use_role_prompt=args.use_role_prompt,
-        num_trees=args.num_trees,
-        seed=args.seed,
-        generate_tree_if_missing=args.generate_tree_if_missing,
-        regenerating_invalid_trees=args.regenerating_invalid_trees,
-        skip_existing=skip_existing
-    )
+    # config = Config(
+    #     root=args.root,
+    #     dataset=args.dataset,
+    #     method=args.method,
+    #     temperature=args.temperature,
+    #     iter=args.iter,
+    #     num_iters=args.num_iters,
+    #     train_split=train_split,
+    #     append_raw_features=append_raw_features,
+    #     classifier=classifier,
+    #     force_decision_tree=force_decision_tree,
+    #     include_description=args.include_description,
+    #     llm_dialogue=args.llm_dialogue,
+    #     max_tree_depth=args.max_tree_depth,
+    #     num_examples=args.num_examples,
+    #     num_retry_llm=args.num_retry_llm,
+    #     use_role_prompt=args.use_role_prompt,
+    #     num_trees=args.num_trees,
+    #     seed=args.seed,
+    #     generate_tree_if_missing=args.generate_tree_if_missing,
+    #     regenerating_invalid_trees=args.regenerating_invalid_trees,
+    #     skip_existing=skip_existing
+    # )
+
+    config = Config()
 
     if args.command == 'generate':
         tree_path = get_tree_path(config)
