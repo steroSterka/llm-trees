@@ -1,0 +1,66 @@
+Based on the features you provided, I'll induce a decision tree classifier to predict which of the two boxing fighters (Lewis and Holyfield) won each round. Here's the resulting decision tree:
+
+|--- Judge: E. Williams
+||--- class: Lewis
+|--- Judge: L. O'Connell
+||--- Round <= 6
+|||--- class: Holyfield
+||--- Round > 6
+|||--- class: Lewis
+|--- Official judge: yes
+||--- Judge: S. Christodoulou
+|||--- class: Lewis
+||--- Judge: HBO-Lederman
+|||--- Round <= 8
+||||--- class: Holyfield
+||||--- Round > 8
+|||||--- class: Lewis
+||--- Judge: Sportsticker / Boxing Times / Sportsline / Associated Press / ESPN / Boxing Monthly-Leach
+|||--- class: Lewis
+
+Note that I've used the most important features to build the decision tree. The feature "Official judge" seems to be a strong indicator, as it separates the judges into two groups. Within each group, other features like "Judge" and "Round" are used to make further predictions.
+
+Here's an explanation of the decision tree:
+
+* If the judge is E. Williams, Lewis wins.
+* If the judge is L. O'Connell, Holyfield wins in the first 6 rounds, and Lewis wins in the later rounds.
+* For official judges (yes), if the judge is S. Christodoulou, Lewis wins.
+* For other official judges (HBO-Lederman), if the round is earlier than 8, Holyfield wins; otherwise, Lewis wins.
+* For non-official judges (Sportsticker / Boxing Times / Sportsline / Associated Press / ESPN / Boxing Monthly-Leach), Lewis wins.
+
+Keep in mind that this decision tree might not be perfect, as it's based on a limited set of features. You can refine the model by adding more features or using different machine learning algorithms.
+
+
+#########################
+
+
+Here is the Python function that implements the decision tree:
+
+```python
+def predict(X: dict):
+    nodes = 7 * [None]
+    nodes[0] = X["Judge"] == 0  # E. Williams
+    nodes[1] = (X["Judge"] == 1) and (X["Round"] <= 6)  # L. O'Connell, early rounds
+    nodes[2] = X["Official"] == 1  # Official judge
+    nodes[3] = (nodes[2]) and (X["Judge"] == 2)  # S. Christodoulou
+    nodes[4] = (nodes[2]) and (X["Judge"] == 3) and (X["Round"] <= 8)  # HBO-Lederman, early rounds
+    nodes[5] = (nodes[2]) and ((X["Judge"] >= 4) or (X["Judge"] <= 9))  # Other official judges
+    nodes[6] = (not nodes[0]) and (not nodes[1]) and (not nodes[3]) and (not nodes[4]) and (not nodes[5])
+
+    if nodes[0]:
+        prediction = 1  # Lewis
+    elif nodes[1]:
+        prediction = 0  # Holyfield
+    elif nodes[3]:
+        prediction = 1  # Lewis
+    elif nodes[4]:
+        prediction = 0  # Holyfield
+    elif nodes[5]:
+        prediction = 1  # Lewis
+    else:
+        prediction = 0  # Holyfield
+
+    return prediction, [int(node) for node in nodes]
+```
+
+This function takes a dictionary `X` with the features as input and returns a tuple containing the predicted class (0 or 1) and a list of boolean values representing the truth values of the inner nodes. The list is created by converting each boolean value to an integer using the expression `[int(node) for node in nodes]`.
