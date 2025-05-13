@@ -8,9 +8,8 @@ class Config:
     # method = "qwq:32b-fp16"
     # method = "llama3.1:70b"
     # method = "gemma3:27b"
-    # method="qwq:32b-fp16"
-    # method = "deepseek-r1:70b"
-    method = "deepseek-r1:70b"
+    method="qwq:32b-fp16"
+    # method = "deepseek-r1:70b" #done
     temperature = 1  # Set the temperature of the llm
 
     # Settings for train/test splits
