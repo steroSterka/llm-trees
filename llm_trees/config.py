@@ -6,9 +6,9 @@ class Config:
     dataset = "irish"  # Set the dataset name here
     # method = "gpt-4o"  # Set the method here (options: "gpt-4o", "gpt-o1", "gemini", "claude")
     # method = "qwq:32b-fp16"
-    # method = "llama3.1:70b"
+    method = "llama3.1:70b"
     # method = "gemma3:27b"
-    method="qwq:32b-fp16"
+    # method="qwq:32b-fp16" #done
     # method = "deepseek-r1:70b" #done
     temperature = 1  # Set the temperature of the llm
 
