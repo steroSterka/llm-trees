@@ -1,0 +1,117 @@
+To build a decision tree classifier with the given financial features to determine whether a company is solvent or not, we first need to understand that the classification of a company as solvent or insolvent typically depends on its ability to meet its long-term obligations and continue operating. The provided features can give insights into a company's profitability, efficiency, and financial health.
+
+Given the features:
+1. Earnings Before Interest and Taxes/Total Assets (EBIT/TA) - A measure of profitability.
+2. Net Income/Total Capital (NI/TC) - Reflects net income relative to total capital.
+3. Sales/Total Assets (S/TA) - Asset turnover ratio, indicating efficiency in using assets to generate sales.
+4. Earnings Before Interest and Taxes/Sales (EBIT/S) - Profit margin before interest and taxes.
+5. Net Income/Sales (NI/S) - Net profit margin.
+6. Working Capital/Total Assets (WC/TA) - Liquidity measure.
+7. Equity/Total Liabilities (E/TDL) - Solvency ratio, indicating the company's ability to meet long-term obligations.
+8. Equity/Total Assets (E/TA) - Indicates the proportion of total assets financed by equity.
+
+For simplicity and based on common financial analysis practices, we'll prioritize features that directly reflect a company's solvency and profitability. The `Equity/Total Liabilities` (E/TDL) and `Net Income/Total Capital` (NI/TC) are critical in assessing a company's ability to meet its obligations and generate income from its capital.
+
+Let's construct a simple decision tree with a maximum depth of 2, focusing on the most relevant features for determining solvency:
+
+1. **Root Node**: Equity/Total Liabilities (E/TDL)
+   - This feature directly addresses a company's solvency by comparing its equity to total liabilities.
+   
+2. **Decision**:
+   - If E/TDL > 1, it generally indicates that the company has more assets than liabilities, suggesting good financial health and solvency.
+   - If E/TDL <= 1, it might indicate potential issues with meeting long-term obligations.
+
+3. **First Branch (E/TDL > 1)**:
+   - In this case, we look at Net Income/Total Capital (NI/TC) to assess profitability from the capital employed.
+     - If NI/TC > 0.10 (arbitrary threshold for illustration), it suggests that the company is not only solvent but also profitable.
+       - **Class**: Solvent
+     - If NI/TC <= 0.10, while the company might be solvent in terms of assets vs. liabilities, its profitability from capital could be a concern.
+       - Further analysis or additional features might be needed for a definitive classification.
+
+4. **Second Branch (E/TDL <= 1)**:
+   - Here, we examine Working Capital/Total Assets (WC/TA) to gauge liquidity and short-term financial health.
+     - If WC/TA > 0.20 (another arbitrary threshold), the company has sufficient working capital relative to its assets, indicating better liquidity and potentially mitigating some solvency risks.
+       - **Class**: Potentially Solvent (with caution)
+     - If WC/TA <= 0.20, it may indicate both liquidity and potential solvency issues.
+       - **Class**: Insolvent
+
+Decision Tree:
+```
+|--- Equity/Total Liabilities > 1
+||--- Net Income/Total Capital > 0.10
+|||--- Class: Solvent
+||--- Net Income/Total Capital <= 0.10
+|||--- Further Analysis Needed
+|--- Equity/Total Liabilities <= 1
+||--- Working Capital/Total Assets > 0.20
+|||--- Class: Potentially Solvent
+||--- Working Capital/Total Assets <= 0.20
+|||--- Class: Insolvent
+```
+
+**Note**: The thresholds used (e.g., E/TDL > 1, NI/TC > 0.10, WC/TA > 0.20) are illustrative and might not directly apply to all real-world scenarios without considering industry norms, economic conditions, and other specific factors. Real decision trees would be trained on actual data with appropriate thresholds determined during the training process.
+
+
+#########################
+
+
+Here's a Python function implementing the decision tree for predicting whether a company is solvent or not based on the given financial features.
+
+```python
+def predict_solvent(X: dict):
+    """
+    Predicts whether a company is solvent or not based on its financial features.
+    
+    Parameters:
+    X (dict): Dictionary containing the financial features of the company.
+             Features include 'EBIT/TA', 'NI/TC', 'Sales/TA', 'EBIT/Sales',
+             'NI/Sales', 'WC/TA', 'Equity/TL', 'Equity/TA'.
+    
+    Returns:
+    prediction (int): 1 if the company is predicted to be solvent, 0 otherwise.
+    nodes (list): List of boolean values representing the conditions at each inner node.
+    """
+
+    # Initialize the list to store the truth values of the inner nodes
+    nodes = 2 * [None]
+    
+    # First node: Check if Equity/Total Liabilities is greater than 1
+    nodes[0] = X['Equity/TL'] > 1
+    
+    # If the first condition is met, check the second condition
+    if nodes[0]:
+        # Second node: Check if Net Income/Total Capital is greater than 0.10
+        nodes[1] = X['NI/TC'] > 0.10
+        
+        # Prediction based on both conditions
+        prediction = 1  # If both conditions are met, the company is likely solvent
+    else:
+        # Second node: Check if Working Capital/Total Assets is greater than 0.20
+        nodes[1] = X['WC/TA'] > 0.20
+        
+        # Prediction based on the first condition not being met
+        prediction = 1 if nodes[1] else 0  # If WC/TA is good, potentially solvent; otherwise, insolvent
+    
+    # Convert boolean values in nodes to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage:
+financial_features = {
+    'EBIT/TA': 0.15,
+    'NI/TC': 0.12,
+    'Sales/TA': 1.20,
+    'EBIT/Sales': 0.10,
+    'NI/Sales': 0.08,
+    'WC/TA': 0.25,
+    'Equity/TL': 1.50,
+    'Equity/TA': 0.60
+}
+
+prediction, nodes = predict_solvent(financial_features)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This function takes a dictionary `X` containing the financial features of a company and returns a prediction (1 for solvent, 0 for insolvent) along with a list representing the truth values of the inner nodes in the decision tree. The conditions at each node are based on common financial analysis practices and may need adjustments according to specific industry norms or economic conditions.

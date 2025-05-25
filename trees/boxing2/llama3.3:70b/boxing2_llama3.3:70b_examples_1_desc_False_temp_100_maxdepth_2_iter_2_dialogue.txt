@@ -1,0 +1,104 @@
+To build a decision tree that classifies which of the two boxing fighters (Trinidad / de la Hoya) won each round based on the given features, I will use the most important features. Since the actual importance of features can be determined through techniques like feature selection or by analyzing the data itself, and without access to specific data on the judges' scoring for each round of a fight between Trinidad and de la Hoya, I'll proceed with a hypothetical approach.
+
+Given features:
+- Judge (multiple options)
+- Official judge (yes / no)
+- Round (1 to 12)
+
+To simplify, let's assume that the judges' opinions can significantly influence the outcome. The "Official judge" feature might be crucial as it could indicate a more authoritative decision. However, without knowing how each judge typically scores or their biases, we'll consider the "Judge" feature in a general sense.
+
+Here is a hypothetical decision tree with a maximum depth of 2:
+
+1. **Root Node**: Official judge (yes / no)
+   - This choice is based on the assumption that an official judge's decision might carry more weight.
+   
+2. **Left Child (Official judge = yes)**:
+   - If the round is judged by an official judge, we consider the Round feature next because the official's judgment could be influenced by how the fight progresses.
+     - **Round <= 6**: Trinidad
+       - Early rounds might favor Trinidad due to his aggressive style.
+     - **Round > 6**: de la Hoya
+       - Later rounds might favor de la Hoya if he can endure Trinidad's early aggression and capitalize on Trinidad's potential exhaustion.
+
+3. **Right Child (Official judge = no)**:
+   - For non-official judges, we look at the Judge feature to determine the winner.
+     - **Judge is HBO-Lederman or USA Today**: de la Hoya
+       - Assuming these sources might have a slight bias towards technical fighters like de la Hoya.
+     - **Judge is not HBO-Lederman or USA Today**: Trinidad
+       - Other judges might favor Trinidad's aggressive style.
+
+This decision tree is highly speculative and based on hypothetical assumptions about the styles of the fighters (Trinidad being more aggressive, de la Hoya being more technical) and potential biases in judging. In reality, building an accurate decision tree would require detailed data on how each judge scores fights, the specific rounds they are scoring, and other factors like fighter performance metrics.
+
+Decision Tree:
+```
+|--- Official judge = yes
+||--- Round <= 6: Trinidad
+||--- Round > 6: de la Hoya
+|--- Official judge = no
+||--- Judge is HBO-Lederman or USA Today: de la Hoya
+||--- Judge is not HBO-Lederman or USA Today: Trinidad
+```
+
+
+#########################
+
+
+Here's how you could implement the decision tree as a Python function. This function takes in a dictionary `X` representing a single data point with features 'Judge', 'Official', 'Round', and returns a tuple containing the predicted target variable (0 for Trinidad, 1 for de la Hoya) and a list of boolean values representing the inner nodes.
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won a round based on a decision tree.
+
+    Parameters:
+    X (dict): A dictionary with features 'Judge', 'Official', 'Round'.
+
+    Returns:
+    tuple: A tuple containing the predicted target variable and a list of boolean values representing the inner nodes.
+    """
+
+    # Initialize the list to store node values
+    nodes = 2 * [None]
+
+    # Node 0 checks if the judge is official
+    nodes[0] = X['Official'] == 1
+
+    # If the judge is official, proceed with Round check; otherwise, check Judge
+    if nodes[0]:
+        # Node 1 checks if the round is less than or equal to 6
+        nodes[1] = X['Round'] <= 6
+    else:
+        # Node 1 checks if the judge is HBO-Lederman or USA Today (assuming these are indices 3 and 6, respectively)
+        nodes[1] = X['Judge'] in [3, 6]
+
+    # Make prediction based on node values
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 0  # Trinidad wins early rounds
+        else:
+            prediction = 1  # de la Hoya wins later rounds
+    else:
+        if nodes[1]:
+            prediction = 1  # de la Hoya wins with favored judges
+        else:
+            prediction = 0  # Trinidad wins otherwise
+
+    return prediction, [int(node) for node in nodes]
+
+# Example usage
+X = {
+    'Judge': 3,
+    'Official': 1,
+    'Round': 7,
+}
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Node values: {nodes}")
+
+```
+
+In this code:
+- The function `predict` takes a dictionary `X` with the features.
+- It first checks if the judge is official and stores this result in `nodes[0]`.
+- Depending on whether the judge is official, it then either checks if the round is early (for an official judge) or if the judge is one that might favor de la Hoya (for a non-official judge), storing this result in `nodes[1]`.
+- It makes a prediction based on these node values.
+- Finally, it returns the prediction and the list of node values converted to integers (`True` becomes `1`, `False` becomes `0`).

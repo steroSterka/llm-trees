@@ -1,0 +1,128 @@
+Based on the provided features, I will attempt to build a decision tree classifier to predict whether the outcome of labor negotiations is good or bad. Please note that I'll be using a simplified approach and might not capture all possible interactions between features.
+
+After analyzing the features, I've identified the most important ones that could influence the outcome of labor negotiations:
+
+1. **Wage increase in first year of contract** (2 to 7): A higher wage increase is likely to lead to a better outcome.
+2. **Number of paid vacation days** (below average / average / generous): More generous vacation days are often a desirable benefit.
+3. **Employer contributions to pension plan** (none / retirement allowance included / employee contribution): Employer contributions to pension plans can be a significant factor in labor negotiations.
+
+Using these features, I'll construct a decision tree:
+
+|--- Wage increase in first year of contract <= 4
+||--- Number of paid vacation days == below average
+|||--- class: bad (outcome is unfavorable)
+||--- Number of paid vacation days != below average
+|||--- Employer contributions to pension plan == none
+|||--- class: bad (outcome is unfavorable)
+|||--- Employer contributions to pension plan != none
+|||--- class: good (outcome is favorable)
+|--- Wage increase in first year of contract > 4
+||--- Number of paid vacation days == generous
+|||--- class: good (outcome is very favorable)
+||--- Number of paid vacation days != generous
+|||--- Employer contributions to pension plan == employee contribution
+|||--- class: bad (outcome is unfavorable)
+|||--- Employer contributions to pension plan != employee contribution
+|||--- class: good (outcome is favorable)
+
+Here's a brief explanation of the decision tree:
+
+* If the wage increase in the first year is low (<= 4), the outcome is likely to be unfavorable unless there are generous vacation days and employer contributions to the pension plan.
+* If the wage increase is moderate to high (> 4) and there are generous vacation days, the outcome is very favorable.
+* In cases where the wage increase is moderate to high but vacation days are not generous, the employer's contribution to the pension plan plays a crucial role in determining the outcome.
+
+Keep in mind that this decision tree is simplified and might not capture all possible interactions between features. Additional features or more complex relationships between them could lead to different outcomes.
+
+
+#########################
+
+
+Here's the Python function that implements the decision tree for predicting labor negotiation outcomes:
+
+```python
+def predict(X: dict):
+    """
+    Predicts the outcome of labor negotiations based on given features.
+
+    Args:
+    X (dict): Dictionary containing the feature values.
+
+    Returns:
+    prediction (int): The predicted outcome (0 = bad, 1 = good).
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+
+    # Initialize the list to store node truth values
+    nodes = [None] * 5
+
+    # Node 0: Wage increase in first year > 4.0
+    nodes[0] = X["wage increase first year"] > 4.0
+
+    # Node 1: Number of paid vacation days == 'gnr' (generous)
+    nodes[1] = X["vacation"] == "gnr"
+
+    # Node 2: Employer contributions to pension plan != 'none'
+    nodes[2] = X["pension"] != "none"
+
+    # Node 3: Wage increase in first year <= 4.0 and Number of paid vacation days != 'ba' (below average)
+    nodes[3] = (X["wage increase first year"] <= 4.0) and (X["vacation"] != "ba")
+
+    # Node 4: Employer contributions to pension plan == 'empl_contr'
+    nodes[4] = X["pension"] == "empl_contr"
+
+    # Make the prediction based on node truth values
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # good outcome (generous vacation days)
+        else:
+            if nodes[2]:
+                prediction = 1  # good outcome (employer contributions to pension plan)
+            else:
+                prediction = 0  # bad outcome
+    else:
+        if nodes[3]:
+            if nodes[4]:
+                prediction = 1  # good outcome (employee contribution to pension plan)
+            else:
+                prediction = 0  # bad outcome
+        else:
+            prediction = 0  # bad outcome
+
+    return prediction, [int(node) for node in nodes]
+
+# Example usage:
+features = {
+    "duration": 5,
+    "wage increase first year": 4.5,
+    "wage increase second year": 3.0,
+    "wage increase third year": 2.5,
+    "cost of living adjustment": "tcf",
+    "working hours": 37,
+    "pension": "empl_contr",
+    "standby pay": 10,
+    "shift differential": 5,
+    "education allowance": True,
+    "statutory holidays": 12,
+    "vacation": "gnr",
+    "longterm disability assistance": True,
+    "contribution to dental plan": "half",
+    "bereavement assistance": True,
+    "contribution to health plan": "full"
+}
+
+prediction, nodes = predict(features)
+print("Prediction:", prediction)
+print("Node truth values:", nodes)
+
+```
+
+In this code:
+
+*   We initialize a list `nodes` with five elements to store the truth values of the inner nodes in our decision tree.
+*   Each node represents a condition based on feature values. For example, Node 0 checks if the wage increase in the first year is greater than 4.0.
+*   The prediction is made by traversing the decision tree and evaluating the conditions at each node. If a condition is true (1), we proceed to the next node; otherwise, we follow an alternative path or make a prediction.
+*   Finally, the function returns the predicted outcome (`prediction`) and the list of node truth values (`nodes`).
+
+The example usage demonstrates how to call this function with a dictionary of feature values. It prints the predicted outcome (0 for bad or 1 for good) and the list of node truth values.
+
+This code assumes that the input features are already encoded as required by the decision tree (e.g., categorical variables like "vacation" have been mapped to their respective categories).

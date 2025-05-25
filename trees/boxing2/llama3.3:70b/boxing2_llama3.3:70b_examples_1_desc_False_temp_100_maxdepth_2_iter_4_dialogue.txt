@@ -1,0 +1,119 @@
+To induce a decision tree classifier for the boxing match between Trinidad and de la Hoya based on the given features, we first need to understand that the decision tree will classify which fighter won each round. The features provided are:
+
+1. Judge
+2. Official judge (yes / no)
+3. Round (1 to 12)
+
+Given these features, we aim to build a decision tree with a maximum depth of 2. For simplicity and because specific data on the judges' scores for each round is not provided, we will make some assumptions about how these features might influence the outcome:
+
+- **Judge**: Different judges might have different biases or scoring tendencies.
+- **Official judge (yes / no)**: This could indicate whether the judge's score is considered official in determining the winner of the round.
+- **Round (1 to 12)**: The strategy and intensity of fighters can change over rounds, potentially affecting how judges score.
+
+Let's build a hypothetical decision tree with these features:
+
+### Decision Tree
+
+1. **Root Node**: Judge
+   - Given that different judges have different scoring tendencies, this could significantly affect who wins a round.
+   
+2. **First Level Nodes**:
+   - **Judge = HBO-Lederman**, **Las Vegas Review-Journal**, or **USA Today**
+     - These are considered more "official" or widely recognized sources. Their scores might carry more weight in determining the winner of a round.
+   - **Other Judges**
+     - Local or less recognized judges might have different scoring standards.
+
+3. **Second Level Nodes (Max Depth)**:
+   - For **HBO-Lederman**, **Las Vegas Review-Journal**, or **USA Today**:
+     - **Round <= 6**: Trinidad wins
+       - Early rounds might favor Trinidad due to his aggressive style.
+     - **Round > 6**: de la Hoya wins
+       - Later rounds could favor de la Hoya if he successfully wears down Trinidad with his technical skill.
+   - For **Other Judges**:
+     - **Official judge = yes**: Follow the same logic as the more recognized judges (since they are official, their scoring might align closely with these sources).
+     - **Official judge = no**: Assume a split decision based on less consistent or predictable judging criteria.
+
+### Decision Tree Visualization
+
+|--- Judge = HBO-Lederman / Las Vegas Review-Journal / USA Today
+||--- Round <= 6: Trinidad wins
+||--- Round > 6: de la Hoya wins
+|--- Other Judges
+||--- Official judge = yes
+||||--- Round <= 6: Trinidad wins
+||||--- Round > 6: de la Hoya wins
+||--- Official judge = no
+||||--- Split Decision (or default to majority if possible)
+
+### Notes
+
+- This decision tree is highly hypothetical and based on generalized assumptions about boxing, judges' scoring tendencies, and fighter strategies.
+- Without specific data from the fight (e.g., actual scores per round from different judges), building an accurate decision tree is challenging.
+- The real-world application would require detailed information on how each judge scored each round and potentially other factors like the fighters' performance metrics in those rounds.
+
+
+#########################
+
+
+Here's a Python function that implements the decision tree for predicting which of the two boxing fighters won each round:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which of the two boxing fighters won each round based on the given features.
+
+    Args:
+        X (dict): A dictionary containing the features.
+            - 'Judge': The judge scoring the round (0 = G. Hamada, 1 = B. Logist, 2 = J. Roth, 3 = HBO-Lederman, 4 = Sportsticker, 5 = Los Angeles Times-Kawakami, 6 = USA Today, 7 = Associated Press, 8 = Las Vegas Review-Journal, 9 = Los Angeles Times-Springer, 10 = van de Wiele)
+            - 'Official': Whether the judge is official (1 = Yes, 0 = No)
+            - 'Round': The round number (1 to 12)
+
+    Returns:
+        tuple: A tuple containing the prediction and a list of truth values for the inner nodes.
+            - prediction: The predicted winner of the round (0 = Trinidad, 1 = de la Hoya)
+            - nodes: A list of truth values for the inner nodes
+    """
+
+    # Initialize the nodes list with None values
+    nodes = 2 * [None]
+
+    # Node 0: Check if the judge is one of the recognized sources (HBO-Lederman, Las Vegas Review-Journal, or USA Today)
+    nodes[0] = X['Judge'] in [3, 6, 8]
+
+    # Node 1: Check if the round is less than or equal to 6
+    nodes[1] = X['Round'] <= 6
+
+    # Make the prediction based on the nodes
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 0  # Trinidad wins in early rounds
+        else:
+            prediction = 1  # de la Hoya wins in later rounds
+    else:
+        if X['Official'] == 1:  # If the judge is official, follow the same logic as recognized sources
+            if nodes[1]:
+                prediction = 0
+            else:
+                prediction = 1
+        else:  # If the judge is not official, default to a split decision (or de la Hoya wins)
+            prediction = 1
+
+    # Convert the nodes list to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+```
+
+You can use this function by passing a dictionary with the features as an argument. For example:
+
+```python
+X = {
+    'Judge': 3,
+    'Official': 1,
+    'Round': 5
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")  # Output: Prediction: 0 (Trinidad wins)
+print(f"Nodes: {nodes}")  # Output: Nodes: [1, 1]
+```

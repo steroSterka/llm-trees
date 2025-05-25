@@ -1,0 +1,122 @@
+To induce a decision tree classifier with a maximum depth of 2, I will first select the most important features and then build the tree. Since this is a text-based interface, I'll use my understanding to simulate the process.
+
+**Feature Selection:**
+For simplicity, let's assume that after analyzing the data, the top three most important features for determining whether the outcome of labor negotiations is good or bad are:
+1. **Wage increase in first year of contract (2 to 7)** - This directly impacts employees' immediate financial situations.
+2. **Number of paid vacation days (below average / average / generous)** - Reflects on work-life balance and employee benefits.
+3. **Employer contributions to pension plan (none / retirement allowance included / employee contribution)** - Affects long-term financial security for employees.
+
+**Decision Tree Construction:**
+Given the maximum depth of 2, our tree will have a root node that splits based on one feature, and each child of the root can further split once based on another feature.
+
+Let's construct the decision tree:
+
+1. **Root Node Split:** Wage increase in first year of contract (2 to 7)
+   - **Left Child (Wage increase <= 4):** Indicates lower initial wage growth.
+   - **Right Child (Wage increase > 4):** Indicates higher initial wage growth.
+
+2. **Left Child Split (Wage increase <= 4):** Number of paid vacation days
+   - **Left Grandchild (Below average):** Less generous vacation policy, likely a bad outcome.
+     - **Class:** Bad
+   - **Right Grandchild (Average or Generous):** More generous vacation policy, could be a good outcome considering other benefits might compensate for lower wage growth.
+     - **Class:** Good
+
+3. **Right Child Split (Wage increase > 4):** Employer contributions to pension plan
+   - **Left Grandchild (None or Employee contribution):** Less favorable long-term financial support, despite higher initial wages.
+     - **Class:** Bad
+   - **Right Grandchild (Retirement allowance included):** More favorable long-term financial support, combined with higher wage growth.
+     - **Class:** Good
+
+**Decision Tree:**
+```
+|--- Wage increase in first year <= 4
+||--- Number of paid vacation days: Below average
+|||--- Class: Bad
+||--- Number of paid vacation days: Average or Generous
+|||--- Class: Good
+|--- Wage increase in first year > 4
+||--- Employer contributions to pension plan: None or Employee contribution
+|||--- Class: Bad
+||--- Employer contributions to pension plan: Retirement allowance included
+|||--- Class: Good
+```
+
+This decision tree uses the selected features to classify the outcome of labor negotiations as good or bad based on initial wage increases, vacation days, and employer pension contributions.
+
+
+#########################
+
+
+Here is a Python function that implements the decision tree:
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a labor negotiation outcome is good (1) or bad (0)
+    based on the provided features.
+    
+    Parameters:
+    X (dict): A dictionary containing the feature values.
+              The keys are the feature names, and the values are the corresponding feature values.
+              
+    Returns:
+    prediction (int): The predicted class label (0 = bad, 1 = good).
+    nodes (list): A list of boolean values representing the truth values of the inner nodes.
+    """
+    
+    # Initialize the nodes list with None values
+    nodes = 2 * [None]
+    
+    # Split at the root node based on wage increase in first year
+    nodes[0] = X['wage increase first year'] <= 4
+    
+    # Split at the left child node based on number of paid vacation days if wage increase is low
+    # and at the right child node based on employer contributions to pension plan if wage increase is high
+    if nodes[0]:
+        nodes[1] = X['vacation'] != 'ba'  # ba means below average, so we check for not ba (average or generous)
+    else:
+        nodes[1] = X['pension'] == 'ret_allw'  # ret_allw means retirement allowance included
+    
+    # Make the prediction based on the node values
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Good outcome: low wage increase but generous vacation days
+        else:
+            prediction = 0  # Bad outcome: low wage increase and below average vacation days
+    else:
+        if nodes[1]:
+            prediction = 1  # Good outcome: high wage increase and retirement allowance included
+        else:
+            prediction = 0  # Bad outcome: high wage increase but no retirement allowance
+    
+    return prediction, [int(node) for node in nodes]
+```
+
+You can use this function by passing a dictionary `X` containing the feature values. The function returns the predicted class label (0 or 1) and a list of boolean values representing the truth values of the inner nodes.
+
+Example usage:
+
+```python
+features = {
+    'duration': 5,
+    'wage increase first year': 3.5,
+    'wage increase second year': 4.2,
+    'wage increase third year': 4.8,
+    'cost of living adjustment': 'none',
+    'working hours': 38,
+    'pension': 'empl_contr',
+    'standby pay': 15,
+    'shift differential': 10,
+    'education allowance': False,
+    'statutory holidays': 12,
+    'vacation': 'avg',  # average
+    'longterm disability assistance': True,
+    'contribution to dental plan': 'half',
+    'bereavement assistance': False,
+    'contribution to health plan': 'full'
+}
+
+prediction, nodes = predict(features)
+print(f'Predicted class label: {prediction}')
+print(f'Inner node values: {nodes}')
+```

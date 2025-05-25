@@ -1,0 +1,101 @@
+To build a decision tree that classifies whether a horse colic lesion is surgical or not, we first need to select the most relevant features from the provided list. Given the complexity and variety of the features, we'll have to make an educated guess on which ones are most likely to influence the outcome (surgical or not). Features like `Degree of Pain`, `Abdominal Distension`, `Nasogastric Reflux`, and `Abdominocentesis Appearance` seem particularly relevant as they directly relate to the severity and nature of the colic, which would influence the decision for surgery.
+
+For simplicity, let's consider we're using a subset of these features: 
+- `Degree of Pain`
+- `Abdominal Distension`
+- `Nasogastric Reflux`
+
+And we aim to classify `surgery` (yes/no).
+
+Here is a simplified example of how the decision tree might look with a maximum depth of 2:
+
+```
+|--- Degree of Pain <= moderate
+    |--- Abdominal Distension == none
+        |--- class: no
+    |--- Abdominal Distension > none
+        |--- class: yes
+
+|--- Degree of Pain > moderate
+    |--- Nasogastric Reflux > none
+        |--- class: yes
+    |--- Nasogastric Reflux == none
+        |--- class: no
+```
+
+This decision tree suggests the following logic:
+- If the degree of pain is moderate or less and there's no abdominal distension, surgery might not be necessary.
+- If the degree of pain is moderate or less but there is some level of abdominal distension, surgery could be considered due to potential complications or increased severity.
+- If the degree of pain is severe, the presence of nasogastric reflux indicates a need for surgical intervention, likely due to an obstruction or severe intestinal issue. Without reflux, the decision might lean towards non-surgical management, potentially indicating that while the pain is severe, the underlying cause might not necessitate immediate surgery.
+
+Please note, this is a highly simplified example and real-world application would require:
+1. **Actual Data**: To train and validate the model.
+2. **Feature Selection**: Using statistical methods or domain expertise to select the most relevant features.
+3. **Model Tuning**: Adjusting parameters of the decision tree (like depth, splitting criteria) for better performance.
+4. **Cross-validation**: Ensuring the model performs well on unseen data.
+
+In practice, building an accurate decision tree for such a complex condition as horse colic would involve collaboration with equine veterinarians and analyzing a robust dataset of cases with their outcomes.
+
+
+#########################
+
+
+Here's how you could define a function `predict` that takes in a dictionary of features and returns a prediction (surgical or not) along with the truth values of the inner nodes.
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a horse colic lesion is surgical or not based on given features.
+    
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - pain: Degree of Pain (1 = alert, 2 = continuous severe pain, 3 = depressed, 
+                 4 = intermittent mild pain, 5 = intermittent severe pain)
+        - abdominal_distension: Abdominal Distension (1 = moderate, 2 = none, 3 = severe, 4 = slight)
+        - nasogastric_reflux: Nasogastric Reflux (0 = more then 1 liter, 1 = less then 1 liter, 
+                                               2 = missing, 3 = none)
+    
+    Returns:
+    prediction (int): 0 if the lesion is not surgical, 1 if it is.
+    nodes (list): A list of boolean values representing the truth values of the inner nodes.
+    """
+
+    # Initialize the nodes with None
+    nodes = 2 * [None]
+    
+    # Node 0: Check if the degree of pain is severe (intermittent severe pain or continuous severe pain)
+    nodes[0] = X["pain"] in [2, 5]
+    
+    # Node 1: Check if there's significant abdominal distension or nasogastric reflux
+    nodes[1] = X["abdominal_distension"] in [3] or X["nasogastric_reflux"] in [0, 1]
+    
+    # Make the prediction based on the nodes
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Severe pain and significant distension/reflux suggests surgery
+        else:
+            prediction = 1  # Severe pain alone might still require surgical intervention
+    else:
+        if nodes[1]:
+            prediction = 1  # Significant distension/reflux even without severe pain could necessitate surgery
+        else:
+            prediction = 0  # Neither severe pain nor significant distension/reflux suggests non-surgical approach
+    
+    return prediction, [int(node) for node in nodes]
+```
+
+You can use this function by passing a dictionary of features to it. For example:
+
+```python
+features = {
+    "pain": 5,
+    "abdominal_distension": 3,
+    "nasogastric_reflux": 1,
+}
+
+prediction, nodes = predict(features)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This example would likely return a prediction of `1` (surgical) because the horse has intermittent severe pain and significant abdominal distension. The `nodes` list would reflect the truth values of the inner nodes, which in this case would be `[1, 1]`.

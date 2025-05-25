@@ -1,0 +1,81 @@
+To build a decision tree for classifying whether a horse colic lesion is surgical or not, we first need to select the most relevant features from the provided dataset. We'll focus on features that are directly related to the severity of the condition and the potential need for surgery.
+
+After reviewing the features, I've selected the following as the most important ones:
+
+1. Degree of Pain (none / mild / moderate / severe)
+2. Abdominal Distension (none / slight / moderate / severe)
+3. Nasogastric Reflux (none / >1 liter / <1 liter)
+4. Packed Cell Volume (%)
+5. Total Protein (g/dl)
+
+Here's the induced decision tree:
+
+|--- Degree of Pain = severe
+||--- class: surgical
+
+|--- Degree of Pain != severe
+||--- Abdominal Distension = severe
+|||--- class: surgical
+
+|--- Degree of Pain != severe
+||--- Abdominal Distension != severe
+|||--- Nasogastric Reflux = >1 liter
+||||--- class: surgical
+
+|--- Degree of Pain != severe
+||--- Abdominal Distension != severe
+|||--- Nasogastric Reflux != >1 liter
+||||--- Packed Cell Volume <= 20
+|||||--- Total Protein >= 7.0
+||||||--- class: surgical
+
+|--- (otherwise)
+||--- class: non-surgical
+
+This decision tree suggests that:
+
+* If the horse is experiencing severe pain, surgery is likely necessary.
+* If abdominal distension is severe, surgery is likely necessary.
+* If nasogastric reflux is greater than 1 liter, surgery is likely necessary.
+* If packed cell volume is low (<= 20) and total protein is high (>= 7.0), surgery might be necessary.
+
+Note that this decision tree is not exhaustive and should be validated with a larger dataset or expert opinion to ensure its accuracy and reliability. Additionally, the thresholds used in the tree are based on general assumptions and may need to be adjusted based on specific clinical guidelines or expertise.
+
+
+#########################
+
+
+Here is the function for predicting whether a horse colic lesion is surgical or not:
+
+```python
+def predict(X: dict):
+    nodes = 4 * [None]
+    
+    # Node 0: Degree of Pain (severe pain indicates surgery)
+    nodes[0] = X["pain"] == 2
+    
+    # Node 1: Abdominal Distension (severe distension indicates surgery)
+    nodes[1] = X["abdominal_distension"] == 3
+    
+    # Node 2: Nasogastric Reflux (>1 liter of reflux indicates surgery)
+    nodes[2] = X["nasogastric_reflux"] == 0
+    
+    # Node 3: Packed Cell Volume and Total Protein (low PCV and high TP indicate surgery)
+    nodes[3] = (X["packed_cell_volume"] <= 20) and (X["total_protein"] >= 7.0)
+
+    if nodes[0]:
+        prediction = 1
+    elif nodes[1]:
+        prediction = 1
+    elif nodes[2]:
+        prediction = 1
+    else:
+        if nodes[3]:
+            prediction = 1
+        else:
+            prediction = 0
+
+    return prediction, nodes
+```
+
+In this function, the decision tree is traversed based on the input features `X`. The prediction and the truth values of the inner nodes are returned as a tuple.

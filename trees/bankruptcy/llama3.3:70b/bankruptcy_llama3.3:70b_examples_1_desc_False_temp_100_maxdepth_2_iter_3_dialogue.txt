@@ -1,0 +1,109 @@
+To build a decision tree classifier that determines whether a company went bankrupt or not based on the given financial features, we will use these features:
+
+1. Working Capital/Total Assets
+2. Retained Earnings/Total Assets
+3. Earnings Before Interest and Tax/Total Assets (EBIT/TA)
+4. Sales/Total Assets
+5. Book Value of Equity/Book Value of Liabilities
+
+Given that the goal is to classify companies as either bankrupt or not, we'll aim for a decision tree with a maximum depth of 2, focusing on the most informative features.
+
+**Decision Tree Construction**
+
+At the first level (root), we select the feature that best separates the data into two classes. This often involves calculating the information gain or Gini impurity reduction for each feature. For financial health and bankruptcy prediction, **Working Capital/Total Assets** is a crucial indicator because it reflects a company's liquidity and ability to meet its short-term obligations.
+
+- **Root Node:** Working Capital/Total Assets
+
+    - If **Working Capital/Total Assets <= 0.20**, the company might be at risk due to low liquidity.
+        - **Left Child Node (Depth 2):** For companies with poor liquidity, we further examine their **Retained Earnings/Total Assets**. A high ratio here could indicate a company's ability to survive through retained profits despite current liquidity issues.
+            - If **Retained Earnings/Total Assets > 0.10**, the company might still be viable due to past profitability.
+                - Class: Not Bankrupt
+            - Else, the company is likely at significant risk.
+                - Class: Bankrupt
+    - If **Working Capital/Total Assets > 0.20**, the company has better liquidity and is less likely to face immediate bankruptcy risks.
+        - **Right Child Node (Depth 2):** For these companies, we look at **EBIT/Total Assets** as an indicator of profitability. A healthy EBIT margin suggests a company can service its debts and invest in growth.
+            - If **EBIT/Total Assets > 0.05**, the company is profitable and less likely to go bankrupt.
+                - Class: Not Bankrupt
+            - Else, despite good liquidity, profitability concerns might exist.
+                - Class: Bankrupt
+
+**Decision Tree**
+
+|--- Working Capital/Total Assets <= 0.20
+||--- Retained Earnings/Total Assets > 0.10
+|||--- Class: Not Bankrupt
+||--- Retained Earnings/Total Assets <= 0.10
+|||--- Class: Bankrupt
+|--- Working Capital/Total Assets > 0.20
+||--- EBIT/Total Assets > 0.05
+|||--- Class: Not Bankrupt
+||--- EBIT/Total Assets <= 0.05
+|||--- Class: Bankrupt
+
+This tree uses liquidity (Working Capital/Total Assets) as the primary discriminator and then further refines the classification based on retained earnings for potentially at-risk companies or profitability (EBIT/Total Assets) for more liquid ones. Note that the specific threshold values used here are examples and might need adjustment based on actual data analysis and modeling.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree for predicting whether a company went bankrupt or not based on the given financial features.
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a company went bankrupt or not based on its financial health.
+    
+    Parameters:
+    X (dict): A dictionary containing the company's financial data.
+        - WC/TA: Working Capital/Total Assets
+        - RE/TA: Retained Earnings/Total Assets
+        - EBIT/TA: Earnings Before Interest and Tax/Total Assets
+        - S/TA: Sales/Total Assets
+        - BVE/BVL: Book Value of Equity/Book Value of Liabilities
+        
+    Returns:
+    prediction (int): A binary value indicating whether the company went bankrupt (1) or not (0).
+    nodes (list): A list representing the truth values of the inner nodes in the decision tree.
+    """
+    
+    # Initialize nodes to store the truth values
+    nodes = 2 * [None]
+    
+    # Root node: Working Capital/Total Assets <= 0.20
+    nodes[0] = X["WC/TA"] <= 0.20
+    
+    # Left child node (if WC/TA <= 0.20): Retained Earnings/Total Assets > 0.10
+    # Right child node (if WC/TA > 0.20): EBIT/Total Assets > 0.05
+    nodes[1] = X["WC/TA"] > 0.20 and X["EBIT/TA"] > 0.05 or X["WC/TA"] <= 0.20 and X["RE/TA"] > 0.10
+    
+    # Make prediction based on the decision tree
+    if nodes[0]:
+        # If WC/TA <= 0.20, check RE/TA
+        if X["RE/TA"] > 0.10:
+            prediction = 0  # Not bankrupt
+        else:
+            prediction = 1  # Bankrupt
+    else:
+        # If WC/TA > 0.20, check EBIT/TA
+        if X["EBIT/TA"] > 0.05:
+            prediction = 0  # Not bankrupt
+        else:
+            prediction = 1  # Bankrupt
+    
+    return prediction, [int(node) for node in nodes]
+
+# Example usage
+financial_data = {
+    "WC/TA": 0.15,
+    "RE/TA": 0.20,
+    "EBIT/TA": 0.03,
+    "S/TA": 1.50,
+    "BVE/BVL": 2.00
+}
+
+prediction, nodes = predict(financial_data)
+print(f"Prediction: {prediction}")  # 1 (bankrupt) or 0 (not bankrupt)
+print(f"Nodes: {nodes}")  # [1, 0] or [0, 1]
+```
+
+This function uses the decision tree constructed earlier to make predictions based on a company's financial health. The `predict` function takes in a dictionary `X` containing the company's financial data and returns a binary prediction (0 for not bankrupt, 1 for bankrupt) along with a list representing the truth values of the inner nodes in the decision tree.
