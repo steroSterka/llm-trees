@@ -1,0 +1,118 @@
+To build a decision tree classifier for determining which boxer won each round based on the provided features, we first need to understand that the given features relate to judges' identities and whether they are official or not, as well as the round number. However, without actual data (e.g., scores given by each judge for each round), building an accurate decision tree is speculative. Nevertheless, I can propose a hypothetical approach based on how one might structure such a decision tree with these features.
+
+Given Features:
+- Judge (Multiple options)
+- Official judge (yes/no)
+- Round (1 to 12)
+
+Let's assume we have data where each row represents a round and the outcome of that round (either Trinidad won or de la Hoya won).
+
+**Hypothetical Decision Tree:**
+
+|--- Official judge == yes
+||--- Judge == HBO-Lederman, Los Angeles Times-Kawakami, USA Today, Associated Press
+|||--- Round <= 6
+||||--- class: Trinidad
+|||--- Round > 6
+||||--- class: de la Hoya
+||--- Judge != (HBO-Lederman, Los Angeles Times-Kawakami, USA Today, Associated Press)
+|||--- Round <= 3
+||||--- class: Trinidad
+|||--- Round > 3
+||||--- class: de la Hoya
+|--- Official judge == no
+||--- Judge == Sportsticker, Las Vegas Review-Journal
+|||--- Round <= 9
+||||--- class: Trinidad
+|||--- Round > 9
+||||--- class: de la Hoya
+||--- Judge != (Sportsticker, Las Vegas Review-Journal)
+|||--- Round <= 4
+||||--- class: de la Hoya
+|||--- Round > 4
+||||--- class: Trinidad
+
+**Rationale:**
+- The decision to use "Official judge" as the first split is based on assuming that official judges' opinions might carry more weight or be more predictive of the outcome.
+- The choice of specific judges under each branch (e.g., HBO-Lederman, Los Angeles Times-Kawakami) is speculative and would depend on actual data analysis. Some judges might consistently favor one fighter over another based on their scoring styles or biases.
+- The use of "Round" as a deciding factor in the tree could reflect patterns such as one fighter starting stronger (winning early rounds) and the other finishing stronger (winning later rounds).
+
+**Important Note:**
+This decision tree is highly speculative without actual data. In real-world applications, you would use machine learning algorithms and statistical analysis to determine which features are most predictive of the outcome and construct the decision tree based on those findings.
+
+To accurately build a decision tree for this problem, one would ideally:
+1. Collect detailed round-by-round scoring data from various judges.
+2. Use feature selection or importance techniques (e.g., mutual information, permutation importance) to identify which judges' scores and in which rounds they are most predictive of the fight's outcome.
+3. Train a decision tree classifier using this data, potentially tuning hyperparameters for optimal performance.
+
+Without specific data on how each judge scored each round, any proposed decision tree would be speculative and unlikely to accurately predict outcomes.
+
+
+#########################
+
+
+Here is a Python function that implements the decision tree based on the provided features and target variable. This function takes in a dictionary `X` representing a single data point with keys corresponding to the feature names.
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won the round based on the given features.
+    
+    Parameters:
+    X (dict): A dictionary containing the features of a single data point.
+             Keys should include 'Judge', 'Official', 'Round'.
+    
+    Returns:
+    prediction (int): The predicted winner of the round (0 = Trinidad, 1 = de la Hoya)
+    nodes (list): A list of boolean values representing the truth values of the inner nodes
+    """
+    # Initialize a list to store the truth values of the inner nodes
+    nodes = [None] * 4
+    
+    # Define the conditions for each node
+    nodes[0] = X['Official'] == 1  # Check if official judge
+    nodes[1] = X['Judge'] in [3, 6, 7]  # Check if judge is HBO-Lederman, USA Today, or Associated Press
+    nodes[2] = X['Round'] <= 6  # Check if round number is less than or equal to 6
+    nodes[3] = X['Judge'] in [4, 8]  # Check if judge is Sportsticker or Las Vegas Review-Journal
+    
+    # Use the conditions to make a prediction
+    if nodes[0]:
+        if nodes[1]:
+            if nodes[2]:
+                prediction = 0  # Trinidad wins early rounds with favorable judges
+            else:
+                prediction = 1  # de la Hoya wins late rounds with favorable judges
+        else:
+            if nodes[2]:
+                prediction = 0  # Trinidad wins early rounds with other official judges
+            else:
+                prediction = 1  # de la Hoya wins late rounds with other official judges
+    else:
+        if nodes[3]:
+            if X['Round'] <= 9:
+                prediction = 0  # Trinidad wins middle rounds with Sportsticker or Las Vegas Review-Journal
+            else:
+                prediction = 1  # de la Hoya wins late rounds with Sportsticker or Las Vegas Review-Journal
+        else:
+            if nodes[2]:
+                prediction = 1  # de la Hoya wins early rounds with other non-official judges
+            else:
+                prediction = 0  # Trinidad wins late rounds with other non-official judges
+    
+    # Convert boolean values to integers (True -> 1, False -> 0)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+X = {
+    'Judge': 3,  # HBO-Lederman
+    'Official': 1,
+    'Round': 5
+}
+prediction, nodes = predict(X)
+print("Prediction:", prediction)
+print("Nodes:", nodes)
+```
+
+This function first checks the conditions for each node and stores the results in a list. Then, it uses these conditions to make a prediction about which boxer won the round. Finally, it converts the boolean values of the nodes to integers (True -> 1, False -> 0) and returns both the prediction and the list of node values.

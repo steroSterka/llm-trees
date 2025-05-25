@@ -1,0 +1,141 @@
+To build a decision tree classifier with a maximum depth of 2 for determining whether a company is solvent or not based on the provided financial features, we need to first identify the most important features. Since the actual data and target variable (solvent or not) are not provided, I will guide you through a general approach using Python's `sklearn` library, assuming we have a dataset where these features are used to classify companies as solvent or insolvent.
+
+Let's assume our dataset is named `df`, with the mentioned financial ratios as columns and an additional column `solvent` which is our target variable (1 for solvent, 0 for insolvent).
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.feature_selection import SelectKBest, f_classif
+
+# Sample dataset (you need to replace this with your actual data)
+data = {
+    'Earnings Before Interest and Taxes/Total Assets': [0.1, 0.2, 0.3, 0.4, 0.5],
+    'Net Income/Total Capital': [0.01, 0.02, 0.03, 0.04, 0.05],
+    'Sales/Total Assets': [0.5, 0.6, 0.7, 0.8, 0.9],
+    'Earnings Before Interest and Taxes/Sales': [0.1, 0.2, 0.3, 0.4, 0.5],
+    'Net Income/Sales': [0.01, 0.02, 0.03, 0.04, 0.05],
+    'Working Capital/Total Assets': [0.1, 0.2, 0.3, 0.4, 0.5],
+    'Equity/Total Liabilities': [1, 2, 3, 4, 5],
+    'Equity/Total Assets': [0.5, 0.6, 0.7, 0.8, 0.9],
+    'solvent': [1, 1, 0, 0, 1]
+}
+df = pd.DataFrame(data)
+
+# Define features and target
+X = df.drop('solvent', axis=1)
+y = df['solvent']
+
+# Select K best features
+selector = SelectKBest(f_classif, k=3) # Assuming the top 3 features are most relevant
+X_selected = selector.fit_transform(X, y)
+
+# Get the names of the selected features for interpretation
+support = selector.get_support()
+selected_features = X.columns[support]
+
+print("Selected Features:", selected_features)
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_selected, y, test_size=0.2, random_state=42)
+
+# Initialize Decision Tree Classifier with max depth of 2
+clf = DecisionTreeClassifier(max_depth=2, random_state=42)
+
+# Train the classifier
+clf.fit(X_train, y_train)
+
+# Predict on test set
+y_pred = clf.predict(X_test)
+
+# Evaluate the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+
+# To visualize or print the decision tree (simplified representation)
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12,8))
+plot_tree(clf, filled=True, feature_names=selected_features)
+plt.show()
+```
+
+This example provides a basic framework. The actual performance and structure of the decision tree depend on your dataset's specifics. Remember to replace the sample data with your own data and adjust parameters as necessary for better model performance. 
+
+Given that we don't have access to the real dataset, this approach aims at illustrating how one might select the most relevant features and build a simple decision tree classifier in Python. In practice, you would need to preprocess your data (handle missing values, normalize/scale features if necessary), possibly tune hyperparameters of the DecisionTreeClassifier, and evaluate its performance on unseen data.
+
+
+#########################
+
+
+Here's how you can format the decision tree as a Python function based on your provided features and target variable. Since we don't have the actual thresholds used in the decision tree, I'll assume some meaningful values for illustration purposes.
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a company is solvent or not based on its financial features.
+    
+    Parameters:
+    X (dict): A dictionary containing the financial features of the company.
+        - 'EBIT/TA': Earnings Before Interest and Taxes/Total Assets
+        - 'NI/TC': Net Income/Total Capital
+        - 'Sales/TA': Sales/Total Assets
+        - 'EBIT/Sales': Earnings Before Interest and Taxes/Sales
+        - 'NI/Sales': Net Income/Sales
+        - 'WC/TA': Working Capital/Total Assets
+        - 'Equity/TL': Equity/Total Liabilities
+        - 'Equity/TA': Equity/Total Assets
+        
+    Returns:
+    tuple: A tuple containing the prediction (1 if solvent, 0 if insolvent) and a list of boolean values representing the truth values of the inner nodes.
+    """
+    
+    # Initialize nodes with None
+    nodes = 2 * [None]
+    
+    # Node conditions - For illustration purposes, assume these thresholds are meaningful
+    nodes[0] = X['EBIT/TA'] > 0.05  # EBIT/TA being greater than 5% could indicate solvency
+    nodes[1] = X['Equity/TL'] > 1   # Equity/Total Liabilities ratio greater than 1 indicates a healthier balance sheet
+    
+    prediction = None
+    
+    if nodes[0]:
+        if nodes[1]:
+            # If both conditions are met, the company is likely solvent
+            prediction = 1
+        else:
+            # If only EBIT/TA condition is met but not Equity/TL, still consider it solvent for this example
+            prediction = 1
+    else:
+        # If neither condition is met, consider the company insolvent
+        prediction = 0
+    
+    # Convert boolean values to integers (True -> 1, False -> 0) for return
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+example_company = {
+    'EBIT/TA': 0.08,
+    'NI/TC': 0.02,
+    'Sales/TA': 0.7,
+    'EBIT/Sales': 0.12,
+    'NI/Sales': 0.03,
+    'WC/TA': 0.2,
+    'Equity/TL': 1.5,
+    'Equity/TA': 0.6
+}
+
+prediction, nodes = predict(example_company)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+In this function, the decision tree checks two conditions:
+1. If `EBIT/TA` is greater than 5%, which could indicate a company's ability to generate earnings from its assets.
+2. If `Equity/TL` (Equity to Total Liabilities) is greater than 1, suggesting that the company has more equity than liabilities, indicating a healthier financial position.
+
+Based on these conditions, it predicts whether the company is solvent or not and returns this prediction along with the truth values of the inner nodes as integers.

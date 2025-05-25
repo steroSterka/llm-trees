@@ -1,0 +1,160 @@
+To build a decision tree classifier for determining whether an application for credit is accepted or not based on the provided features, we'll follow a similar logic as in your example. However, without specific data or thresholds, I'll create a hypothetical decision tree that could classify applications based on these features:
+
+1. **age (years)**
+2. **income per dependent (1.5 to 10)**
+3. **monthly credit card expenses ($)** 
+4. **owning a home (yes / no)**
+5. **self employed (yes / no)**
+6. **number of derogatory reports**
+
+Given these features, here's how a decision tree might look:
+
+- **Step 1:** Evaluate the `number of derogatory reports`. If it's high (let's say more than 2), this could directly influence creditworthiness negatively.
+  
+|--- number of derogatory reports > 2
+||--- class: Rejected
+
+- **Step 2:** For those with fewer derogatory reports, consider their financial stability through `income per dependent`. A higher income per dependent suggests better ability to repay debts.
+
+|--- number of derogatory reports <= 2
+||--- income per dependent < 3
+|||--- class: Rejected (Lower income might struggle with credit repayments)
+||--- income per dependent >= 3
+
+- **Step 3:** Within the group that has a decent income and few derogatory reports, consider their `monthly credit card expenses`. High expenses relative to income could indicate overextension.
+
+|||--- monthly credit card expenses > $500
+||||--- class: Rejected (High expenses may indicate financial stress)
+
+- **Step 4:** For applicants with manageable expenses, evaluate their stability through `owning a home` and being `self employed`.
+
+|||--- owning a home = yes & self employed = no
+||||--- class: Accepted (Home ownership can indicate stability, and not being self-employed may suggest a regular income)
+|||--- owning a home = no or self employed = yes
+
+- **Step 5:** For those who don't own a home or are self-employed, consider their `age`. Older applicants might have had more time to build credit and financial stability.
+
+||||--- age > 35
+|||||--- class: Accepted (Assuming older individuals have more financial stability)
+||||--- age <= 35
+
+- **Step 6:** For younger self-employed individuals or non-homeowners, a final evaluation based on `income per dependent` could be decisive. 
+
+|||||--- income per dependent > 5
+||||||--- class: Accepted (Higher income can mitigate risks associated with being young and/or self-employed)
+|||||--- income per dependent <= 5
+||||||--- class: Rejected
+
+Decision Tree:
+```
+|--- number of derogatory reports > 2
+||--- class: Rejected
+|--- number of derogatory reports <= 2
+||--- income per dependent < 3
+|||--- class: Rejected
+||--- income per dependent >= 3
+|||--- monthly credit card expenses > $500
+||||--- class: Rejected
+|||--- monthly credit card expenses <= $500
+||||--- owning a home = yes & self employed = no
+|||||--- class: Accepted
+||||--- owning a home = no or self employed = yes
+|||||--- age > 35
+||||||--- class: Accepted
+|||||--- age <= 35
+||||||--- income per dependent > 5
+|||||||--- class: Accepted
+||||||--- income per dependent <= 5
+|||||||--- class: Rejected
+```
+
+This hypothetical decision tree uses a combination of financial stability indicators, credit history, and personal circumstances to classify credit applications. Note that actual thresholds (e.g., number of derogatory reports, income levels) should be determined through analysis of real data for accuracy.
+
+
+#########################
+
+
+Here's a Python function that implements the decision tree based on the provided features and target variable:
+
+```python
+def predict_credit_application(X: dict):
+    """
+    Predicts whether an application for credit is accepted or not.
+
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - 'Age': age (years)
+        - 'Income.per.dependent': income per dependent (1.5 to 10)
+        - 'Monthly.credit.card.exp': monthly credit card expenses ($)
+        - 'Own.home': owning a home (1 = yes, 0 = no)
+        - 'Self.employed': self employed (1 = yes, 0 = no)
+        - 'Derogatory.reports': number of derogatory reports (0, 1, 2, 3, 4, 7)
+
+    Returns:
+    prediction (int): The predicted outcome (0 = application rejected, 1 = application accepted).
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+    nodes = 6 * [None]
+
+    # Step 1: Evaluate the number of derogatory reports
+    nodes[0] = X['Derogatory.reports'] > 2
+
+    # Step 2: Evaluate income per dependent for those with fewer derogatory reports
+    nodes[1] = X['Income.per.dependent'] < 3
+
+    # Step 3: Evaluate monthly credit card expenses for those with decent income and few derogatory reports
+    nodes[2] = X['Monthly.credit.card.exp'] > 500
+
+    # Step 4: Evaluate owning a home and self-employment status for those with manageable expenses
+    nodes[3] = X['Own.home'] == 1 and X['Self.employed'] == 0
+
+    # Step 5: Evaluate age for younger self-employed individuals or non-homeowners
+    nodes[4] = X['Age'] > 35
+
+    # Step 6: Evaluate income per dependent for younger self-employed individuals or non-homeowners
+    nodes[5] = X['Income.per.dependent'] > 5
+
+    if nodes[0]:
+        prediction = 0  # Application rejected due to high number of derogatory reports
+    else:
+        if nodes[1]:
+            prediction = 0  # Application rejected due to low income per dependent
+        else:
+            if nodes[2]:
+                prediction = 0  # Application rejected due to high monthly credit card expenses
+            else:
+                if nodes[3]:
+                    prediction = 1  # Application accepted due to owning a home and not being self-employed
+                else:
+                    if nodes[4]:
+                        prediction = 1  # Application accepted due to older age
+                    else:
+                        if nodes[5]:
+                            prediction = 1  # Application accepted due to high income per dependent
+                        else:
+                            prediction = 0  # Application rejected
+
+    # Convert boolean values in nodes to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+```
+
+You can use this function by passing a dictionary with the feature values as follows:
+
+```python
+X = {
+    'Age': 30,
+    'Income.per.dependent': 4,
+    'Monthly.credit.card.exp': 300,
+    'Own.home': 1,
+    'Self.employed': 0,
+    'Derogatory.reports': 1
+}
+
+prediction, nodes = predict_credit_application(X)
+print("Prediction:", prediction)
+print("Nodes:", nodes)
+```
+
+This will output the predicted outcome and the truth values of the inner nodes based on the provided feature values.

@@ -1,0 +1,169 @@
+To build a decision tree classifier for the outcome of labor negotiations being good or bad based on the provided features, we first need to understand that the "good" or "bad" classification depends on various factors related to employee benefits and working conditions. Given the complexity and variety of the features, we'll simplify by considering some of the most impactful ones on labor negotiation outcomes.
+
+Let's consider the following key features for our decision tree:
+1. **Wage increase in first year of contract (2 to 7)**: A higher wage increase often indicates a more favorable agreement.
+2. **Number of paid vacation days (below average / average / generous)**: Generous vacation time is typically seen as beneficial.
+3. **Employer contributions to pension plan (none / retirement allowance included / employee contribution)**: Significant employer contributions suggest a better deal for employees.
+4. **Standby pay (2 to 25)**: Higher standby pay rates can indicate more favorable working conditions.
+
+Given these features, we'll construct a simplified decision tree. Note that without specific outcome data (good or bad), this will be a conceptual approach based on the assumption that higher benefits and better working conditions lead to "good" outcomes.
+
+### Decision Tree
+
+1. **Wage increase in first year of contract <= 4**
+   - This low initial wage increase may indicate less favorable negotiations.
+   - Further divide based on **Number of paid vacation days**:
+     - **Below average**: Likely a bad outcome due to low starting wages and limited time off.
+       - Class: Bad
+     - **Average or Generous**: While the initial wage is low, decent vacation time might somewhat offset this.
+       - Further evaluation needed; consider **Employer contributions to pension plan**:
+         - **None or Employee contribution**: Lack of employer investment in future benefits leans towards a bad outcome.
+           - Class: Bad
+         - **Retirement allowance included**: Some form of employer contribution could make the deal more favorable.
+           - Class: Good
+
+2. **Wage increase in first year of contract > 4**
+   - A higher initial wage increase suggests more favorable negotiations.
+   - Evaluate **Standby pay**:
+     - **<= 10**: Lower standby pay might indicate some imbalance in working conditions.
+       - Class: Bad
+     - **> 10**: Higher standby pay rates, combined with a significant first-year wage increase, likely indicate good working conditions.
+       - Further consider **Employer's contribution towards the health plan**:
+         - **None or Half**: Limited health plan contributions might slightly detract from the overall favorability.
+           - Class: Good
+         - **Full**: Comprehensive health plan coverage reinforces a positive negotiation outcome.
+           - Class: Good
+
+### Simplified Decision Tree Summary
+
+- Low initial wage increase (< 4) with below-average vacation time: Bad
+- Low initial wage increase with average/generous vacation time but no employer pension contribution: Bad
+- Low initial wage increase with average/generous vacation time and employer pension contribution: Good
+- High initial wage increase (> 4) with low standby pay: Bad
+- High initial wage increase with high standby pay and limited health plan contribution: Good
+- High initial wage increase with high standby pay and full health plan contribution: Good
+
+This decision tree simplifies the complexities of labor negotiations into a basic framework. Real-world applications would require more nuanced data analysis, including specific outcome labels (good or bad) associated with each feature combination to train an accurate model.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree for predicting labor negotiation outcomes:
+
+```python
+def predict(X: dict):
+    """
+    Predicts the outcome of labor negotiations based on given features.
+
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - duration (int): Duration of agreement [1..7]
+        - wage increase first year (float): Wage increase in first year of contract [2.0 .. 7.0]
+        - wage increase second year (float): Age increase in second year of contract [2.0 .. 7.0]
+        - wage increase third year (float): Wage increase in third year of contract [2.0 .. 7.0]
+        - cost of living adjustment (str): Cost of living allowance [none, tcf, tc]
+        - working hours (int): Number of working hours during week [35 .. 40]
+        - pension (str): Employer contributions to pension plan [none, ret_allw, empl_contr]
+        - standby pay (int): Standby pay [2 .. 25]
+        - shift differential (int): Supplement for work on II and III shift [1 .. 25]
+        - education allowance (bool): Education allowance [true false]
+        - statutory holidays (int): Number of statutory holidays [9 .. 15]
+        - vacation (str): Number of paid vacation days [ba, avg, gnr]
+        - longterm disability assistance (bool): Employer's help during employee longterm disabil ity [true , false]
+        - contribution to dental plan (str): Employers contribution towards the dental plan [none, half, full]
+        - bereavement assistance (bool): Employer's financial contribution towards the covering the costs of bereavement [true , false]
+        - contribution to health plan (str): Employer's contribution towards the health plan [none, half, full]
+
+    Returns:
+    prediction (int): The predicted outcome of labor negotiations (0 = bad, 1 = good)
+    nodes (list): A list representing the truth values of the inner nodes
+    """
+    # Initialize nodes with None
+    nodes = 6 * [None]
+
+    # Node 0: Wage increase in first year > 4.5
+    nodes[0] = X["wage increase first year"] > 4.5
+
+    # Node 1: Standby pay > 15
+    if nodes[0]:
+        nodes[1] = X["standby pay"] > 15
+    else:
+        nodes[1] = False
+
+    # Node 2: Employer contributions to pension plan is not 'none'
+    if nodes[0]:
+        nodes[2] = X["pension"] != "none"
+    else:
+        nodes[2] = False
+
+    # Node 3: Vacation is 'gnr' (generous)
+    if nodes[1]:
+        nodes[3] = X["vacation"] == "gnr"
+    else:
+        nodes[3] = False
+
+    # Node 4: Contribution to health plan is 'full'
+    if nodes[2]:
+        nodes[4] = X["contribution to health plan"] == "full"
+    else:
+        nodes[4] = False
+
+    # Node 5: Longterm disability assistance is True
+    if nodes[3]:
+        nodes[5] = X["longterm disability assistance"]
+    else:
+        nodes[5] = False
+
+    prediction = 0  # Default to bad outcome
+
+    # Decision tree logic
+    if nodes[0]:  # High wage increase in first year
+        if nodes[1]:  # High standby pay
+            if nodes[3]:  # Generous vacation
+                if nodes[5]:  # Longterm disability assistance is True
+                    prediction = 1  # Good outcome
+                else:
+                    prediction = 0  # Bad outcome
+            else:
+                prediction = 0  # Bad outcome
+        elif nodes[2]:  # Employer contributes to pension plan
+            if nodes[4]:  # Full contribution to health plan
+                prediction = 1  # Good outcome
+            else:
+                prediction = 0  # Bad outcome
+        else:
+            prediction = 0  # Bad outcome
+    else:  # Low wage increase in first year
+        prediction = 0  # Bad outcome
+
+    # Convert boolean nodes to integers (1 for True, 0 for False)
+    nodes = [int(node) if node is not None else 0 for node in nodes]
+
+    return prediction, nodes
+
+
+# Example usage:
+features = {
+    "duration": 5,
+    "wage increase first year": 5.5,
+    "wage increase second year": 3.0,
+    "wage increase third year": 2.5,
+    "cost of living adjustment": "tcf",
+    "working hours": 37,
+    "pension": "ret_allw",
+    "standby pay": 20,
+    "shift differential": 10,
+    "education allowance": True,
+    "statutory holidays": 12,
+    "vacation": "gnr",
+    "longterm disability assistance": True,
+    "contribution to dental plan": "half",
+    "bereavement assistance": False,
+    "contribution to health plan": "full"
+}
+
+prediction, nodes = predict(features)
+print("Prediction:", prediction)  # Good outcome (1) or bad outcome (0)
+print("Nodes:", nodes)  # List of truth values for inner nodes
+```

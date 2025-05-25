@@ -1,0 +1,93 @@
+To build a decision tree that classifies whether a horse colic lesion is surgical or not with a maximum depth of 2, we'll use the provided features and outcome variable. Given the complexity and the number of features involved, the most straightforward approach to induce such a tree would involve selecting the most informative features related to the need for surgery in colic cases.
+
+From clinical knowledge:
+- **Degree of Pain** can be an indicator of the severity of the condition.
+- **Abdominal Distension** is often associated with the need for surgical intervention due to potential obstruction or severe inflammation.
+- **Nasogastric Reflux** and its volume can indicate intestinal obstruction, a common reason for surgery in colic cases.
+
+Let's assume these are among the most important features based on clinical relevance. We'll simplify our decision tree to use these features with a maximum depth of 2, meaning we have one main split (at the root) and potential secondary splits.
+
+Given the nature of the problem and without specific data to run through an algorithm like ID3 or C4.5 for precise feature selection and threshold determination, we'll create a logical decision tree based on clinical relevance:
+
+1. **Root Node:** Abdominal Distension
+   - This is chosen because severe abdominal distension can be indicative of conditions requiring surgical intervention (e.g., intestinal obstruction).
+
+2. **Left Branch (Abdominal Distension: none or slight):**
+   - In cases with minimal to no distension, the decision for surgery might depend on other factors such as the degree of pain and nasogastric reflux.
+   - Secondary split: Degree of Pain
+     - If the degree of pain is severe, this could indicate a need for surgical intervention due to potential for significant intestinal compromise or other severe conditions.
+
+3. **Right Branch (Abdominal Distension: moderate or severe):**
+   - In cases with significant distension, the concern for conditions requiring surgery (like obstruction) increases.
+   - Secondary split: Nasogastric Reflux (>1 liter)
+     - Significant nasogastric reflux can indicate intestinal obstruction, a common reason for surgical intervention in colic cases.
+
+**Decision Tree:**
+
+|--- Abdominal Distension <= slight
+||--- Degree of Pain == severe -> class: Surgical
+||--- Degree of Pain != severe -> class: Non-Surgical
+|--- Abdominal Distension > slight
+||--- Nasogastric Reflux > 1 liter -> class: Surgical
+||--- Nasogastric Reflux <= 1 liter -> class: Non-Surgical
+
+This tree is a simplified example based on clinical reasoning rather than actual data analysis. In practice, constructing such a tree would require analyzing specific data to determine the most predictive features and their thresholds accurately.
+
+
+#########################
+
+
+Here's the Python function that implements the decision tree based on the provided features and target variable:
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a horse colic lesion is surgical or not.
+
+    Parameters:
+    X (dict): A dictionary containing the feature values.
+        - abdominal_distension: Abdominal Distension (1 = moderate, 2 = none, 3 = severe, 4 = slight)
+        - pain: Degree of Pain (1 = alert, 2 = continuous severe pain, 3 = depressed, 4 = intermittent mild pain, 5 = intermittent severe pain)
+        - nasogastric_reflux: Nasogastric Reflux (0 = more then 1 liter, 1 = less then 1 liter, 2 = missing, 3 = none)
+
+    Returns:
+    tuple: A tuple containing the prediction and a list representing the truth values of the inner nodes.
+        - prediction (int): 0 if no surgery is needed, 1 if surgery is needed
+        - nodes (list): A list of boolean values representing the truth values of the inner nodes
+    """
+
+    # Initialize the nodes with None
+    nodes = 2 * [None]
+
+    # Define the conditions for each node
+    nodes[0] = X["abdominal_distension"] in [1, 3]  # moderate or severe abdominal distension
+    if not nodes[0]:
+        nodes[1] = X["pain"] in [2, 5]  # continuous severe pain or intermittent severe pain
+    else:
+        nodes[1] = X["nasogastric_reflux"] == 0  # more than 1 liter of nasogastric reflux
+
+    # Make the prediction based on the node values
+    if nodes[0]:
+        prediction = 1 if nodes[1] else 1  # surgery is needed if there's significant abdominal distension and/or more than 1 liter of nasogastric reflux
+    else:
+        prediction = 1 if nodes[1] else 0  # surgery is needed if there's severe pain but no significant abdominal distension
+
+    # Convert the node values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+```
+
+You can use this function by passing a dictionary with the feature values as follows:
+
+```python
+features = {
+    "abdominal_distension": 3,  # severe abdominal distension
+    "pain": 2,  # continuous severe pain
+    "nasogastric_reflux": 0,  # more than 1 liter of nasogastric reflux
+}
+
+prediction, nodes = predict(features)
+print("Prediction:", prediction)  # Output: Prediction: 1
+print("Nodes:", nodes)  # Output: Nodes: [1, 1]
+```
