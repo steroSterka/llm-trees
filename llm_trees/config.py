@@ -11,7 +11,11 @@ class Config:
     # method="qwq:32b-fp16" #done
     # method = "deepseek-r1:70b" #done
     method = "llama3.3:70b"
-
+    
+    tree_file = ""            # << Muss gesetzt werden beim Einlesen eines Baums
+    dataset_name = "iris"     # << Wird von postprocess benötigt
+    llm = "claude"            # << Oder llama3.3:70b oder was du benutzt
+    task_type = "classification" 
 
 
     temperature = 1  # Set the temperature of the llm
