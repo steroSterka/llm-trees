@@ -226,7 +226,9 @@ def generate_local_llm_tree(config: Config):
     else:
         prompt = prompts.get_full_prompt(config)
 
-    base_url = "https://f2ki-h100-1.f2.htw-berlin.de:11435"
+
+    #Todo: Define the base URL and endpoints for the local LLM server
+    base_url = ""
     chat_url = f"{base_url}/api/chat"
     generate_url = f"{base_url}/api/generate"
 
