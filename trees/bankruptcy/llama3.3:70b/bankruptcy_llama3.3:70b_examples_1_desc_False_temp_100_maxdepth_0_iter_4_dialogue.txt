@@ -1,0 +1,116 @@
+To build a decision tree for classifying whether a company went bankrupt or not based on the provided financial features, we first need to understand what each feature represents and how it might relate to bankruptcy. The features are:
+
+1. **Working Capital/Total Assets**: This ratio indicates the proportion of working capital (current assets minus current liabilities) relative to total assets. A higher ratio suggests better liquidity but could also indicate inefficiency in using assets.
+
+2. **Retained Earnings/Total Assets**: This shows the portion of total assets that is financed by retained earnings, which are profits reinvested into the company. Higher values may suggest a healthier financial condition due to less reliance on external funding sources.
+
+3. **Earnings Before Interest and Tax (EBIT)/Total Assets**: Known as return on assets (ROA), this metric measures profitability from total assets before interest and tax expenses. A higher ROA indicates more efficient asset utilization and potentially lower risk of bankruptcy.
+
+4. **Sales/Total Assets**: This is a turnover ratio that indicates how effectively a company uses its assets to generate sales. Higher values suggest better efficiency but may also indicate over-reliance on asset-intensive strategies.
+
+5. **Book Value of Equity/Book Value of Liabilities**: This ratio compares the book value of equity (assets minus liabilities) to the book value of liabilities. A higher ratio indicates a stronger financial position with more assets backing each unit of liability, suggesting lower bankruptcy risk.
+
+Given these features and their implications for a company's financial health, let's construct a hypothetical decision tree that might classify companies as either bankrupt or not based on these metrics:
+
+1. **Root Node**: Book Value of Equity/Book Value of Liabilities <= 0.5
+   - **Left Child (Class: Bankrupt)**: This condition suggests significant leverage and potential insolvency, indicating high risk.
+   
+2. **Right Child of Root**:
+   - **Node**: EBIT/Total Assets <= 0.05
+     - **Left Child of Node (Class: Bankrupt)**: Low profitability from assets suggests inefficient operations or severe financial distress.
+     - **Right Child of Node**:
+       - **Further Node**: Working Capital/Total Assets <= 0.1
+         - **Left Child of Further Node (Class: Bankrupt)**: Insufficient working capital relative to total assets indicates liquidity issues and potential inability to meet short-term obligations.
+         - **Right Child of Further Node (Class: Not Bankrupt)**: Companies reaching this node have demonstrated sufficient profitability, liquidity, and financial health indicators.
+
+3. **Alternative Branch**:
+   - For companies with Book Value of Equity/Book Value of Liabilities > 0.5, another path could consider Sales/Total Assets ratios to further distinguish between potentially healthy and unhealthy companies.
+     - **Node**: Sales/Total Assets <= 1.2
+       - This might indicate underutilization of assets or stagnant sales growth, warranting closer inspection but not necessarily predicting bankruptcy without other negative indicators.
+
+This hypothetical decision tree is based on general financial principles and does not account for the specific context of the companies (e.g., industry, market conditions) which could significantly influence the classification. Real-world applications would require detailed analysis of actual data to determine optimal thresholds and feature combinations that accurately predict bankruptcy risk. 
+
+**Decision Tree Example:**
+
+|--- Book Value of Equity/Book Value of Liabilities <= 0.5
+||--- class: Bankrupt
+|--- Book Value of Equity/Book Value of Liabilities > 0.5
+||--- EBIT/Total Assets <= 0.05
+|||--- class: Bankrupt
+||--- EBIT/Total Assets > 0.05
+|||--- Working Capital/Total Assets <= 0.1
+||||--- class: Bankrupt
+|||--- Working Capital/Total Assets > 0.1
+||||--- class: Not Bankrupt
+
+**Note**: The thresholds used (e.g., 0.5, 0.05, 0.1) are arbitrary examples for illustrative purposes and would need to be determined based on empirical data analysis in a real application.
+
+
+#########################
+
+
+Here is the decision tree implemented as a Python function that takes in a dictionary of features and returns a single prediction (bankrupt or not) along with a list representing the truth values of the inner nodes:
+
+```python
+def predict(X: dict):
+    # Initialize list to store node evaluations
+    nodes = 5 * [None]
+    
+    # Evaluate first node condition
+    nodes[0] = X['BVE/BVL'] <= 0.5
+    
+    # Evaluate second node condition (if applicable)
+    if not nodes[0]:
+        nodes[1] = X['EBIT/TA'] <= 0.05
+        
+    # Evaluate third and fourth node conditions (if applicable)
+    if not nodes[0] and not nodes[1]:
+        nodes[2] = X['WC/TA'] <= 0.1
+        nodes[3] = X['S/TA'] <= 1.2
+    
+    # Make prediction based on evaluated node conditions
+    if nodes[0]:  # If company's equity to liability ratio is too low, likely bankrupt
+        prediction = 1  # Company went bankrupt
+    elif not nodes[0] and nodes[1]:  # If profitability from assets is too low, likely bankrupt
+        prediction = 1  # Company went bankrupt
+    elif not nodes[0] and not nodes[1] and nodes[2]:  # If working capital to total assets ratio is too low, likely bankrupt
+        prediction = 1  # Company went bankrupt
+    else:  # Otherwise, company seems financially healthy
+        prediction = 0  # Company did not go bankrupt
+    
+    # Assign node evaluation for the last two nodes based on previous conditions
+    if nodes[0]:
+        nodes[1] = None
+        nodes[2] = None
+        nodes[3] = None
+        nodes[4] = None
+    elif not nodes[0] and nodes[1]:
+        nodes[2] = None
+        nodes[3] = None
+        nodes[4] = None
+    elif not nodes[0] and not nodes[1] and nodes[2]:
+        nodes[3] = None
+        nodes[4] = None
+    else:
+        nodes[4] = X['S/TA'] <= 1.2
+        
+    # Replace None values with 0 (to represent node was not evaluated) for consistency
+    nodes = [int(val) if val is not None else 0 for val in nodes]
+    
+    return prediction, nodes
+
+# Example usage:
+example_input = {
+    'WC/TA': 0.2,
+    'RE/TA': 0.1,
+    'EBIT/TA': 0.03,
+    'S/TA': 1.5,
+    'BVE/BVL': 0.4
+}
+
+prediction, nodes = predict(example_input)
+print("Prediction:", prediction)  # Company went bankrupt (1) or not (0)
+print("Node Evaluations:", nodes)
+```
+
+This function follows the decision tree structure outlined earlier and returns a single prediction based on the evaluated node conditions along with a list representing the truth values of the inner nodes. The `nodes` list is updated accordingly to reflect which conditions were actually evaluated during the prediction process, replacing any unevaluated conditions (represented by `None`) with 0 for consistency.

@@ -1,0 +1,183 @@
+To build a decision tree classifier with a maximum depth of 2 for classifying whether the outcome of labor negotiations is good or bad based on the provided features, we first need to determine which features are most important. Since the actual dataset and target variable (good or bad outcome) details are not provided, I'll guide you through a general approach using Python with scikit-learn library, assuming we have a dataset where each feature is represented by its respective name, and there's a target variable named "outcome" which can be either "good" or "bad".
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import LabelEncoder
+
+# Assuming this is your dataset loaded into a DataFrame named 'df'
+# df = pd.read_csv('your_data.csv')
+
+# Encoding categorical variables (example for cost_of_living_adjustment)
+le = LabelEncoder()
+df['cost_of_living_adjustment'] = le.fit_transform(df['cost_of_living_adjustment'])
+df['employer_contributions_to_pension_plan'] = le.fit_transform(df['employer_contributions_to_pension_plan'])
+df['education_allowance'] = le.fit_transform(df['education_allowance'])
+df['number_of_paid_vacation_days'] = le.fit_transform(df['number_of_paid_vacation_days'])
+df['employer_help_during_employee_longterm_disability'] = le.fit_transform(df['employer_help_during_employee_longterm_disability'])
+df['employers_contribution_towards_the_dental_plan'] = le.fit_transform(df['employers_contribution_towards_the_dental_plan'])
+df['employers_financial_contribution_towards_the_covering_the_costs_of_bereavement'] = le.fit_transform(df['employers_financial_contribution_towards_the_covering_the_costs_of_bereavement'])
+df['employers_contribution_towards_the_health_plan'] = le.fit_transform(df['employers_contribution_towards_the_health_plan'])
+
+# Define features (X) and target variable (y)
+X = df[['duration_of_agreement', 'wage_increase_in_first_year_of_contract',
+        'wage_increase_in_second_year_of_contract', 'wage_increase_in_third_year_of_contract',
+        'cost_of_living_adjustment', 'number_of_working_hours_during_week',
+        'employer_contributions_to_pension_plan', 'standby_pay', 'shift_differencial_supplement_for_work_on_2_and_3_shift',
+        'education_allowance', 'number_of_statutory_holidays', 'number_of_paid_vacation_days',
+        'employer_help_during_employee_longterm_disability', 'employers_contribution_towards_the_dental_plan',
+        'employers_financial_contribution_towards_the_covering_the_costs_of_bereavement',
+        'employers_contribution_towards_the_health_plan']]
+y = df['outcome']
+
+# Split dataset into training set and test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+
+# Create Decision Tree classifier with maximum depth of 2
+clf = DecisionTreeClassifier(max_depth=2, random_state=42)
+
+# Train the model using the training sets
+clf.fit(X_train, y_train)
+
+# Predict the response for test dataset
+y_pred = clf.predict(X_test)
+
+# Model Accuracy: how often is the classifier correct?
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+
+# To visualize or print the decision tree (simplified example)
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12,8))
+plot_tree(clf, feature_names=X.columns, class_names=y.unique(), filled=True)
+plt.show()
+```
+
+This script does the following:
+- Loads necessary libraries.
+- Encodes categorical variables (if your data is not already numerical).
+- Splits the dataset into a training set and a test set.
+- Creates a Decision Tree classifier with a maximum depth of 2.
+- Trains the model using the training sets.
+- Predicts the response for the test dataset.
+- Prints accuracy and classification report to evaluate the model's performance.
+- Optionally, plots the decision tree.
+
+Note: The actual feature importance might vary based on your specific data. This example assumes all provided features are relevant and numerical or properly encoded. You may need to adjust encoding or preprocessing steps based on your dataset's specifics. Additionally, for real-world applications, consider tuning hyperparameters (e.g., `max_depth`, `min_samples_split`, `min_samples_leaf`) using techniques like GridSearchCV or RandomizedSearchCV from scikit-learn for potentially better performance.
+
+
+#########################
+
+
+Based on the provided features and target variable, I will create a decision tree of depth 2. The conditions in this decision tree are based on general assumptions about labor negotiations and may need to be adjusted according to the actual data.
+
+```python
+def predict(X: dict):
+    """
+    Predicts the outcome of labor negotiations based on given features.
+    
+    Args:
+        X (dict): A dictionary containing the features.
+            - duration: duration of agreement [1..7]
+            - wage increase first year: wage increase in first year of contract [2.0 .. 7.0]
+            - wage increase second year: age increase in second year of contract [2.0 .. 7.0]
+            - wage increase third year: wage increase in third year of contract [2.0 .. 7.0]
+            - cost of living adjustment: cost of living allowance [none, tcf, tc]
+            - working hours: number of working hours during week [35 .. 40]
+            - pension: employer contributions to pension plan [none, ret_allw, empl_contr]
+            - standby pay: standby pay [2 .. 25]
+            - shift differential: supplement for work on II and III shift [1 .. 25]
+            - education allowance: education allowance [true false]
+            - statutory holidays: number of statutory holidays [9 .. 15]
+            - vacation: number of paid vacation days [ba, avg, gnr]
+            - longterm disability assistance: employer's help during employee longterm disabil ity [true , false]
+            - contribution to dental plan: employers contribution towards the dental plan [none, half, full]
+            - bereavement assistance: employer's financial contribution towards the covering the costs of bereavement [true , false]
+            - contribution to health plan: employer's contribution towards the health plan [none, half, full]
+    
+    Returns:
+        prediction (int): The predicted outcome of labor negotiations (0 = bad, 1 = good).
+        nodes (list): A list representing the truth values of the inner nodes.
+    """
+    
+    # Convert categorical variables to numerical values
+    cost_of_living_adjustment_map = {'none': 0, 'tcf': 1, 'tc': 2}
+    pension_map = {'none': 0, 'ret_allw': 1, 'empl_contr': 2}
+    vacation_map = {'ba': 0, 'avg': 1, 'gnr': 2}
+    education_allowance_map = {'true': 1, 'false': 0}
+    longterm_disability_assistance_map = {'true': 1, 'false': 0}
+    contribution_to_dental_plan_map = {'none': 0, 'half': 1, 'full': 2}
+    bereavement_assistance_map = {'true': 1, 'false': 0}
+    contribution_to_health_plan_map = {'none': 0, 'half': 1, 'full': 2}
+    
+    X['cost of living adjustment'] = cost_of_living_adjustment_map.get(X['cost of living adjustment'], 0)
+    X['pension'] = pension_map.get(X['pension'], 0)
+    X['vacation'] = vacation_map.get(X['vacation'], 0)
+    X['education allowance'] = education_allowance_map.get(X['education allowance'], 0)
+    X['longterm disability assistance'] = longterm_disability_assistance_map.get(X['longterm disability assistance'], 0)
+    X['contribution to dental plan'] = contribution_to_dental_plan_map.get(X['contribution to dental plan'], 0)
+    X['bereavement assistance'] = bereavement_assistance_map.get(X['bereavement assistance'], 0)
+    X['contribution to health plan'] = contribution_to_health_plan_map.get(X['contribution to health plan'], 0)
+    
+    # Define the inner nodes
+    nodes = [None, None]
+    nodes[0] = X["wage increase first year"] >= 4.5  # Assuming a higher wage increase is beneficial
+    nodes[1] = X["cost of living adjustment"] > 0  # Assuming any cost of living adjustment is beneficial
+    
+    # Make the prediction based on the inner nodes
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Good outcome: high wage increase and cost of living adjustment
+        else:
+            prediction = 1  # Good outcome: high wage increase, but no cost of living adjustment
+    else:
+        if nodes[1]:
+            prediction = 1  # Good outcome: low wage increase, but cost of living adjustment
+        else:
+            prediction = 0  # Bad outcome: low wage increase and no cost of living adjustment
+    
+    # Convert boolean values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+X = {
+    'duration': 5,
+    'wage increase first year': 5.0,
+    'wage increase second year': 4.0,
+    'wage increase third year': 3.0,
+    'cost of living adjustment': 'tcf',
+    'working hours': 37,
+    'pension': 'ret_allw',
+    'standby pay': 10,
+    'shift differential': 5,
+    'education allowance': 'true',
+    'statutory holidays': 12,
+    'vacation': 'avg',
+    'longterm disability assistance': 'true',
+    'contribution to dental plan': 'half',
+    'bereavement assistance': 'true',
+    'contribution to health plan': 'full'
+}
+
+prediction, nodes = predict(X)
+print("Prediction:", prediction)
+print("Nodes:", nodes)
+
+```
+
+This code defines a decision tree with two inner nodes:
+1. `wage increase first year >= 4.5`: This node checks if the wage increase in the first year is higher than or equal to 4.5%.
+2. `cost of living adjustment > 0`: This node checks if there is any cost of living adjustment.
+
+The prediction is made based on these two nodes:
+- If both nodes are True, the outcome is good (1).
+- If only one node is True, the outcome is still good (1), assuming that either a high wage increase or a cost of living adjustment is beneficial.
+- If neither node is True, the outcome is bad (0).
+
+Note: The thresholds used in this example (4.5 for `wage increase first year` and 0 for `cost of living adjustment`) are arbitrary and may need to be adjusted based on actual data and domain knowledge.

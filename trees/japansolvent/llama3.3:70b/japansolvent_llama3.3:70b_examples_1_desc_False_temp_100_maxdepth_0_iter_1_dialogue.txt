@@ -1,0 +1,81 @@
+Based on the provided features, I will induce a decision tree classifier to predict whether a company is solvent or not. Here's the decision tree:
+
+|--- Equity/Total Liabilities <= 1.50
+||--- class: Insolvent
+|--- Equity/Total Liabilities > 1.50
+||--- Earnings Before Interest and Taxes/Total Assets <= 0.10
+|||--- class: Insolvent
+||--- Earnings Before Interest and Taxes/Total Assets > 0.10
+|||--- Working Capital/Total Assets <= 0.20
+||||--- class: Insolvent
+|||--- Working Capital/Total Assets > 0.20
+||||--- class: Solvent
+
+Explanation:
+
+1. The first split is based on the Equity/Total Liabilities ratio, which is a key indicator of a company's solvency. A lower ratio indicates higher debt levels and increased insolvency risk.
+2. If the company has a high Equity/Total Liabilities ratio (> 1.50), we then consider the Earnings Before Interest and Taxes/Total Assets (EBIT/TA) ratio, which measures a company's profitability relative to its asset base. A low EBIT/TA ratio (< 0.10) may indicate poor profitability and increased insolvency risk.
+3. If the company has a high Equity/Total Liabilities ratio (> 1.50) and a reasonable EBIT/TA ratio (> 0.10), we then examine the Working Capital/Total Assets (WC/TA) ratio, which reflects a company's liquidity position. A low WC/TA ratio (< 0.20) may indicate inadequate working capital to meet short-term obligations, increasing insolvency risk.
+
+The decision tree uses the most important features to classify companies as solvent or insolvent. Note that this is a simplified example and actual decision trees may involve more complex interactions between features and additional splits.
+
+
+#########################
+
+
+Here's a Python function that implements the decision tree for predicting whether a company is solvent or not:
+
+```python
+def predict_solvent(X: dict):
+    """
+    Predicts whether a company is solvent based on its financial features.
+
+    Args:
+        X (dict): A dictionary containing the financial features of the company.
+            The keys should be:
+                - 'EBIT/TA': Earnings Before Interest and Taxes/Total Assets
+                - 'NI/TC': Net Income/Total Capital
+                - 'Sales/TA': Sales/Total Assets
+                - 'EBIT/Sales': Earnings Before Interest and Taxes/Sales
+                - 'NI/Sales': Net Income/Sales
+                - 'WC/TA': Working Capital/Total Assets
+                - 'Equity/TL': Equity/Total Liabilities
+                - 'Equity/TA': Equity/Total Assets
+
+    Returns:
+        tuple: A tuple containing the predicted class label (1 for solvent, 0 for insolvent)
+            and a list of boolean values representing the truth values of the inner nodes.
+    """
+    nodes = 3 * [None]
+    nodes[0] = X['Equity/TL'] > 1.50
+    nodes[1] = X['EBIT/TA'] > 0.10 if not nodes[0] else X['EBIT/TA'] > 0.05
+    nodes[2] = X['WC/TA'] > 0.20 if (not nodes[0]) and nodes[1] else False
+
+    prediction = 1 if nodes[0] or (nodes[1] and nodes[2]) else 0
+    return prediction, [int(node) for node in nodes]
+
+# Example usage:
+X = {
+    'EBIT/TA': 0.15,
+    'NI/TC': 0.20,
+    'Sales/TA': 0.50,
+    'EBIT/Sales': 0.30,
+    'NI/Sales': 0.10,
+    'WC/TA': 0.25,
+    'Equity/TL': 2.00,
+    'Equity/TA': 0.60
+}
+
+prediction, nodes = predict_solvent(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+
+```
+
+This function uses the following rules to make a prediction:
+
+*   If the `Equity/TL` ratio is greater than 1.50, the company is considered solvent.
+*   If the `Equity/TL` ratio is less than or equal to 1.50 and the `EBIT/TA` ratio is greater than 0.10 (or 0.05 if the first condition is not met), the company's solvency depends on its liquidity position (`WC/TA > 0.20`). If the company has sufficient working capital, it is considered solvent; otherwise, it is considered insolvent.
+*   The function returns a tuple containing the predicted class label (1 for solvent, 0 for insolvent) and a list of boolean values representing the truth values of the inner nodes.
+
+You can modify the threshold values in the decision tree based on your specific requirements or data analysis.

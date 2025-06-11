@@ -1,0 +1,118 @@
+To induce a decision tree classifier for determining whether a company is solvent or not based on the given financial features, we'll use a similar structure to your example but apply it to the new set of features. The most important features for assessing a company's solvency typically include its profitability, efficiency in using assets, ability to cover liabilities, and cash flow management.
+
+Given features:
+1. Earnings Before Interest and Taxes/Total Assets (EBIT/TA) - Measures profitability in relation to total assets.
+2. Net Income/Total Capital (NI/TC) - Indicates how well a company generates earnings from its capital.
+3. Sales/Total Assets (S/TA) - Reflects asset efficiency.
+4. Earnings Before Interest and Taxes/Sales (EBIT/S) - Shows profitability per sale.
+5. Net Income/Sales (NI/S) - Demonstrates net profit margin.
+6. Working Capital/Total Assets (WC/TA) - Indicates liquidity in relation to total assets.
+7. Equity/Total Liabilities (E/TL) - Measures the company's financial leverage and ability to pay debts.
+8. Equity/Total Assets (E/TA) - Reflects the proportion of assets financed by equity.
+
+To simplify, let's consider that a higher value for most of these ratios generally indicates better financial health, except where high values might indicate over-leveraging or inefficiency.
+
+Decision Tree with a maximum depth of 2:
+- **Root Node**: Equity/Total Liabilities (E/TL) is chosen as the first feature because it directly reflects a company's ability to cover its liabilities with equity.
+  - If E/TL > 1.0, it generally means the company has more equity than liabilities, indicating good financial health and potential solvency.
+    - **Left Child Node**: Given E/TL > 1.0, we further check Net Income/Total Capital (NI/TC) to assess profitability from capital. If NI/TC > 0.10 (indicating at least a 10% return on total capital), the company is likely solvent.
+      - **Class: Solvent**
+    - **Right Child Node**: For E/TL > 1.0 but NI/TC <= 0.10, we may question the efficiency of capital use, suggesting further investigation is needed for solvency classification.
+      - **Class: Possibly Insolvent (Further Review Needed)**
+  - If E/TL <= 1.0, the company might be over-leveraged or have poorer financial health.
+    - **Right Child Node**: We examine Working Capital/Total Assets (WC/TA). A WC/TA > 0.20 could indicate sufficient liquidity to manage short-term obligations despite higher leverage.
+      - **Class: Possibly Solvent (Monitor Closely)**
+    - **Left Child Node**: For E/TL <= 1.0 and WC/TA <= 0.20, the company may face significant financial distress, suggesting insolvency.
+      - **Class: Insolvent**
+
+Decision Tree:
+|--- Equity/Total Liabilities > 1.0
+||--- Net Income/Total Capital > 0.10
+|||--- Class: Solvent
+||--- Net Income/Total Capital <= 0.10
+|||--- Class: Possibly Insolvent (Further Review Needed)
+|--- Equity/Total Liabilities <= 1.0
+||--- Working Capital/Total Assets > 0.20
+|||--- Class: Possibly Solvent (Monitor Closely)
+||--- Working Capital/Total Assets <= 0.20
+|||--- Class: Insolvent
+
+This decision tree provides a basic framework for assessing solvency based on key financial ratios, emphasizing the importance of leverage, profitability, and liquidity in determining a company's financial health. However, actual implementation should consider more precise thresholds derived from historical data analysis and may require additional features or deeper trees to capture complex scenarios accurately.
+
+
+#########################
+
+
+Here's the Python function that implements the decision tree for predicting whether a company is solvent or not based on the given financial features.
+
+```python
+def predict_solvent(X: dict):
+    """
+    Predicts whether a company is solvent or not based on its financial features.
+    
+    Parameters:
+    X (dict): Dictionary containing the financial features of the company.
+        - EBIT/TA: Earnings Before Interest and Taxes/Total Assets
+        - NI/TC: Net Income/Total Capital
+        - Sales/TA: Sales/Total Assets
+        - EBIT/Sales: Earnings Before Interest and Taxes/Sales
+        - NI/Sales: Net Income/Sales
+        - WC/TA: Working Capital/Total Assets
+        - Equity/TL: Equity/Total Liabilities
+        - Equity/TA: Equity/Total Assets
+    
+    Returns:
+    prediction (int): 1 if the company is predicted to be solvent, 0 otherwise.
+    nodes (list): List of truth values for the inner nodes in the decision tree.
+    """
+
+    # Initialize list to store truth values of inner nodes
+    nodes = 2 * [None]
+    
+    # First node: Check if Equity/TL > 1.5 (indicating good financial health)
+    nodes[0] = X["Equity/TL"] > 1.5
+    
+    # If the company passes the first check, further evaluate its profitability
+    if nodes[0]:
+        # Second node: Check if NI/TC > 0.15 (indicating reasonable return on capital)
+        nodes[1] = X["NI/TC"] > 0.15
+        
+        # Prediction based on the decision tree
+        if nodes[1]:
+            prediction = 1  # Solvent
+        else:
+            prediction = 0  # Possibly Insolvent (Further Review Needed)
+    else:
+        # If the company does not pass the first check, evaluate its liquidity
+        # Second node: Check if WC/TA > 0.25 (indicating sufficient working capital)
+        nodes[1] = X["WC/TA"] > 0.25
+        
+        # Prediction based on the decision tree
+        if nodes[1]:
+            prediction = 1  # Possibly Solvent (Monitor Closely)
+        else:
+            prediction = 0  # Insolvent
+    
+    # Convert boolean values in nodes to integers (True -> 1, False -> 0)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+example_company = {
+    "EBIT/TA": 0.2,
+    "NI/TC": 0.18,
+    "Sales/TA": 1.5,
+    "EBIT/Sales": 0.12,
+    "NI/Sales": 0.08,
+    "WC/TA": 0.3,
+    "Equity/TL": 2.0,
+    "Equity/TA": 0.6
+}
+
+prediction, nodes = predict_solvent(example_company)
+print(f"Prediction: {prediction} (1 = Solvent, 0 = Insolvent)")
+print(f"Inner Nodes: {nodes}")
+```
+
+This function takes a dictionary `X` containing the financial features of a company as input and returns a prediction (1 for solvent, 0 for insolvent) along with a list of truth values for the inner nodes in the decision tree. The example usage demonstrates how to use this function with an example company's financial data.

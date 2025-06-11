@@ -59,13 +59,13 @@ def generate_latex_table(approach: str, score: str, split: str, aggregation: str
     # Formatting for LaTeX
     if approach == "induction":
         summary = summary.map(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
-        columns = ["claude", "gemini", "gpt-4o", "gpt-o1", "llama3.1:70b", "deepseek-r1:70b", "qwq:32b-fp16", "gemma3:27b" , "bss", "oct", "autogluon",
+        columns = ["claude", "gemini", "gpt-4o", "gpt-o1", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "qwq:32b-fp16", "gemma3:27b" , "bss", "oct", "autogluon",
                    "autoprognosis", "tabpfn"]
     elif approach == "embedding":
         summary[base_column] = summary[base_column].apply(lambda x: f"{x:.2f}")
         for col in columns:
             summary[col] = summary[col].apply(lambda x: f"{x:+.2f}")
-        columns = ["no", "claude", "gemini", "gpt-4o", "gpt-o1", "llama3.1:70b", "deepseek-r1:70b", "qwq:32b-fp16", "gemma3:27b",  "rt-us", "et-ss",
+        columns = ["no", "claude", "gemini", "gpt-4o", "gpt-o1", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "qwq:32b-fp16", "gemma3:27b",  "rt-us", "et-ss",
                    "rf-ss", "xg-ss", "et-sv", "rf-sv", "xg-sv"]
 
     # LaTeX table rows

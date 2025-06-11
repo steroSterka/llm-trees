@@ -22,13 +22,10 @@ def generate_tree(config):
                 prompting_result = generate_claude_tree(config)
             elif config.method == "gemini":
                 prompting_result = generate_gemini_tree(config)
-            if config.method == "llama3.1:70b":
-                prompting_result = generate_local_llm_tree(config)
-            elif config.method == "gemma3:27b":
-                prompting_result = generate_local_llm_tree(config)
-            elif config.method == "deepseek-r1:70b":
-                prompting_result = generate_local_llm_tree(config)
-            elif config.method == "qwq:32b-fp16":
+            elif config.method in [
+                "llama3.1:70b", "llama3.3:70b", "gemma3:27b",
+                "deepseek-r1:70b", "qwq:32b-fp16"
+            ]:
                 prompting_result = generate_local_llm_tree(config)
             else:
                 raise ValueError(f"Unknown model: {config.method}")

@@ -1,0 +1,127 @@
+To build the decision tree with the given features and a maximum depth of 2 for classifying whether an application for credit is accepted or not, we first need to understand that the most important features are typically those that have the strongest correlation with the outcome (accepted or not). However, since we don't have actual data or correlations provided, I'll guide you through a logical approach based on typical considerations in credit assessment.
+
+The features given are:
+1. Age (years)
+2. Income per dependent
+3. Monthly credit card expenses ($)
+4. Owning a home (yes / no)
+5. Self employed (yes / no)
+6. Number of derogatory reports
+
+A decision tree aims to split data based on the most informative feature at each step, creating branches that lead to classifications. Given the nature of these features and their typical impact on credit assessments:
+
+- **Age** can be relevant as older individuals might have more established credit histories.
+- **Income per dependent** reflects financial stability and ability to repay debt.
+- **Monthly credit card expenses** indicate current debt burden.
+- **Owning a home** suggests asset ownership and possibly lower risk.
+- **Self employed** might imply less stable income, potentially higher risk.
+- **Number of derogatory reports** directly indicates past credit issues.
+
+Given these considerations, let's build a logical decision tree with a maximum depth of 2:
+
+1. The first split should be based on the feature that most directly reflects creditworthiness and risk. **Number of derogatory reports** is a strong indicator of past financial troubles and likely future risks.
+   
+   |--- Number of derogatory reports <= 0
+   ||--- This suggests a clean or very good credit history, which could lead to a more favorable assessment.
+   |--- Number of derogatory reports > 0
+   ||--- Indicates some level of risk due to past financial issues.
+
+2. For the next depth level (maximum depth of 2), we need features that further distinguish between high and low risk within each branch:
+   
+   - For those with **Number of derogatory reports <= 0**:
+     |--- Income per dependent > a certain threshold (e.g., $5)
+     |||--- class: Accepted (assuming higher income per dependent correlates with better financial stability).
+     |--- Income per dependent <= that threshold
+     |||--- class: Not Accepted or Further Review Needed (lower income might suggest tighter finances).
+
+   - For those with **Number of derogatory reports > 0**:
+     |--- Owning a home == yes
+     |||--- class: Accepted (home ownership could mitigate the risk from derogatory reports by showing asset stability).
+     |--- Owning a home == no
+     |||--- class: Not Accepted (combination of past credit issues and lack of significant assets might be too risky).
+
+This decision tree structure makes logical sense given typical considerations in credit assessments but keep in mind that actual performance would depend on the data's specifics, such as how these features interplay with each other and their distributions within your dataset. 
+
+Decision Tree:
+|--- Number of derogatory reports <= 0
+||--- Income per dependent > $5
+|||--- class: Accepted
+||--- Income per dependent <= $5
+|||--- class: Not Accepted or Further Review Needed
+|--- Number of derogatory reports > 0
+||--- Owning a home == yes
+|||--- class: Accepted
+||--- Owning a home == no
+|||--- class: Not Accepted
+
+
+#########################
+
+
+Here is the Python function representing the decision tree:
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether an application for credit is accepted or not based on a decision tree.
+    
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - Age (years)
+        - Income.per.dependent (income per dependent, 1.5 to 10)
+        - Monthly.credit.card.exp (monthly credit card expenses, $)
+        - Own.home (owning a home, 1 = yes, 0 = no)
+        - Self.employed (self employed, 1 = yes, 0 = no)
+        - Derogatory.reports (number of derogatory reports, 0, 1, 2, 3, 4, 7)
+    
+    Returns:
+    prediction (int): The predicted outcome (0 = application not accepted, 1 = application accepted).
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+
+    # Initialize nodes
+    nodes = 2 * [None]
+
+    # First node: Number of derogatory reports <= 0
+    nodes[0] = X["Derogatory.reports"] <= 0
+
+    # Second node (for those with Derogatory.reports > 0): Own.home == yes or (for those with Derogatory.reports <= 0): Income.per.dependent > 5
+    if nodes[0]:
+        nodes[1] = X["Income.per.dependent"] > 5
+    else:
+        nodes[1] = X["Own.home"] == 1
+
+    # Make prediction based on the nodes
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1
+        else:
+            prediction = 0
+    else:
+        if nodes[1]:
+            prediction = 1
+        else:
+            prediction = 0
+
+    # Convert boolean values in nodes to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+
+
+# Example usage:
+X = {
+    "Age": 30,
+    "Income.per.dependent": 6,
+    "Monthly.credit.card.exp": 1000,
+    "Own.home": 1,
+    "Self.employed": 0,
+    "Derogatory.reports": 0
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This function uses the provided features to make a prediction based on the decision tree structure described earlier. It first checks if the number of derogatory reports is less than or equal to 0. If so, it then checks if the income per dependent is greater than 5. If not (i.e., there are derogatory reports), it checks if the individual owns a home. The prediction and node values are then returned.
