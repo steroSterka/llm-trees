@@ -15,6 +15,7 @@ config.task_type = "classification"
 
 #change this 
 data_sets = "heart_h"
+llm = "claude"
 
 
 # all available datasets
@@ -45,7 +46,7 @@ Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
 X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.33, random_state=42)
 
 # Initialpopulation laden
-initial_population = load_initial_population_from_folder(f"trees/{data_sets}/claude", config, X_train)
+initial_population = load_initial_population_from_folder(f"trees/{data_sets}/{llm}", config, X_train)
 print(f"Initialpopulation geladen, Länge: {len(initial_population) if initial_population else 0}")
 pop_size = len(initial_population) if initial_population is not None else 150
 
