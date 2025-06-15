@@ -13,7 +13,7 @@ class Config:
     method = "llama3.3:70b"
     
     tree_file = ""            # << Muss gesetzt werden beim Einlesen eines Baums
-    dataset_name = "iris"     # << Wird von postprocess benötigt
+    dataset_name = "irish"     # << Wird von postprocess benötigt
     llm = "claude"            # << Oder llama3.3:70b oder was du benutzt
     task_type = "classification" 
 
