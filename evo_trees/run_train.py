@@ -1,5 +1,5 @@
 from evo_trees.utils import load_initial_population_from_folder
-from package.gatree.methods.gatreeclassifier import GATreeClassifier
+from gatree.methods.gatreeclassifier import GATreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import pandas as pd

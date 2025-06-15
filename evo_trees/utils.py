@@ -1,6 +1,6 @@
 import pandas as pd
-from package.gatree.methods.gatreeclassifier import GATreeClassifier
-from package.gatree.tree.node import Node
+from gatree.methods.gatreeclassifier import GATreeClassifier
+from gatree.tree.node import Node
 import ast
 import os
 import re
