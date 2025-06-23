@@ -9,35 +9,40 @@ import os
 
 
 config = Config()
-config.method = "llama3.3:70b"
-config.dataset = "irish"
-config.task_type = "classification"
-
-#change this 
-data_sets = "heart_h"
-llm = "claude"
+config.method = "llama3.1:70b"
+config.dataset = "heart_h"
 
 
-# all available datasets
-all_datasets = [
-    "bankruptcy",
-    "boxing1",
-    "boxing2",
-    "creditscore",
-    "japansolvent",
-    "colic",
-    "heart_h",
-    "hepatitis",
-    "house_votes_84",
-    "irish",
-    "labor",
-    "penguins",
-    "vote",
-]
+config.root = "." 
+config.tree_file = ""          
+config.dataset_name = "irish"    
+config.llm = "claude"           
+config.task_type = "classification" 
+config.temperature = 1  
+config.iter = 0 
+config.num_iters = 5 
+config.train_split = 0.67
+config.classifier = "mlp" 
+config.append_raw_features = True 
+config.force_decision_tree = True  
+config.include_description = False  
+config.llm_dialogue = True  
+config.max_tree_depth = 2
+config.num_examples = 1  
+config.num_retry_llm = 10 
+config.use_role_prompt = False  
+config.num_trees = 1
+config.seed = 42
+config.generate_tree_if_missing = True
+config.regenerating_invalid_trees = True
+config.skip_existing = True
+
+
+
 
 
 # Daten laden
-path = os.path.join(".", f"data_sets/{data_sets}")
+path = os.path.join(".", f"data_sets/{config.dataset}")
 X1 = pd.read_csv(os.path.join(path, "X.csv"))
 Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
 
@@ -46,7 +51,7 @@ Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
 X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.33, random_state=42)
 
 # Initialpopulation laden
-initial_population = load_initial_population_from_folder(f"trees/{data_sets}/{llm}", config, X_train)
+initial_population = load_initial_population_from_folder(f"trees/{config.dataset}/{config.method}", config, X_train)
 print(f"Initialpopulation geladen, Länge: {len(initial_population) if initial_population else 0}")
 pop_size = len(initial_population) if initial_population is not None else 150
 
@@ -70,30 +75,3 @@ y_pred = clf.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
 print("Test Accuracy:", acc)
  
-
-
-
-# def train_on_dataset(data_set_name):
-#     config = Config()
-#     config.method = "llama3.3:70b"
-#     config.dataset = data_set_name
-#     config.task_type = "classification"
-
-#     # Daten laden
-#     path = os.path.join("data_sets", data_set_name)
-#     X1 = pd.read_csv(os.path.join(path, "X.csv"))
-#     Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
-
-#     X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.33, random_state=42)
-
-#     initial_population = load_initial_population_from_folder(f"trees/{data_set_name}/claude", config, X_train)
-#     print(f"Initialpopulation geladen, Länge: {len(initial_population) if initial_population else 0}")
-#     pop_size = len(initial_population) if initial_population else 150
-
-#     clf = GATreeClassifier(max_depth=10, random_state=42)
-#     clf.fit(X_train, y_train, population_size=pop_size, max_iter=40, initial_population=initial_population)
-
-#     y_pred = clf.predict(X_test)
-#     acc = accuracy_score(y_test, y_pred)
-#     print(f"Accuracy for {data_set_name}: {acc}")
-#     return acc

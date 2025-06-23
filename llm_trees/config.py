@@ -62,5 +62,5 @@ class Config:
             for key, value in self.__dict__.items()
             if key != "root"  # Exclude the root property
         ]
-        config_items.append(f"Computed Temperature: {self.get_temperature()}")
+        # config_items.append(f"Computed Temperature: {self.get_temperature()}")
         return "Current Configuration:\n" + "\n".join(f"  {item}" for item in config_items)

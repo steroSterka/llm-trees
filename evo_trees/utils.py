@@ -5,6 +5,9 @@ import ast
 import os
 import re
 from llm_trees.utils import postprocess_prompting_result
+from llm_trees.utils import generate_tree
+import time
+
 
 def parse_predict_function(predict_fn_str: str) -> Node:
     tree = ast.parse(predict_fn_str)
@@ -14,6 +17,7 @@ def parse_predict_function(predict_fn_str: str) -> Node:
     return convert_ast_to_node(func.body)
 
 def load_initial_population_from_folder(folder_path, config, X):
+    print(config)
     population = []
     for filename in sorted(os.listdir(folder_path)):
         if not filename.endswith(".txt"):
@@ -28,6 +32,25 @@ def load_initial_population_from_folder(folder_path, config, X):
             population.append(root_node)
         except Exception as e:
             print(f"Fehler beim Parsen von {filename}: {e}")
+            # try:
+            #     generate_tree(config, force=True)
+            #     time.sleep(0.3)
+            #     full_path = os.path.join(folder_path, filename)
+            #     if not os.path.exists(full_path):
+            #         raise FileNotFoundError(f"{full_path} wurde nicht erzeugt.")
+
+            #     with open(full_path, "r") as file:
+            #         content = file.read()
+            #     if not content.strip():
+            #         raise ValueError(f"Baum-Datei ist leer: {filename}")
+
+            #     predict_str = postprocess_prompting_result(config, content)
+            #     root_node = parse_predict_function(predict_str)
+            #     population.append(root_node)
+            #     print(f"[✓] Baum erfolgreich neu generiert")
+            # except Exception as gen_e:
+            #     print(f"[✗] Fehler bei Neugenerierung von {filename}: {gen_e}")
+
     print(f"Population geladen, Anzahl Bäume: {len(population)}")
     return population
 
