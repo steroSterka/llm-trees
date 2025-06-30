@@ -9,32 +9,27 @@ from .io import get_data
 from .llms import generate_gpt_tree, generate_claude_tree, generate_gemini_tree, generate_local_llm_tree
 
 
-def generate_tree(config):
+def generate_tree(config, force=False):
     tree_path = get_tree_path(config)
 
-    if not os.path.exists(tree_path):
-        if config.generate_tree_if_missing:
-            print(f"$$$ -> {config.method.upper()}: {config.dataset}-{config.iter}")
+    if force or not os.path.exists(tree_path):
+        print(f"$$$ -> {config.method.upper()}: {config.dataset}-{config.iter}")
 
-            if config.method in ["gpt-4o", "gpt-o1"]:
-                prompting_result = generate_gpt_tree(config)
-            elif config.method == "claude":
-                prompting_result = generate_claude_tree(config)
-            elif config.method == "gemini":
-                prompting_result = generate_gemini_tree(config)
-            elif config.method in [
-                "llama3.1:70b", "llama3.3:70b", "gemma3:27b",
-                "deepseek-r1:70b", "qwq:32b-fp16"
-            ]:
-                prompting_result = generate_local_llm_tree(config)
-            else:
-                raise ValueError(f"Unknown model: {config.method}")
+        if config.method in ["gpt-4o", "gpt-o1"]:
+            prompting_result = generate_gpt_tree(config)
+        elif config.method == "claude":
+            prompting_result = generate_claude_tree(config)
+        elif config.method == "gemini":
+            prompting_result = generate_gemini_tree(config)
+        elif config.method in [
+            "llama3.1:70b", "llama3.3:70b", "gemma3:27b",
+            "deepseek-r1:70b", "qwq:32b-fp16"
+        ]:
+            prompting_result = generate_local_llm_tree(config)
+        else:
+            raise ValueError(f"Unknown model: {config.method}")
 
-            export_prompting_result(tree_path, prompting_result)
-
-            # # avoid quota limit
-            # if not ("gpt" in config.method):
-            #     time.sleep(10)
+        export_prompting_result(tree_path, prompting_result)
 
 
 def regenerate_tree(config, e=""):
@@ -272,3 +267,5 @@ def get_feature_count(config: Config):
 
         key_counts[method] = count_keys_in_file(X.keys(), tree_paths)
     return key_counts
+
+

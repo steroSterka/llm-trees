@@ -8,6 +8,17 @@ class Config:
 
     method = "llama3.1:70b"
 
+    # method = "llama3.1:70b" #done
+    # method = "gemma3:27b" done
+    # method="qwq:32b-fp16" #done
+    # method = "deepseek-r1:70b" #done
+    
+    tree_file = ""            # << Muss gesetzt werden beim Einlesen eines Baums
+    dataset_name = "irish"     # << Wird von postprocess benötigt
+    llm = "claude"            # << Oder llama3.3:70b oder was du benutzt
+    task_type = "classification" 
+
+
     temperature = 1  # Set the temperature of the llm
 
     # Settings for train/test splits
@@ -52,5 +63,5 @@ class Config:
             for key, value in self.__dict__.items()
             if key != "root"  # Exclude the root property
         ]
-        config_items.append(f"Computed Temperature: {self.get_temperature()}")
+        # config_items.append(f"Computed Temperature: {self.get_temperature()}")
         return "Current Configuration:\n" + "\n".join(f"  {item}" for item in config_items)
