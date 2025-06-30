@@ -1,0 +1,114 @@
+To build a decision tree classifier with a maximum depth of 2 for predicting whether a company went bankrupt or not based on the given financial features, we first need to understand the significance of each feature in the context of bankruptcy prediction. The features provided are:
+
+1. **Working Capital/Total Assets**: This ratio indicates the proportion of working capital to total assets. A higher ratio might suggest better liquidity and less likelihood of bankruptcy.
+2. **Retained Earnings/Total Assets**: This reflects the company's profitability and its ability to retain earnings, which can be used for future investments or debt repayment.
+3. **Earnings Before Interest and Tax (EBIT)/Total Assets**: This is a measure of profitability relative to total assets, indicating how well assets are being utilized to generate earnings.
+4. **Sales/Total Assets**: This ratio measures the efficiency of using assets to generate sales.
+5. **Book Value of Equity/Book Value of Liabilities**: A higher ratio suggests a stronger financial position and less likelihood of bankruptcy.
+
+Without actual data, we can hypothesize which features might be most important for predicting bankruptcy based on common financial analysis principles. Typically, ratios that directly reflect liquidity (e.g., Working Capital/Total Assets), profitability (e.g., EBIT/Total Assets), and leverage (e.g., Book Value of Equity/Book Value of Liabilities) are crucial.
+
+Given the maximum depth constraint of 2, our decision tree will have one primary split at the root node and up to two secondary splits. Let's assume, based on financial analysis principles:
+
+- **Root Node Split**: The most critical feature for predicting bankruptcy could be the **Book Value of Equity/Book Value of Liabilities** because it directly reflects a company's leverage and its ability to meet long-term obligations.
+
+Decision Tree:
+|--- Book Value of Equity/Book Value of Liabilities <= 1.0
+||--- This suggests high leverage or potential insolvency, so further evaluation is needed.
+|--- Book Value of Equity/Book Value of Liabilities > 1.0
+||--- Indicates lower leverage and potentially better financial health.
+
+For the first branch (high leverage):
+- **Secondary Split**: Considering liquidity as a critical factor for companies with high leverage, we might split on **Working Capital/Total Assets**.
+    |--- Working Capital/Total Assets <= 0.2
+    |||--- class: Bankrupt (High leverage and low working capital suggest difficulty in meeting short-term obligations.)
+    |--- Working Capital/Total Assets > 0.2
+    |||--- class: Not Bankrupt (Despite high leverage, sufficient working capital may help navigate financial difficulties.)
+
+For the second branch (lower leverage):
+- **Secondary Split**: For companies with lower leverage, profitability becomes a key factor for sustainability. Thus, we might split on **EBIT/Total Assets**.
+    |--- EBIT/Total Assets <= 0.05
+    |||--- class: Bankrupt (Low profitability despite lower leverage could indicate operational issues.)
+    |--- EBIT/Total Assets > 0.05
+    |||--- class: Not Bankrupt (Adequate profitability suggests the ability to invest in growth and meet obligations.)
+
+Decision Tree:
+|--- Book Value of Equity/Book Value of Liabilities <= 1.0
+||--- Working Capital/Total Assets <= 0.2
+|||--- class: Bankrupt
+||--- Working Capital/Total Assets > 0.2
+|||--- class: Not Bankrupt
+|--- Book Value of Equity/Book Value of Liabilities > 1.0
+||--- EBIT/Total Assets <= 0.05
+|||--- class: Bankrupt
+||--- EBIT/Total Assets > 0.05
+|||--- class: Not Bankrupt
+
+This hypothetical tree is based on general financial principles and may not reflect the optimal splits or features without actual data analysis (e.g., information gain, Gini impurity). Real-world applications would require training a decision tree classifier on historical financial data to accurately predict bankruptcy.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree for predicting whether a company went bankrupt or not based on financial features. This function takes in a dictionary `X` containing the feature values and returns a tuple where the first element is the prediction (0 for no bankruptcy, 1 for bankruptcy) and the second element is a list of truth values for the inner nodes.
+
+```python
+def predict_bankruptcy(X: dict):
+    """
+    Predicts whether a company went bankrupt or not based on financial features.
+    
+    Parameters:
+    X (dict): Dictionary containing feature values.
+        - 'WC/TA': Working Capital/Total Assets
+        - 'RE/TA': Retained Earnings/Total Assets
+        - 'EBIT/TA': Earnings Before Interest and Tax/Total Assets
+        - 'S/TA': Sales/Total Assets
+        - 'BVE/BVL': Book Value of Equity/Book Value of Liabilities
+    
+    Returns:
+    tuple: (prediction, nodes)
+        - prediction (int): 0 if the company did not go bankrupt, 1 if it did.
+        - nodes (list): List of truth values for the inner nodes.
+    """
+
+    # Initialize nodes list with None values
+    nodes = 2 * [None]
+    
+    # Root node split: BVE/BVL <= 1.0
+    nodes[0] = X['BVE/BVL'] <= 1.0
+    
+    # Secondary split for high leverage (BVE/BVL <= 1.0)
+    # WC/TA <= 0.2 indicates low working capital and potential bankruptcy risk
+    if nodes[0]:
+        nodes[1] = X['WC/TA'] <= 0.2
+    else:
+        # For lower leverage, consider EBIT/TA as a measure of profitability
+        nodes[1] = X['EBIT/TA'] <= 0.05
+    
+    # Prediction based on the decision tree
+    if nodes[0]:
+        prediction = 1 if nodes[1] else 0  # High leverage and low working capital -> Bankrupt
+    else:
+        prediction = 1 if nodes[1] else 0  # Lower leverage but low profitability -> Bankrupt
+    
+    # Convert boolean node values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage:
+X = {
+    'WC/TA': 0.15,
+    'RE/TA': -0.2,
+    'EBIT/TA': 0.03,
+    'S/TA': 1.5,
+    'BVE/BVL': 0.8
+}
+
+prediction, nodes = predict_bankruptcy(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+
+```
+
+This function uses the `BVE/BVL` ratio as the primary split to assess leverage and then further splits based on either `WC/TA` for high-leverage cases or `EBIT/TA` for lower-leverage scenarios to evaluate liquidity and profitability, respectively. The thresholds used (`1.0` for `BVE/BVL`, `0.2` for `WC/TA`, and `0.05` for `EBIT/TA`) are hypothetical and based on general financial analysis principles; actual optimal thresholds would depend on the specific dataset and training process.

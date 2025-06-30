@@ -1,0 +1,128 @@
+To build a decision tree with a maximum depth of 2 for classifying whether a horse colic lesion is surgical or not, we first need to select the most important features. Given the list of features provided, we'll have to make an educated guess about which ones are most relevant to determining if surgery is required.
+
+### Most Important Features
+
+For equine colic, the decision to perform surgery often depends on indicators of severe abdominal pain, signs of intestinal obstruction or compromise, and evidence of systemic illness. Based on this:
+
+1. **Degree of Pain** - Severe pain can indicate a need for surgical intervention.
+2. **Abdominal Distension** - Moderate to severe distension can suggest an obstruction or other condition requiring surgery.
+3. **Nasogastric Reflux pH** and **Volume** - High volume or abnormal pH of reflux can indicate intestinal obstruction or ileus, which may require surgical correction.
+4. **Packed Cell Volume (PCV)** and **Total Protein (TP)** - These can indicate dehydration and the severity of systemic illness.
+5. **Abdominocentesis Appearance** and **Total Protein** - Abnormal findings here can suggest peritonitis or other conditions necessitating surgery.
+
+### Decision Tree
+
+Given these features, a simplified decision tree with a maximum depth of 2 could look like this:
+
+|--- Degree of Pain == severe
+||--- class: surgical
+|--- Degree of Pain != severe
+||--- Abdominal Distension == moderate or severe
+|||--- class: surgical
+||--- Abdominal Distension != moderate or severe
+|||--- class: not surgical
+
+Or, incorporating more features but keeping the depth:
+
+|--- Nasogastric Reflux Volume > 1 liter or Nasogastric Reflux pH < 5
+||--- class: surgical
+|--- Nasogastric Reflux Volume <= 1 liter and Nasogastric Reflux pH >= 5
+||--- Packed Cell Volume > 45% or Total Protein > 7 g/dl
+|||--- class: not surgical
+||--- Packed Cell Volume <= 45% or Total Protein <= 7 g/dl
+|||--- class: surgical
+
+### Note:
+
+- The actual decision-making process in veterinary medicine is complex and involves a comprehensive evaluation of the patient, including history, physical examination findings, and diagnostic test results.
+- This simplified example is intended for educational purposes only. Real-world decision trees would be more nuanced, possibly incorporating additional diagnostic tests (e.g., ultrasonography, blood work) and clinical judgment.
+
+### Python Example
+
+To induce such a tree using Python with scikit-learn, you might use something like this:
+
+```python
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+import pandas as pd
+
+# Assuming 'df' is your DataFrame with features and the target variable 'surgery'
+X = df.drop(['surgery'], axis=1)  # Features
+y = df['surgery']  # Target variable
+
+# Split dataset into training set and test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+
+# Create Decision Tree classifier object
+clf = DecisionTreeClassifier(max_depth=2, random_state=1)
+
+# Train Decision Tree Classifier
+clf = clf.fit(X_train,y_train)
+```
+
+Remember, the key to a useful decision tree is selecting relevant features and tuning parameters like `max_depth` based on your data's complexity and the problem you're trying to solve.
+
+
+#########################
+
+
+Here's an example of how you can format your decision tree as a Python function. This decision tree predicts whether a horse colic lesion is surgical or not based on the provided features.
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a horse colic lesion is surgical or not.
+    
+    Parameters:
+    X (dict): A dictionary containing the feature values.
+        - 'pain': Degree of Pain (1 = alert, 2 = continuous severe pain, 3 = depressed, 
+                             4 = intermittent mild pain, 5 = intermittent severe pain)
+        - 'abdominal_distension': Abdominal Distension (1 = moderate, 2 = none, 
+                                                     3 = severe, 4 = slight)
+        - 'nasogastric_reflux_PH': Nasogastric Reflux pH
+        - Other features are not used in this decision tree.
+    
+    Returns:
+    prediction (int): The predicted target variable (0 = no surgery, 1 = surgery).
+    nodes (list): A list of boolean values representing the truth values of the inner nodes.
+    """
+
+    # Initialize the list to store the node values
+    nodes = 2 * [None]
+    
+    # Node 0: Check if the degree of pain is severe (5 = intermittent severe pain, 
+    #                                              2 = continuous severe pain)
+    nodes[0] = X['pain'] in [2, 5]
+    
+    # Node 1: Check if abdominal distension is moderate or severe
+    nodes[1] = X['abdominal_distension'] in [1, 3]
+    
+    # Make the prediction based on the node values
+    if nodes[0]:
+        prediction = 1
+    elif nodes[1]:
+        prediction = 1
+    else:
+        prediction = 0
+    
+    return prediction, nodes
+
+
+# Example usage:
+X = {
+    'pain': 5,
+    'abdominal_distension': 3,
+    # Other features...
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Node values: {nodes}")
+
+```
+This decision tree checks two conditions:
+
+1. If the degree of pain is severe (intermittent or continuous), it predicts that surgery is required.
+2. If abdominal distension is moderate or severe, it also predicts that surgery is required.
+
+If neither condition is met, it predicts that surgery is not required. The `nodes` list stores the boolean values of these conditions, where `True` represents a satisfied condition (1) and `False` represents an unsatisfied condition (0).

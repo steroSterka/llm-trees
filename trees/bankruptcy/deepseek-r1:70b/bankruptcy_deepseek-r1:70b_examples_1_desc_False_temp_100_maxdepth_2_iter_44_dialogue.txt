@@ -1,0 +1,559 @@
+<think>
+Okay, so I need to build a decision tree classifier that determines whether a company went bankrupt or not. The features provided are all financial ratios: Working Capital/Total Assets, Retained Earnings/Total Assets, EBIT/Total Assets, Sales/Total Assets, and Book Value of Equity/Book Value of Liabilities. 
+
+First, I should understand each feature to see how they relate to bankruptcy. 
+
+Working Capital/Total Assets gives an idea about the company's liquidity relative to its total assets. A lower ratio might indicate insufficient liquidity. Retained Earnings/Total Assets could show profitability and reinvestment; low retained earnings might suggest poor performance. EBIT/Total Assets measures profitability relative to asset size—lower values could mean less profitable operations. Sales/Total Assets indicates asset efficiency; higher sales relative to assets might be better, but too low could signal inefficiency. Book Value of Equity/Liabilities shows the solvency position; a lower ratio means the company's equity is not covering liabilities adequately, which is a bad sign for solvency.
+
+Since I need a decision tree with a maximum depth of 2, it can have at most three levels: root, two internal nodes, and leaves. The goal is to use the most important features. But how do I determine which are the most important?
+
+I might consider each feature's ability to distinguish between bankrupt and non-bankrupt companies. Perhaps using Gini impurity or information gain could help, but without data, I have to make educated guesses based on financial knowledge.
+
+Working Capital/Total Assets (WC_TA) is crucial because working capital deficits can lead to bankruptcy. Retained Earnings/Total Assets (RE_TA) also seems important as retained losses can indicate poor performance. Book Value of Equity/Book Value of Liabilities (BV_EL) is a direct measure of solvency, so it's probably very significant.
+
+EBIT/TA and Sales/TA are about profitability and efficiency but maybe less directly indicative than the others. So perhaps WC_TA and BV_EL are more important.
+
+I'll start by selecting the root node. Which feature splits the data best? Let's say BV_EL is a strong indicator because if equity is much lower than liabilities, bankruptcy is more likely. So at the root, I split on BV_EL <= threshold.
+
+Next, for each child node, I need to choose another feature. If BV_EL > threshold, maybe WC_TA can indicate liquidity issues even when solvent. If BV_EL <= threshold, perhaps RE_TA could show if the company has been losing money.
+
+Wait, but in the example provided earlier with the Iris dataset, the tree used petal width twice because it was the most discriminative feature at each level. Maybe I should do the same here if a feature is strong enough.
+
+Alternatively, another approach: suppose after splitting on BV_EL, for companies where equity is low relative to liabilities (BV_EL <= threshold), checking EBIT/TA could indicate profitability—low EBIT might mean they're not generating enough profit to avoid bankruptcy. For companies with better solvency (BV_EL > threshold), looking at WC_TA can show if they have enough liquidity.
+
+But without actual data, it's hard to set exact thresholds. So I'll use placeholder values based on typical financial analysis. For example, a BV_EL ratio below 1 indicates equity is less than liabilities, which is bad. Maybe a threshold of 0.5 or something.
+
+Wait, in the Iris example, they used petal width twice because it was the most important feature. So maybe I should pick one feature to use at both levels if it's the strongest. But that might not be as effective as using different features.
+
+Alternatively, considering Gini impurity reduction, perhaps BV_EL is the best first split. Then, for each of its children, using WC_TA and RE_TA. Let me structure it:
+
+Root: BV_EL <= 0.5
+- If yes, then check WC_TA <= some value (e.g., -0.2) to see if they have negative working capital.
+- If no on WC_TA, maybe check another feature like EBIT/TA.
+
+Wait, but with maximum depth 2, each leaf must be at most two levels deep. So after BV_EL split, each child can only split once more.
+
+Let me outline it:
+
+Decision Tree:
+|--- Book Value of Equity/Book Value of Liabilities <= 0.50
+||--- Working Capital/Total Assets <= -0.20
+|||--- class: Bankrupt
+||--- Working Capital/Total Assets > -0.20
+|||--- class: Non-Bankrupt
+|--- Book Value of Equity/Book Value of Liabilities > 0.50
+||--- Retained Earnings/Total Assets <= -0.10
+||||--- class: Bankrupt
+||--- Retained Earnings/Total Assets > -0.10
+||||--- class: Non-Bankrupt
+
+Wait, but I'm using two different features at the second level. Alternatively, maybe use the same feature twice if it's the strongest.
+
+But in the Iris example, they used petal width twice because it was the most discriminative. So perhaps here, BV_EL is so important that even after splitting on it once, we can split again on it for a finer division.
+
+So:
+
+Decision Tree:
+|--- Book Value of Equity/Book Value of Liabilities <= 0.30
+||--- class: Bankrupt
+|--- Book Value of Equity/Book Value of Liabilities > 0.30
+||--- Book Value of Equity/Book Value of Liabilities <= 0.65
+||||--- class: Non-Bankrupt
+||--- Book Value of Equity/Book Value of Liabilities > 0.65
+||||--- class: Bankrupt
+
+Wait, that doesn't make sense because the second split would place some in Non-Bankrupt and others back to Bankrupt. That's not logical. It should be progressive.
+
+Alternatively:
+
+|--- BV_EL <= 0.30
+||--- class: Bankrupt
+|--- BV_EL > 0.30
+||--- WC_TA <= 0.10
+||||--- class: Bankrupt
+||--- WC_TA > 0.10
+||||--- class: Non-Bankrupt
+
+This way, if BV_EL is very low (<=0.3), it's bankrupt. If BV_EL is above 0.3 but WC_TA is low, still bankrupt. Otherwise, non-bankrupt.
+
+Alternatively, using different features:
+
+|--- BV_EL <= 0.50
+||--- EBIT/TA <= -0.20
+||||--- class: Bankrupt
+||--- EBIT/TA > -0.20
+||||--- class: Non-Bankrupt
+|--- BV_EL > 0.50
+||--- WC_TA <= 0.10
+||||--- class: Bankrupt
+||--- WC_TA > 0.10
+||||--- class: Non-Bankrupt
+
+But I think focusing on the most important feature first, then another strong one makes sense.
+
+In conclusion, I'll structure it using BV_EL as root and WC_TA at the next level.
+</think>
+
+To build a decision tree classifier for determining whether a company went bankrupt based on the provided financial features, we focus on the most significant indicators of financial health. The Book Value of Equity/Book Value of Liabilities (BV_EL) is chosen as the root node due to its direct relation to solvency. Working Capital/Total Assets (WC_TA) is used next for liquidity assessment.
+
+Decision Tree:
+- **Root Node:** Book Value of Equity/Book Value of Liabilities
+  - If BV_EL ≤ 0.50, split on WC_TA
+    - **Left Child:** WC_TA ≤ 0.10 → class: Bankrupt
+    - **Right Child:** WC_TA > 0.10 → class: Non-Bankrupt
+
+This structure efficiently uses the most critical features to classify bankruptcy risk.
+
+```plaintext
+Decision Tree:
+|--- Book Value of Equity/Book Value of Liabilities <= 0.50
+||--- Working Capital/Total Assets <= 0.10
+||||--- class: Bankrupt
+||--- Working Capital/Total Assets > 0.10
+||||--- class: Non-Bankrupt
+|--- Book Value of Equity/Book Value of Liabilities > 0.50
+||--- class: Non-Bankrupt
+```
+
+
+#########################
+
+
+<think>
+Okay, I need to help the user by formatting their decision tree as a Python function. The function should return both a single prediction and a list of truth values for the inner nodes.
+
+First, let's look at what they've provided. They have a decision tree based on financial features to predict if a company went bankrupt or not. The target variable is 'target', with 0 meaning no bankruptcy and 1 meaning yes.
+
+The user wants me to write a Python function that takes a dictionary of features (X) as input. The function should evaluate the conditions in the decision tree, make a prediction, and also track which inner nodes were satisfied (with 1 for true and 0 for false).
+
+I remember from their previous example that they used a list called 'nodes' to keep track of these boolean values. In this case, since the decision tree has two levels, I think there will be two conditions checked: one at the root node and another in the left child.
+
+Looking back at their decision tree:
+
+- Root Node: BVE/BVL <= 0.50
+  - Left Child: WC/TA <= 0.10 → class: Bankrupt
+  - Right Child: WC/TA > 0.10 → class: Non-Bankrupt
+
+So, the first condition is whether BVE/BVL is less than or equal to 0.50. If yes, then check if WC/TA is <= 0.10. Depending on that, the company is classified as bankrupt (1) or not (0).
+
+If BVE/BVL > 0.50, it's directly classified as Non-Bankrupt without checking other conditions.
+
+Now, in the Python function, I need to:
+
+1. Access the relevant features from the input dictionary X.
+2. Evaluate the first condition (BVE_BVL <= 0.50) and store it in nodes[0].
+3. If nodes[0] is True, evaluate the second condition (WC_TA <= 0.10) and store it in nodes[1].
+4. Based on these evaluations, determine the prediction.
+
+Wait, but what about cases where BVE_BVL > 0.50? In that case, nodes[1] isn't evaluated because there's no need to check WC/TA. So, perhaps I should only evaluate the second condition if necessary.
+
+Also, since nodes represent inner node conditions, and the tree has two levels, we'll have two nodes. Each node is a boolean condition. The list 'nodes' will capture whether each condition was true (1) or false (0).
+
+I think it's better to initialize 'nodes' with two None values, then fill them as we evaluate each condition.
+
+So here's how I can structure the function:
+
+- Extract BVE_BVL and WC_TA from X.
+- Check if BVE_BVL <= 0.50: set nodes[0] accordingly.
+- If nodes[0] is True, check WC_TA <= 0.10: set nodes[1].
+- Make prediction based on these conditions.
+
+Wait, but in the decision tree, after checking BVE/BVL, there are two branches. So if BVE_BVL > 0.50, we directly classify as Non-Bankrupt without evaluating any further. That means that when BVE_BVL > 0.50, nodes[1] isn't evaluated, and perhaps it remains None or something else.
+
+But the function is supposed to return a list of truth values for all inner nodes. So in cases where an inner node isn't reached, should we set its value to 0, 1, or leave it as None?
+
+Looking back at their example:
+
+In the previous function, 'nodes' was initialized with two None values, and then filled based on evaluations. If a condition wasn't evaluated because the other branch was taken, it remained None.
+
+But in the context of this decision tree, after checking BVE_BVL <= 0.50 (the first node), if that's false, there are no further nodes to evaluate. So nodes[1] would remain as None or not be set at all.
+
+However, for consistency and since the list is supposed to represent the truth values of inner nodes, perhaps it's better to set all nodes, even if some weren't evaluated. But in this case, since the decision tree only has two levels, and the second node (WC_TA) is only relevant when the first condition is true.
+
+Alternatively, maybe I can structure 'nodes' such that:
+
+- nodes[0] represents BVE_BVL <= 0.50
+- if nodes[0] is True, then nodes[1] represents WC_TA <= 0.10
+
+But in code, we need to make sure that we only evaluate the second condition when necessary.
+
+So here's a possible structure:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X['WC/TA']
+
+    nodes = [None, None]
+    # Evaluate root node
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        # Evaluate left child
+        if wc_ta <= 0.10:
+            prediction = 1  # Bankrupt
+            nodes[1] = True
+        else:
+            prediction = 0  # Non-Bankrupt
+            nodes[1] = False
+    else:
+        # Right branch: Non-Bankrupt
+        prediction = 0
+        nodes[0] = False
+        # No need to evaluate WC_TA, so set nodes[1] as not evaluated?
+        # Or perhaps leave it as None or consider it 0 since the condition wasn't met
+
+Wait, but in the 'else' clause (BVE_BVL > 0.50), we don't have any further conditions. So nodes[1] isn't used. Therefore, maybe it's better to set nodes[1] to False when BVE_BVL > 0.50 because the condition at nodes[1] is not satisfied in that branch.
+
+Alternatively, perhaps I should represent each decision node strictly based on whether the condition was evaluated and its outcome, leaving unvisited nodes as None or something else. But for simplicity and to match the required output, perhaps it's better to have two boolean values, even if one of them isn't used.
+
+Wait, but in their example, 'nodes' is a list of booleans, where each element corresponds to an inner node condition, with 1 for true and 0 for false. So I need to represent the conditions as 1 or 0, not None.
+
+So perhaps in all cases, nodes[0] will have a value (True/False), but nodes[1] may only be evaluated if we go into the left branch of the first node.
+
+Therefore:
+
+- If BVE_BVL <= 0.50: evaluate WC_TA and set both nodes.
+- Else: set nodes[0] to False, and nodes[1] remains unvisited, which I can represent as 0? Or maybe not.
+
+Wait no, 'nodes' is supposed to represent the truth values of inner nodes visited during prediction. So if a node wasn't visited (like nodes[1] when BVE_BVL > 0.50), perhaps it's better not to include it or set it to None. But in their example, they had two nodes regardless.
+
+But according to their function, 'nodes' is initialized with two Nones and then filled as conditions are evaluated. So maybe the same approach should be taken here.
+
+So:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X['WC/TA']
+
+    nodes = [None, None]
+
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes[1] = True
+        else:
+            prediction = 0
+            nodes[1] = False
+    else:
+        prediction = 0
+        nodes[0] = False
+
+    # Convert None to 0 or something, but in their example, it's left as None.
+    # But the user wants a list of truth values, so perhaps we need to convert booleans to integers.
+
+    # So replace True with 1 and False with 0
+    nodes = [1 if n else 0 for n in nodes]
+
+    return prediction, nodes
+
+Wait, but this would set nodes[1] to 0 when BVE_BVL > 0.50 because nodes[1] is None initially, which after conversion becomes 0.
+
+But that might be misleading because the second condition wasn't evaluated at all; it's not part of that branch.
+
+Alternatively, perhaps it's better to represent 'nodes' as a list where each position corresponds to an inner node in the tree. For a max depth of 2, there are two inner nodes: root and left child. The right child from the root doesn't have any further splits, so maybe nodes[1] isn't applicable.
+
+But since the function needs to return a list representing all inner nodes' truth values, perhaps it's best to include both, even if one is not used in certain paths.
+
+Another thought: when BVE_BVL > 0.50 (nodes[0] = False), there are no further splits, so nodes[1] isn't evaluated and can be set to None or treated as not applicable. But the user expects a list of truth values, which suggests that each element corresponds to an inner node condition.
+
+In their example function, 'nodes' is initialized with two Nones, then filled based on evaluations. So in our case:
+
+- nodes[0] will always be evaluated.
+- nodes[1] will only be evaluated if nodes[0] is True.
+
+Thus, in code:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)  # Ensure we have a default value
+
+    nodes = [None, None]
+
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes[1] = True
+        else:
+            prediction = 0
+            nodes[1] = False
+    else:
+        prediction = 0
+        nodes[0] = False
+
+    # Convert None to something, perhaps 0 or keep as is.
+    # But the user expects a list of truth values; perhaps we should represent unevaluated conditions with 0.
+
+    # Alternatively, map None to 0 and others to their boolean equivalent.
+    nodes = [1 if n is True else (0 if n is False else 0) for n in nodes]
+
+    return prediction, nodes
+
+Wait, that's a bit messy. Maybe better to process 'nodes' after evaluation.
+
+But let me think about what the user expects. They want a list where each element is 1 if the condition was satisfied and 0 otherwise.
+
+So for the root node (BVE_BVL <= 0.50):
+
+- If true: nodes[0] = 1
+- Else: nodes[0] = 0
+
+For the left child node (WC_TA <= 0.10), this is only evaluated if BVE_BVL <= 0.50.
+
+So in code:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)  # Handle missing values, though probably not needed as per the problem
+
+    nodes = [None, None]
+
+    if bve_bvl <= 0.50:
+        node0 = True
+        nodes[0] = 1  # Condition satisfied
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes[1] = 1  # WC_TA condition met
+        else:
+            prediction = 0
+            nodes[1] = 0  # WC_TA condition not met
+    else:
+        node0 = False
+        nodes[0] = 0  # Condition not satisfied
+        prediction = 0
+        # Since we don't go into the left child, perhaps set nodes[1] to 0 or leave as None
+        nodes[1] = 0  # Or nodes[1] remains None?
+
+    return prediction, [int(n) if n is not None else 0 for n in nodes]
+
+Hmm, but in their example function, the 'nodes' list contains boolean values before being converted to integers. So perhaps it's better to track booleans and then convert them at the end.
+
+Alternatively, let's structure it step by step:
+
+1. Extract BVE_BVL from X.
+2. Check if BVE_BVL <= 0.50 → nodes[0] = True (1) or False (0).
+3. If true:
+   a. Extract WC_TA and check if <= 0.10 → nodes[1] = True (1) or False (0).
+4. Make prediction based on the conditions.
+5. Convert all None values in 'nodes' to 0.
+
+But wait, in the case where BVE_BVL > 0.50, nodes[1] is not evaluated. So perhaps nodes[1] should be set to 0 because that condition wasn't met (since we took a different branch). Or maybe it's better to leave nodes[1] as None and then convert all Nones to 0.
+
+In the end, for consistency with their example function, where 'nodes' is a list of booleans converted to integers, perhaps the best approach is:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)
+
+    nodes = [None, None]
+
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes[1] = True
+        else:
+            prediction = 0
+            nodes[1] = False
+    else:
+        nodes[0] = False
+        prediction = 0
+
+    # Convert boolean values to integers and None to 0
+    nodes = [1 if n is True else (0 if n is False else 0) for n in nodes]
+
+    return prediction, nodes
+
+Wait, but this might not handle the case where nodes[1] remains None. For example, when BVE_BVL > 0.50, nodes[1] is still None.
+
+In their example function, 'nodes' is initialized to [None, None], and as conditions are evaluated, some positions are set to True/False while others remain None. Then they're converted to integers via list comprehension.
+
+So perhaps it's better to do the same:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)  # Handle missing value, though likely not necessary
+
+    nodes = [None, None]
+
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes[1] = True
+        else:
+            prediction = 0
+            nodes[1] = False
+    else:
+        nodes[0] = False
+        prediction = 0
+
+    # Convert to integers, with None becoming 0
+    nodes = [1 if n is True else (0 if n is not None else 0) for n in nodes]
+
+    return prediction, nodes
+
+But perhaps a cleaner way:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)
+
+    nodes = []
+
+    # Evaluate root node
+    if bve_bvl <= 0.50:
+        nodes.append(True)
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes.append(True)
+        else:
+            prediction = 0
+            nodes.append(False)
+    else:
+        nodes.append(False)
+        prediction = 0
+
+    # Convert booleans to integers (True ->1, False->0), but since in the 'else' clause, len(nodes) is 1
+    # So perhaps pad with a second element if necessary.
+    # Wait, in this approach, when BVE_BVL >0.50, nodes has only one element.
+
+But I think it's better to always have two elements in 'nodes', representing the root node and the left child.
+
+So let's adjust:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)
+
+    nodes = [False, False]  # Default to both conditions not met
+
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        if wc_ta <= 0.10:
+            nodes[1] = True
+            prediction = 1
+        else:
+            prediction = 0
+    else:
+        prediction = 0
+
+    # Convert to integers (True becomes 1, False becomes 0)
+    nodes = [1 if n else 0 for n in nodes]
+
+    return prediction, nodes
+
+Wait no, this approach initializes 'nodes' as [False, False], which might not be correct because the first condition isn't necessarily False—it's only False when BVE_BVL >0.50.
+
+Alternatively:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)
+
+    nodes = [False, False]
+
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        if wc_ta <= 0.10:
+            nodes[1] = True
+            prediction = 1
+        else:
+            prediction = 0
+    else:
+        prediction = 0
+
+    # Convert to integers: 1 for True, 0 otherwise (including when condition not evaluated)
+    nodes = [1 if n else 0 for n in nodes]
+
+    return prediction, nodes
+
+But this might misrepresent cases where the second node wasn't evaluated. Because in reality, when BVE_BVL >0.50, we don't evaluate WC_TA, so nodes[1] isn't really part of that decision path.
+
+I think the best approach is to track each condition as it's evaluated and represent 'nodes' accurately based on whether they were evaluated or not. So let's proceed step by step:
+
+- Extract BVE_BVL and WC_TA from X.
+- Initialize 'nodes' as a list with two elements, both None.
+- Evaluate root node (BVE_BVL <=0.50):
+  - If true: set nodes[0] to True, then evaluate WC_TA for the left child.
+    - If WC_TA <=0.10: prediction=1 and nodes[1]=True
+    - Else: prediction=0 and nodes[1]=False
+  - Else (nodes[0] = False): prediction=0 and nodes[1] remains None
+- After evaluation, convert 'nodes' from booleans to integers, with True→1, False→0, and None→0.
+
+So in code:
+
+def predict(X: dict):
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)  # Handle missing value if any
+
+    nodes = [None, None]
+
+    # Root node evaluation
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        # Evaluate left child
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes[1] = True
+        else:
+            prediction = 0
+            nodes[1] = False
+    else:
+        prediction = 0
+        nodes[0] = False
+
+    # Convert to integers, with None treated as 0 (since condition wasn't evaluated)
+    nodes = [1 if n is True else (0 if n is False else 0) for n in nodes]
+
+    return prediction, nodes
+
+Yes, this seems accurate. When BVE_BVL >0.50, nodes[0] is False, and nodes[1] remains None, which after conversion becomes 0.
+
+This way, the 'nodes' list correctly represents whether each condition was evaluated and whether it was true or false.
+</think>
+
+To address your request, I will outline a structured approach to implement the prediction function based on the given conditions. The goal is to create a function that evaluates two specific financial metrics and returns a prediction along with the evaluation status of each condition.
+
+### Approach
+1. **Extract Metrics**: Retrieve the values for BVE/BVL and WC/TA from the input dictionary.
+2. **Initialize Nodes**: Create a list `nodes` to keep track of whether each condition was met during evaluation, initialized with `None`.
+3. **Evaluate Root Condition**: Check if BVE/BVL is less than or equal to 0.50. If true:
+   - Set the first node to `True`.
+   - Evaluate the second condition (WC/TA ≤ 0.10) and update the prediction and second node accordingly.
+4. **Handle Else Case**: If BVE/BVL exceeds 0.50, set the prediction to 0 and mark the root node as not met.
+5. **Convert Nodes**: Convert the boolean values in `nodes` to integers (1 for True, 0 for False or None).
+
+### Solution Code
+```python
+def predict(X: dict) -> tuple[int, list[int]]:
+    bve_bvl = X['BVE/BVL']
+    wc_ta = X.get('WC/TA', 0)
+
+    nodes = [None, None]
+
+    if bve_bvl <= 0.50:
+        nodes[0] = True
+        if wc_ta <= 0.10:
+            prediction = 1
+            nodes[1] = True
+        else:
+            prediction = 0
+            nodes[1] = False
+    else:
+        prediction = 0
+        nodes[0] = False
+
+    # Convert None to 0, True to 1, and False to 0
+    nodes = [1 if n is True else (0 if n is False else 0) for n in nodes]
+
+    return prediction, nodes
+```
+
+### Explanation
+- **Extract Metrics**: The function begins by extracting the necessary financial metrics from the input dictionary.
+- **Root Condition Check**: It first checks if BVE/BVL is within a specific threshold. If it meets this condition, it proceeds to evaluate WC/TA.
+- **Second Condition Check**: Depending on whether WC/TA meets its threshold, the prediction is set accordingly, and both conditions' statuses are recorded.
+- **Conversion to Integers**: Finally, the boolean states in `nodes` are converted to integers for consistency in output format.
+
+This approach ensures that each condition's evaluation is accurately tracked and reflected in the output, providing a clear understanding of how the prediction was reached.

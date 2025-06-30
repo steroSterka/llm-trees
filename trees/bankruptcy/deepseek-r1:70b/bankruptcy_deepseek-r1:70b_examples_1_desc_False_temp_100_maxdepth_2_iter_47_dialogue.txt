@@ -1,0 +1,511 @@
+<think>
+Alright, I need to build a decision tree classifier that determines whether a company went bankrupt based on the given financial features. The maximum depth allowed is 2, so it can't be too complex.
+
+First, let me list out the features provided:
+
+1. Working Capital/Total Assets (WC_TA)
+2. Retained Earnings/Total Assets (RE_TA)
+3. Earnings Before Interest and Tax/Total Assets (EBIT_TA)
+4. Sales/Total Assets (S_TA)
+5. Book Value of Equity/Book Value of Liabilities (BV_EL)
+
+I need to figure out which two features are the most important for predicting bankruptcy. Since I'm limited to a depth of 2, the tree will have one internal node at the root and up to three leaves.
+
+I remember that in financial distress prediction, ratios like WC_TA, RE_TA, EBIT_TA, and S_TA are commonly used. These often relate to liquidity, profitability, and solvency. The BV_EL ratio indicates the company's solvency as it compares equity to liabilities.
+
+Looking at these features:
+
+- **WC_TA**: High working capital relative to total assets might indicate good liquidity, which is positive.
+- **RE_TA**: Positive retained earnings suggest profitability, but if it's negative, it could be a bad sign.
+- **EBIT_TA**: This measures operational efficiency; higher is better.
+- **S_TA**: Sales relative to assets shows asset utilization. Lower could mean underperformance.
+- **BV_EL**: Higher equity compared to liabilities means lower debt and better solvency.
+
+I think EBIT_TA might be a strong indicator because profitability is crucial for survival. Companies with negative or low EBIT_TA are more likely to face financial trouble. Similarly, BV_EL could be another key factor since high debt relative to equity can lead to bankruptcy.
+
+So maybe the root node should split on EBIT_TA. Let's say if EBIT_TA <= some threshold, then it goes one way, else another.
+
+Next, for each of those branches, I need to choose another feature. For companies with low EBIT_TA (maybe negative or below a certain point), perhaps looking at BV_EL would be next. If their equity is also low compared to liabilities, they might be more bankrupt-prone.
+
+For the branch where EBIT_TA is higher, maybe then we look at WC_TA as the second feature. High working capital could mean better liquidity and lower risk.
+
+Alternatively, for the high EBIT_TA group, another profitability or solvency ratio like RE_TA or S_TA could make sense. But I think WC_TA might be more directly related to short-term liquidity.
+
+So the structure would look something like:
+
+Root: EBIT_TA <= threshold?
+- If yes:
+  - BV_EL <= threshold? -> Bankrupt
+  - Else -> Not Bankrupt
+- If no:
+  - WC_TA <= threshold? -> Not Bankrupt (assuming higher is better)
+  - Wait, but if EBIT_TA is already high, maybe lower WC_TA isn't bad. Hmm.
+
+Wait, actually, in the yes branch (low EBIT_TA), we might need stricter criteria. So if BV_EL is also low, then bankrupt; else, not.
+
+In the no branch (high EBIT_TA), perhaps even with lower WC_TA, companies are still okay because they're profitable enough. But maybe I should check other features too. Maybe RE_TA could indicate past profitability.
+
+Alternatively, in the high EBIT_TA group, if Sales_TA is low, that might be a concern. So after EBIT_TA, splitting on S_TA or WC_TA.
+
+But to keep it simple and with depth 2, perhaps using BV_EL in one branch and another feature like WC_TA or RE_TA in the other.
+
+I think I'll proceed with:
+
+Root: EBIT_TA <= threshold
+- If yes:
+  - Then check BV_EL. If BV_EL <= threshold, then Bankrupt; else Not.
+- If no:
+  - Check WC_TA. If WC_TA > threshold, then Not Bankrupt; else, maybe Not or based on data.
+
+But I need to figure out the thresholds. Since this is hypothetical, I can assume typical ranges. For example:
+
+EBIT_TA: Let's say if <=0 (negative), it's bad. So root split at EBIT_TA <= 0.
+
+Then, for those with EBIT_TA <=0:
+- If BV_EL <=1, meaning liabilities exceed equity, then Bankrupt.
+- Else, Not Bankrupt.
+
+For EBIT_TA >0:
+- Then check WC_TA. Let's say if WC_TA >=0.2 (positive), then Not Bankrupt; else, maybe they could still be in trouble but since depth is 2, we have to make a call. Maybe if WC_TA <0.2, they might be at risk.
+
+Wait, but with EBIT_TA positive and WC_TA low, are they more likely to go bankrupt? Maybe not necessarily, but perhaps it's the best I can do within two levels.
+
+Alternatively, for the EBIT_TA >0 branch, maybe split on RE_TA. If RE_TA is negative, that could indicate past losses, so even with positive EBIT_TA, if RE_TA is negative, they might be at risk.
+
+But without actual data, it's hard to set exact thresholds. So perhaps it's better to structure the tree as:
+
+Root: EBIT_TA <= threshold
+- If yes:
+  - BV_EL <= threshold -> Bankrupt
+  - Else -> Not Bankrupt
+- If no:
+  - WC_TA >= threshold -> Not Bankrupt
+  - Else -> Bankrupt
+
+But I'm not sure if this is the best approach. Maybe RE_TA should be considered more prominently.
+
+Alternatively, using RE_TA as root:
+
+Root: RE_TA <= threshold (say negative)
+- If yes:
+  - EBIT_TA <= threshold -> Bankrupt
+  - Else -> Not
+- If no:
+  - WC_TA >= threshold -> Not
+  - Else -> ?
+
+But I think EBIT_TA is a stronger indicator of current profitability, so it's better as root.
+
+So final structure:
+
+Root: EBIT_TA <=0
+
+If yes (EBIT_TA <=0):
+- Check BV_EL. If BV_EL <=1 -> Bankrupt else Not.
+If no (EBIT_TA >0):
+- Check WC_TA. If WC_TA >=0.2 -> Not, else maybe still Not? Or perhaps need another split.
+
+Wait, but depth is 2, so after EBIT_TA and one more feature, we have to decide. So:
+
+Root: EBIT_TA <=0
+|--- EBIT_TA <=0:
+||--- BV_EL <=1 → Bankrupt
+||--- BV_EL >1 → Not
+|--- EBIT_TA >0:
+||--- WC_TA >=0.2 → Not
+||--- WC_TA <0.2 → ?
+
+But if EBIT_TA is positive and WC_TA is low, maybe they are still okay because they're profitable, but with low liquidity? Or it could be risky.
+
+Alternatively, for the EBIT_TA >0 branch, use another feature like RE_TA:
+
+|--- EBIT_TA <=0:
+||--- BV_EL <=1 → B
+||--- Else → NB
+|--- EBIT_TA >0:
+||--- RE_TA >=0 → NB (positive retained earnings)
+||--- RE_TA <0 → ?
+
+But then depth is 2, so we can only go one level deeper.
+
+Alternatively, maybe for the EBIT_TA >0 group, regardless of other features, they are Not Bankrupt. But that seems too simplistic.
+
+Perhaps a better approach is to use two splits: first on EBIT_TA, and then on BV_EL for the bad cases, and WC_TA for the good cases.
+
+I think I'll structure it as:
+
+Decision Tree:
+|--- EBIT/TA <= 0
+||--- Book Value of Equity/Book Value of Liabilities <=1 → Bankrupt
+||--- Book Value of Equity/Book Value of Liabilities >1 → Not Bankrupt
+|--- EBIT/TA >0
+||--- Working Capital/Total Assets >=0.2 → Not Bankrupt
+||--- Working Capital/Total Assets <0.2 → ?
+
+But I can't have another split, so perhaps in the last case, if WC_TA is below 0.2, they might still be at risk even with positive EBIT. So:
+
+|--- EBIT/TA <=0
+||--- BV_EL <=1 → B
+||--- Else → NB
+|--- EBIT/TA >0
+||--- WC_TA >=0.2 → NB
+||--- WC_TA <0.2 → B
+
+But that might not be accurate because a company with positive EBIT and low WC could still survive, but within depth 2, this is the structure.
+
+Alternatively, perhaps for EBIT/TA >0, regardless of WC_TA, they are Not Bankrupt. But that doesn't use both features.
+
+Hmm, maybe another approach: first split on BV_EL because solvency is crucial. If a company has low equity compared to liabilities (BV_EL <=1), it's more risky, then check EBIT_TA. Else, if they have high BV_EL (>1), they are safe.
+
+So:
+
+|--- BV_EL <=1
+||--- EBIT/TA <=0 → B
+||--- EBIT/TA >0 → Maybe not, but with depth 2, we can't go further.
+Wait, no, because after two splits, it's only depth 2. So if I split on BV_EL first:
+
+|--- BV_EL <=1:
+||--- EBIT_TA <=0 → B
+||--- EBIT_TA >0 → Not sure, but with depth 2, maybe this is the end.
+
+But then we can't have another feature after that because it would exceed depth. So perhaps better to stick with EBIT_TA as root.
+
+I think I'll go with:
+
+|--- EBIT/TA <=0
+||--- BV_EL <=1 → B
+||--- Else → NB
+|--- EBIT/TA >0:
+||--- WC_TA >=0.2 → NB
+||--- Else → ?
+
+But again, the last else is problematic. Maybe just have for EBIT/TA>0 and WC_TA<0.2 as Not Bankrupt anyway, because positive EBIT is a strong indicator.
+
+Alternatively, perhaps:
+
+|--- EBIT/TA <=0
+||--- BV_EL <=1 → B
+||--- Else → NB
+|--- EBIT/TA >0:
+||--- RE_TA >=0 → NB
+||--- RE_TA <0 → ?
+
+But without data, it's hard to say. I think the initial structure with EBIT and BV_EL is better.
+
+So final tree:
+
+|--- EBIT/TA <= 0
+||--- Book Value of Equity/Book Value of Liabilities <=1 → Bankrupt
+||--- Book Value of Equity/Book Value of Liabilities >1 → Not Bankrupt
+|--- EBIT/TA > 0
+||--- Working Capital/Total Assets >=0.2 → Not Bankrupt
+||--- Working Capital/Total Assets <0.2 → ?
+
+But I need to decide on the last part. Since it's depth 2, perhaps for EBIT>0 and WC_TA<0.2, we can consider them as Not Bankrupt because positive EBIT is a strong indicator.
+
+Alternatively, maybe set all EBIT>0 cases as Not Bankrupt regardless of WC_TA. But that doesn't use the second feature.
+
+So I think the best way within depth 2 is to split on EBIT first, then BV_EL for EBIT<=0 group, and WC_TA for EBIT>0 group.
+</think>
+
+To build a decision tree classifier for predicting company bankruptcy with a maximum depth of 2, we'll use two key financial features: Earnings Before Interest and Tax/Total Assets (EBIT_TA) and Book Value of Equity/Book Value of Liabilities (BV_EL). 
+
+### Decision Tree:
+|--- EBIT_TA <= 0  
+|   |--- BV_EL <=1 → Bankrupt  
+|   |--- BV_EL >1 → Not Bankrupt  
+|--- EBIT_TA >0  
+    |--- WC_TA >=0.2 → Not Bankrupt  
+    |--- WC_TA <0.2 → Bankrupt  
+
+This structure first evaluates the company's profitability (EBIT_TA). If EBIT_TA is non-positive, it then assesses solvency through BV_EL to determine bankruptcy risk. For profitable companies (EBIT_TA >0), it checks liquidity via WC_TA to refine the prediction within the allowed depth.
+
+
+#########################
+
+
+<think>
+Alright, so I need to format the decision tree as a Python function that returns a single prediction and a list of truth values for the inner nodes. The decision tree is supposed to classify whether a company went bankrupt or not based on some financial features.
+
+First, let me understand the structure of the decision tree provided earlier. It uses two main features: EBIT_TA (Earnings Before Interest and Tax/Total Assets) and BV_EL (Book Value of Equity/Book Value of Liabilities). The tree has a maximum depth of 2, which means there are two levels of decisions.
+
+The root node splits based on EBIT_TA <= 0. If this condition is true, it then checks if BV_EL <=1 to decide if the company went bankrupt or not. If EBIT_TA >0, it uses WC_TA (Working Capital/Total Assets) >=0.2 to determine the bankruptcy status.
+
+Wait a minute, in the previous example given by the user, the function used HbA1c_level and blood_glucose_level as features. But for our case, the features are different. I need to make sure I'm using the correct feature keys provided: ['WC/TA', 'RE/TA', 'EBIT/TA', 'S/TA', 'BVE/BVL', 'Target variable', 'target'].
+
+The target variable is encoded as 0 for no bankruptcy and 1 for bankruptcy. So, in our function, the prediction should be either 0 or 1 based on these conditions.
+
+The example provided by the user had a function that checked two conditions (HbA1c_level <=6.7 and blood_glucose_level <=210) and stored them in nodes[0] and nodes[1]. Then it used these to make a prediction. Similarly, I need to create nodes for EBIT_TA <=0 and BV_EL <=1.
+
+But wait, the decision tree also uses WC/TA >=0.2 as another condition when EBIT_TA >0. So, in total, there are three conditions: EBIT_TA <=0, BV_EL <=1, and WC/TA >=0.2. However, the function can only return two truth values for inner nodes since it's a depth of 2 tree.
+
+Hmm, perhaps I misunderstood earlier. The maximum depth is 2, which means the tree can have up to three nodes: root and two children. So, each path from root to leaf is at most two edges long.
+
+Given that, the decision tree has three nodes: EBIT_TA <=0 (root), BV_EL <=1 (left child of root), and WC/TA >=0.2 (right child of root).
+
+But in the function, I need to represent this with a list of truth values corresponding to each inner node condition. So for two inner nodes.
+
+Wait, in the example provided by the user, they had two conditions: HbA1c_level <=6.7 and blood_glucose_level <=210, hence two elements in the 'nodes' list.
+
+In our case, we have three conditions but only two levels of decisions. I think I need to prioritize which conditions are checked first based on the tree structure.
+
+The root node is EBIT_TA <=0, so that's the first condition (nodes[0]). Then, depending on whether EBIT_TA is <=0 or >0, different second conditions are checked: if EBIT_TA <=0, then BV_EL <=1; if EBIT_TA >0, then WC/TA >=0.2.
+
+So in total, there are two inner nodes that need to be evaluated based on the root condition.
+
+Therefore, I'll structure the function as follows:
+
+1. Check if EBIT/TA <=0 (first node).
+2. Depending on that:
+   - If true, check BV_EL <=1.
+   - If false, check WC/TA >=0.2.
+3. Assign the prediction based on these checks.
+
+But to fit into a list of truth values for inner nodes, I need to represent both possible second conditions as separate nodes. However, in reality, only one path is taken based on the root condition.
+
+Wait, but according to the example provided by the user, they had two conditions regardless of branching. So maybe I need to evaluate all relevant conditions and store their truth values in the list, even if some are not used depending on the path.
+
+That might complicate things a bit, but perhaps for simplicity, I can structure it as checking both second-level conditions and then use them appropriately based on the first condition.
+
+Alternatively, since only one of the two second conditions is relevant after the root node, maybe the function should evaluate all possible inner nodes regardless of branching. But that might not be necessary; the truth values are for the inner nodes actually traversed during prediction.
+
+In the example, both inner nodes (HbA1c_level and blood_glucose_level) were always evaluated, even though only one path was taken based on HbA1c_level <=6.7. So in our function, I should evaluate all inner node conditions regardless of the branching.
+
+Therefore, I'll define two inner nodes:
+
+nodes[0] = EBIT/TA <=0
+nodes[1] = BVE/BVL <=1 and WC/TA >=0.2
+
+Wait, but that's not quite right because after checking EBIT_TA <=0, only one subsequent condition is checked: either BV_EL or WC/TA.
+
+Hmm, perhaps I need to structure it so that nodes[0] corresponds to the root condition (EBIT/TA <=0), and nodes[1] corresponds to both possible second conditions. But how?
+
+Alternatively, since in a tree of depth 2, each non-leaf node has exactly two child nodes. So after EBIT_TA <=0, it splits into BV_EL <=1 or WC/TA >=0.2.
+
+But for the function, maybe I need to evaluate all inner node conditions regardless of the path taken and represent their truth values in a list.
+
+So, let's define:
+
+nodes[0] = (EBIT/TA <=0) ? True : False
+nodes[1] = (BVE/BVL <=1) ? True : False if nodes[0] is True else (WC/TA >=0.2) ? True : False
+
+But this complicates the 'nodes' list because it's dependent on the first condition.
+
+Wait, in the example provided by the user, both inner node conditions were evaluated regardless of branching, and their truth values were stored in the nodes list.
+
+Perhaps I should follow that approach: evaluate all relevant inner node conditions upfront, store their truth values in the 'nodes' list, and then use them to make the prediction based on the tree's structure.
+
+So, let's proceed with defining:
+
+nodes[0] = X['EBIT/TA'] <= 0
+nodes[1] = (X['BVE/BVL'] <= 1) if nodes[0] else (X['WC/TA'] >= 0.2)
+
+But since the function needs to return a list of truth values for all inner nodes, perhaps I need to evaluate both possible second conditions and store their truth values in 'nodes'.
+
+However, that might not be feasible because evaluating WC/TA when EBIT_TA <=0 is unnecessary according to the tree structure.
+
+Alternatively, maybe it's better to always evaluate both second-level conditions but use only one based on the root condition. That way, the nodes list will have two elements: nodes[0] and nodes[1], with nodes[1] representing either BV_EL or WC/TA depending on nodes[0].
+
+But in terms of code, I think it's better to structure it as:
+
+nodes = [X['EBIT/TA'] <= 0]
+if nodes[0]:
+    second_condition = X['BVE/BVL'] <=1
+else:
+    second_condition = X['WC/TA'] >=0.2
+nodes.append(second_condition)
+
+Then, use the two conditions in 'nodes' to make the prediction.
+
+But wait, according to the example, the function had nodes[0] and nodes[1], both evaluated upfront regardless of branching. So perhaps I need to evaluate both possible second-level conditions before making any decisions.
+
+In that case:
+
+nodes = [
+    X['EBIT/TA'] <= 0,
+    (X['BVE/BVL'] <=1) if (X['EBIT/TA'] <=0) else (X['WC/TA'] >=0.2)
+]
+
+But in code, this is a bit tricky because the second node depends on the first.
+
+Alternatively, perhaps I can represent both possible second conditions as separate nodes and then use them accordingly. For example:
+
+nodes[0] = X['EBIT/TA'] <=0
+if nodes[0]:
+    nodes[1] = X['BVE/BVL'] <=1
+else:
+    nodes[1] = X['WC/TA'] >=0.2
+
+But in this case, the 'nodes' list will only have two elements: [EBIT_TA condition, second condition]. This aligns with the example.
+
+So, putting it all together:
+
+def predict(X):
+    nodes = []
+    # Root node
+    ebit_condition = X['EBIT/TA'] <= 0
+    nodes.append(ebit_condition)
+    
+    if ebit_condition:
+        bv_el_condition = X['BVE/BVL'] <=1
+    else:
+        wc_ta_condition = X['WC/TA'] >=0.2
+    
+    # Second node based on root condition
+    if ebit_condition:
+        second_condition = bv_el_condition
+    else:
+        second_condition = wc_ta_condition
+    nodes.append(second_condition)
+    
+    # Make prediction based on conditions
+    if ebit_condition:
+        if second_condition:
+            prediction = 1  # Bankrupt
+        else:
+            prediction = 0  # Not Bankrupt
+    else:
+        if second_condition:
+            prediction = 0  # Not Bankrupt
+        else:
+            prediction = 1  # Bankrupt
+    
+    return prediction, nodes
+
+Wait, but the function needs to have a fixed number of inner nodes. In our case, there are two inner nodes: root and one child. But in reality, depending on the path, only one second condition is evaluated.
+
+But according to the example, both inner node conditions are stored in 'nodes' regardless of branching. So perhaps I need to always evaluate both possible second conditions and store them as separate elements in 'nodes'. However, that doesn't make much sense because each instance will only take one path.
+
+Alternatively, perhaps the 'nodes' list should contain the truth values of all inner nodes evaluated during prediction. In our case, two inner nodes: root (EBIT_TA <=0) and either BV_EL or WC/TA based on the root condition.
+
+Thus, in code:
+
+def predict(X):
+    nodes = []
+    
+    # Evaluate root node
+    ebit_condition = X['EBIT/TA'] <= 0
+    nodes.append(ebit_condition)
+    
+    if ebit_condition:
+        bv_el_condition = X['BVE/BVL'] <=1
+        nodes.append(bv_el_condition)
+    else:
+        wc_ta_condition = X['WC/TA'] >=0.2
+        nodes.append(wc_ta_condition)
+    
+    # Make prediction based on the path taken
+    if ebit_condition:
+        if bv_el_condition:
+            prediction = 1  # Bankrupt
+        else:
+            prediction = 0  # Not Bankrupt
+    else:
+        if wc_ta_condition:
+            prediction = 0  # Not Bankrupt
+        else:
+            prediction = 1  # Bankrupt
+    
+    return prediction, nodes
+
+Wait a minute, in this code, 'nodes' will have two elements regardless of the branching. For example:
+
+- If EBIT/TA <=0 is true (nodes[0] = True), then we evaluate BV_EL and store it as nodes[1].
+- If EBIT/TA <=0 is false (nodes[0] = False), then we evaluate WC_TA and store it as nodes[1].
+
+Thus, 'nodes' will always be a list of two truth values: the root condition and the subsequent condition based on branching.
+
+This seems consistent with the example provided by the user, where both inner node conditions were evaluated upfront. However, in our case, only one of the two possible second conditions is evaluated based on the first condition. But for simplicity, perhaps it's better to always evaluate both conditions, but that would mean evaluating unnecessary features when not needed.
+
+Alternatively, to align with the example and ensure 'nodes' has exactly two elements corresponding to the inner nodes, I'll structure the function as follows:
+
+def predict(X):
+    nodes = []
+    
+    # Root node
+    ebit_condition = X['EBIT/TA'] <= 0
+    nodes.append(ebit_condition)
+    
+    if ebit_condition:
+        bv_el_condition = X['BVE/BVL'] <=1
+        nodes.append(bv_el_condition)
+    else:
+        wc_ta_condition = X['WC/TA'] >=0.2
+        nodes.append(wc_ta_condition)
+    
+    # Make prediction based on the path taken
+    if ebit_condition:
+        if bv_el_condition:
+            prediction = 1  # Bankrupt
+        else:
+            prediction = 0  # Not Bankrupt
+    else:
+        if wc_ta_condition:
+            prediction = 0  # Not Bankrupt
+        else:
+            prediction = 1  # Bankrupt
+    
+    return prediction, nodes
+
+This way, 'nodes' will have two elements: the root condition and either BV_EL or WC/TA condition based on the first evaluation. This matches the structure of having a maximum depth of 2.
+
+I need to make sure that the function uses the exact feature keys provided: ['WC/TA', 'RE/TA', 'EBIT/TA', 'S/TA', 'BVE/BVL']. So, I'll use 'EBIT/TA' for EBIT condition, 'BVE/BVL' for BV_EL condition, and 'WC/TA' for WC_TA condition.
+
+Also, the thresholds are as follows:
+
+- Root node: EBIT/TA <=0
+  - If true, check if BVE/BVL <=1
+- Else (EBIT/TA >0), check if WC/TA >=0.2
+
+Wait, according to the initial tree description, I think it was:
+
+if EBIT/TA <=0:
+    if BVE/BVL <=1: Bankrupt else Not Bankrupt
+else:
+    if WC/TA <0.2: Bankrupt else Not Bankrupt
+
+But in my code above, for WC_TA, I used >=0.2 to assign prediction=0 (Not Bankrupt), which is correct.
+
+Yes, that aligns with the initial description.
+</think>
+
+Here's a function that predicts whether a company will go bankrupt based on its financial metrics using a decision tree of depth 2:
+
+```python
+def predict(X):
+    # Evaluate root node condition: EBIT/TA <= 0
+    ebit_condition = X['EBIT/TA'] <= 0
+    
+    nodes = [ebit_condition]  # Start the list with the root condition
+    
+    if ebit_condition:
+        # If root condition is true, evaluate BVE/BVL <= 1
+        bv_el_condition = X['BVE/BVL'] <= 1
+        nodes.append(bv_el_condition)
+        
+        if bv_el_condition:
+            prediction = 1  # Bankrupt
+        else:
+            prediction = 0  # Not Bankrupt
+    else:
+        # If root condition is false, evaluate WC/TA >= 0.2
+        wc_ta_condition = X['WC/TA'] >= 0.2
+        nodes.append(wc_ta_condition)
+        
+        if wc_ta_condition:
+            prediction = 0  # Not Bankrupt
+        else:
+            prediction = 1  # Bankrupt
+    
+    return prediction, nodes
+```
+
+**Explanation:**
+
+- **Root Node (EBIT/TA <= 0):** The first condition checks if the company's Earnings Before Interest and Taxes divided by Total Assets is less than or equal to zero. This indicates poor profitability relative to assets.
+  
+- **Left Child (BVE/BVL <= 1):** If the root condition is true, we then check if the Book Value of Equity divided by Market Value of Equity is less than or equal to one. A value ≤1 suggests that the market valuation is not significantly higher than the book value, which could indicate financial distress.
+  
+- **Right Child (WC/TA >= 0.2):** If the root condition is false (EBIT/TA > 0), we check if Working Capital divided by Total Assets is at least 0.2. A lower ratio might imply liquidity issues.
+
+The function returns a prediction (1 for bankruptcy, 0 otherwise) and a list of evaluated conditions (`nodes`), capturing the decision path taken through the tree.

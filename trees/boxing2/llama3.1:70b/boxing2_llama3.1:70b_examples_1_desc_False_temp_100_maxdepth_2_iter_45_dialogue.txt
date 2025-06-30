@@ -1,0 +1,82 @@
+To build a decision tree that classifies which of the two boxing fighters (Trinidad or de la Hoya) won each round, based on the provided features and with a maximum depth of 2, we need to consider the importance of each feature in contributing to the outcome. The features given are:
+
+1. **Judge**: The specific judge scoring the fight.
+2. **Official Judge**: Whether the scorer is an official judge or not.
+3. **Round**: The round number (from 1 to 12).
+
+Given these features, let's induce a decision tree with a maximum depth of 2. Since we don't have actual data on how each judge scored each round or their tendencies in scoring fights between Trinidad and de la Hoya, this will be a hypothetical construction based on logical assumptions about the potential influence of judges' backgrounds and biases.
+
+### Assumptions:
+- **Judge Influence**: Different judges might have different scoring tendencies. For simplicity, let's assume that some judges tend to favor one fighter over another due to personal bias or judging style.
+- **Official Judges vs. Others**: Official judges are more likely to follow strict guidelines and might be less biased compared to non-official scorers like media representatives.
+- **Round Dynamics**: The way a fight progresses (e.g., who starts strong, who tires first) can influence scoring in later rounds.
+
+### Decision Tree:
+
+|--- Judge is Official (yes / no)
+||--- yes
+||||--- Round <= 6
+|||||--- class: de la Hoya (assuming early rounds might favor the typically faster starter)
+||||--- Round > 6
+|||||--- class: Trinidad (later rounds possibly favoring the stronger finisher)
+||--- no
+||||--- Judge = HBO-Lederman / USA Today / Associated Press (select media known for objective analysis)
+|||||--- class: de la Hoya (assuming these judges might score similarly to official judges, potentially favoring technique)
+||||--- Judge != HBO-Lederman / USA Today / Associated Press
+|||||--- class: Trinidad (other media or unofficial judges possibly scoring based on aggression)
+
+This tree uses the "Judge is Official" feature as its first split because it distinguishes between those who are likely following strict judging guidelines and those who might be more subjective. The second level splits further into round number for official judges, assuming a shift in scoring as the fight progresses. For non-official judges, it splits based on specific judges that might offer more objective analysis versus those with potentially different criteria.
+
+### Limitations:
+- **Data**: This decision tree is constructed without actual data from the Trinidad vs. de la Hoya fight. Real-world application would require detailed round-by-round scoring from various judges to train an accurate model.
+- **Simplifications**: The assumptions made about judges' tendencies and how rounds influence scoring are simplifications. In reality, many factors contribute to a judge's decision.
+
+To improve this tree or make it more accurate for other fights, one would need historical data on judging patterns, including round-by-round scores from different types of judges.
+
+
+#########################
+
+
+Here's the Python function for the decision tree that classifies which of the two boxing fighters (Trinidad or de la Hoya) won each round:
+
+```python
+def predict(X: dict):
+    """
+    Predicts the winner of a round based on judge, official status, and round number.
+
+    Parameters:
+    X (dict): Dictionary containing features.
+        - 'Judge': Judge (0 = G. Hamada, 1 = B. Logist, 2 = J. Roth, 3 = HBO-Lederman, 
+                        4 = Sportsticker, 5 = Los Angeles Times-Kawakami, 6 = USA Today, 
+                        7 = Associated Press, 8 = Las Vegas Review-Journal, 9 = Los Angeles Times-Springer, 
+                        10 = van de Wiele)
+        - 'Official': Official judge (1 = Yes, 0 = No)
+        - 'Round': Round number (1 to 12)
+
+    Returns:
+    tuple: A prediction (0 for Trinidad, 1 for de la Hoya) and a list of node values.
+    """
+
+    nodes = 3 * [None]
+    
+    # Node 0: Is the judge official?
+    nodes[0] = X["Official"] == 1
+    
+    # Node 1: If official, is it early or late in the fight?
+    if nodes[0]:
+        nodes[1] = X["Round"] <= 6
+        nodes[2] = None  # Unused for this branch
+    else:
+        # Node 1 (actually node 2): For non-official judges, check specific media.
+        nodes[1] = X["Judge"] in [3, 6, 7]
+        nodes[2] = None  # This variable will be set by the tree logic
+    
+    if nodes[0]:
+        prediction = int(not nodes[1])  # de la Hoya early, Trinidad late
+    else:
+        prediction = int(nodes[1])      # Specific media favor de la Hoya otherwise Trinidad
+
+    return prediction, [int(n) for n in nodes[:2]] + [None] if len(nodes) > 2 else [int(n) for n in nodes]
+```
+
+This function uses the decision tree logic described earlier but with adjustments to match the provided feature encoding and ranges. The `predict` function takes a dictionary `X` containing the features 'Judge', 'Official', and 'Round'. It returns a tuple where the first element is the prediction (0 for Trinidad, 1 for de la Hoya) based on these features, and the second element is a list representing the truth values of the inner nodes in the decision tree.

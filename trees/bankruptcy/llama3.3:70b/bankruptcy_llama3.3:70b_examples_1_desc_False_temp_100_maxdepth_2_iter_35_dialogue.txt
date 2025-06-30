@@ -1,0 +1,115 @@
+To build a decision tree classifier with a maximum depth of 2 for determining whether a company went bankrupt or not based on the provided financial features, we'll follow a structured approach. However, please note that without actual data (including target variables), we can't perform an empirical analysis to determine the exact thresholds and feature importance directly.
+
+Given features:
+1. Working Capital/Total Assets
+2. Retained Earnings/Total Assets
+3. Earnings Before Interest and Tax/Total Assets (EBIT/TA)
+4. Sales/Total Assets
+5. Book Value of Equity/Book Value of Liabilities
+
+For simplicity, let's assume that the most important features based on some preliminary analysis are:
+- Working Capital/Total Assets: Reflects a company's liquidity position.
+- Earnings Before Interest and Tax/Total Assets (EBIT/TA): Indicates profitability in relation to assets.
+
+Decision Tree Structure with Maximum Depth of 2:
+
+1. **Root Node**: 
+   - Feature: Working Capital/Total Assets
+   - Threshold: Assume 0.20 as a critical value for liquidity, below which companies might struggle financially.
+   
+2. **Left Child (Working Capital/Total Assets <= 0.20)**:
+   - This suggests the company has low liquidity, which could be indicative of financial distress.
+   - Feature: EBIT/TA
+   - Threshold: Assume 0.05 as a threshold for profitability; companies below this might be considered less likely to recover.
+   
+3. **Right Child (Working Capital/Total Assets > 0.20)**:
+   - This suggests the company has better liquidity, potentially reducing bankruptcy risk.
+   - Feature: EBIT/TA
+   - Threshold: Same as above for consistency, 0.05.
+
+Decision Tree:
+
+|--- Working Capital/Total Assets <= 0.20
+||--- EBIT/TA <= 0.05
+|||--- class: Bankrupt
+||--- EBIT/TA > 0.05
+|||--- class: Not Bankrupt
+|--- Working Capital/Total Assets > 0.20
+||--- EBIT/TA <= 0.05
+|||--- class: Not Bankrupt (given better liquidity, the company has more room to recover)
+||--- EBIT/TA > 0.05
+|||--- class: Not Bankrupt
+
+**Note**: The thresholds and features used are hypothetical for illustration purposes. In a real-world scenario, you would need to:
+- Perform feature selection based on actual data (e.g., using mutual information, recursive feature elimination).
+- Use techniques like cross-validation to determine optimal threshold values.
+- Train the model with historical financial data of companies that have gone bankrupt and those that haven't.
+
+This approach ensures that your decision tree classifier is both informed by the underlying data distribution and generalizes well to unseen examples.
+
+
+#########################
+
+
+Here is the Python function for the decision tree classifier based on the provided financial features:
+
+```python
+def predict(X: dict):
+    """
+    Decision Tree Classifier to predict company bankruptcy.
+
+    Parameters:
+    X (dict): Dictionary containing financial features.
+        - WC/TA: Working Capital/Total Assets
+        - RE/TA: Retained Earnings/Total Assets
+        - EBIT/TA: Earnings Before Interest and Tax/Total Assets
+        - S/TA: Sales/Total Assets
+        - BVE/BVL: Book Value of Equity/Book Value of Liabilities
+
+    Returns:
+    prediction (int): Predicted target variable (0 = no bankruptcy, 1 = bankruptcy)
+    nodes (list): List of truth values for inner nodes in the decision tree
+    """
+    # Initialize list to store node conditions
+    nodes = 2 * [None]
+    
+    # Node 1 condition: Working Capital/Total Assets <= 0.20
+    nodes[0] = X["WC/TA"] <= 0.20
+    
+    # If company has low liquidity, evaluate profitability
+    if nodes[0]:
+        # Node 2 condition: EBIT/TA <= 0.05 (poor profitability)
+        nodes[1] = X["EBIT/TA"] <= 0.05
+    else:
+        # For companies with better liquidity, consider them less likely to go bankrupt regardless of this node's condition
+        nodes[1] = False
+    
+    # Make prediction based on node conditions
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Bankruptcy likely due to poor liquidity and profitability
+        else:
+            prediction = 1  # Still at risk despite better profitability, given low liquidity
+    else:
+        if nodes[1]:  # This condition won't be met due to the previous logic but included for completeness
+            prediction = 0  # Not at risk of bankruptcy with good liquidity and some profitability
+        else:
+            prediction = 0  # Company has better liquidity, reducing bankruptcy risk
+    
+    return prediction, [int(node) for node in nodes]
+
+# Example usage
+X = {
+    "WC/TA": 0.15,
+    "RE/TA": -0.05,
+    "EBIT/TA": 0.03,
+    "S/TA": 1.2,
+    "BVE/BVL": 0.8
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: Company went bankrupt = {prediction}")
+print(f"Node conditions satisfied: {nodes}")
+```
+
+In this function, the decision tree classifier uses the `WC/TA` and `EBIT/TA` features to predict whether a company is likely to go bankrupt. The conditions in each node are based on common thresholds used in financial analysis, but you might need to adjust these values depending on your specific dataset or requirements.

@@ -1,0 +1,105 @@
+To induce a decision tree classifier for determining which of the two boxing fighters (Lewis and Holyfield) won each round based on the given features, we need to follow these steps:
+
+1. **Feature Selection**: Identify the most relevant features that contribute to the outcome.
+2. **Tree Construction**: Use the selected features to construct a decision tree with a maximum depth of 2.
+
+Given features:
+- Judge (E. Williams / L. O'Connell / S. Christodoulu / HBO-Lederman / Sportsticker / Boxing Times / Sportsline / Associated Press / ESPN / Boxing Monthly-Leach)
+- Official judge (yes / no)
+- Round (1 to 12)
+
+Since we are not provided with actual data or a method to determine feature importance directly from the problem statement, let's proceed conceptually. We'll assume that "Judge" and "Round" could be significant in determining the winner of each round due to their direct involvement in scoring and the progression of the match, respectively.
+
+**Decision Tree Construction (Conceptual)**
+
+Given the constraint of a maximum depth of 2 and without specific data on feature importance or outcomes, we might prioritize features based on logical relevance:
+
+1. **Judge**: Different judges may have different scoring tendencies.
+2. **Round**: The strategy and condition of fighters can change over rounds.
+
+**Decision Tree:**
+
+|--- Round <= 6
+||--- Judge == (select most favorable judges for Lewis, e.g., E. Williams / HBO-Lederman)
+|||--- class: Lewis
+||--- Judge != (most favorable judges for Lewis)
+|||--- class: Holyfield
+|--- Round > 6
+||--- Official judge == yes
+|||--- class: Lewis (assuming official judges might favor Lewis in later rounds due to his potential endurance advantage)
+||--- Official judge == no
+|||--- class: Holyfield
+
+**Note**: This decision tree is highly speculative and based on the assumption that certain judges may favor one fighter over another and that the official status of a judge could influence the outcome in later rounds. In reality, constructing an accurate decision tree would require actual data on how each judge scored each round and how these scores correlated with the final outcomes.
+
+**Important Consideration**: Without real data or a clear indication of which features are most important (e.g., through mutual information, Gini importance, etc.), any decision tree constructed is purely speculative. Real-world application would necessitate analyzing historical fight data, judge scoring patterns, and possibly incorporating more nuanced features like fighter statistics (punch accuracy, defense, etc.) to build a reliable predictive model.
+
+
+#########################
+
+
+Here's the decision tree implemented as a Python function based on the provided features and target variable:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which of the two boxing fighters won each round.
+
+    Args:
+    X (dict): A dictionary containing the features.
+        - 'Judge': The judge scoring the fight (0 = E. Williams, 1 = L. O'Connell, 2 = S. Christodoulu, 3 = HBO-Lederman, 
+                 4 = Sportsticker, 5 = Boxing Times, 6 = Sportsline, 7 = Associated Press, 8 = ESPN, 9 = Boxing Monthly-Leach)
+        - 'Official': Whether the judge is an official judge (1 = Yes, 0 = No)
+        - 'Round': The round number (1 to 12)
+
+    Returns:
+    tuple: A tuple containing the prediction and a list representing the truth values of the inner nodes.
+        - Prediction (int): The predicted winner of the round (1 = Lewis, 0 = Holyfield)
+        - Nodes (list): A list where each entry is 1 if the condition of the corresponding inner node is satisfied, and 0 otherwise
+    """
+
+    # Initialize the nodes list with None values
+    nodes = 2 * [None]
+    
+    # Node 0: Check if the round is less than or equal to 6
+    nodes[0] = X['Round'] <= 6
+    
+    # Node 1: Check if the judge is favorable for Lewis (e.g., E. Williams, HBO-Lederman) and it's an official judge
+    nodes[1] = (X['Judge'] in [0, 3]) and X['Official'] == 1
+    
+    # Initialize the prediction variable
+    prediction = None
+    
+    # If Node 0 is True
+    if nodes[0]:
+        # If Node 1 is True
+        if nodes[1]:
+            # Predict Lewis wins
+            prediction = 1
+        else:
+            # Predict Holyfield wins
+            prediction = 0
+    else:
+        # If it's a later round, predict based on the official judge status
+        if X['Official'] == 1:
+            prediction = 1  # Predict Lewis wins in later rounds with an official judge
+        else:
+            prediction = 0  # Predict Holyfield wins otherwise
+    
+    # Convert boolean nodes to integers (True -> 1, False -> 0)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage:
+features = {
+    'Judge': 0,  # E. Williams
+    'Official': 1,  # Official judge
+    'Round': 5
+}
+prediction, nodes = predict(features)
+print(f"Prediction: {prediction}")  # Should print the predicted winner (1 for Lewis, 0 for Holyfield)
+print(f"Nodes: {nodes}")  # Should print the truth values of the inner nodes
+```
+
+This function implements a decision tree with two inner nodes. The first node checks if the round is less than or equal to 6. If this condition is true, it proceeds to check the second node, which determines whether the judge is favorable for Lewis and if they are an official judge. Based on these conditions, it predicts the winner of the round. For later rounds (round > 6), it relies solely on the status of the judge being official to make a prediction. The function returns both the predicted winner and a list representing the truth values of the inner nodes.

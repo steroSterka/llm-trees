@@ -1,0 +1,99 @@
+To build a decision tree classifier for determining which boxer won each round based on the provided features, we first need to understand that the given features relate to the judges and rounds rather than direct actions or outcomes of the boxers. Since the example you've provided relates to flower classification (Iris dataset), let's translate this into our boxing scenario.
+
+Given features:
+- Judge: The source or name of the judge (e.g., E. Williams, L. O'Connell, etc.)
+- Official judge: Whether the judge is official or not
+- Round: The round number in the fight
+
+Since we don't have actual performance metrics like punches landed, defense, etc., we'll work with what we have. Our goal is to classify which boxer won each round based on these features.
+
+For a decision tree with a maximum depth of 2:
+1. **Root Node (Depth 0):** The first split should be based on the most informative feature regarding the outcome of a round in boxing, considering our limited set of features. Given that "Official judge" directly impacts the legitimacy and influence of a judge's score, it seems like a strong candidate for the first split.
+
+2. **First Level (Depth 1):** After splitting by "Official judge", we have two paths:
+   - For official judges, the next most important factor could be who the judge is, as different judges might have different tendencies or biases in scoring.
+   - For non-official judges, the round number might influence their perception of which boxer is winning due to factors like fatigue or strategy changes over rounds.
+
+3. **Second Level (Depth 2):** Given our features and aiming for simplicity:
+   - Under "Official judge = yes", we could further split based on "Judge" being either a known entity that tends to favor one fighter's style over another, or not.
+   - Under "Official judge = no", splitting by "Round" might help, considering that early rounds might favor more aggressive fighters, while later rounds could see the advantage shift due to endurance factors.
+
+Decision Tree Example:
+```
+|--- Official judge: yes
+||--- Judge: E. Williams / L. O'Connell (assuming these judges tend to score in a way that favors one fighter)
+|||--- class: Lewis
+||--- Judge: HBO-Lederman / Sportsticker (assuming different tendencies)
+|||--- class: Holyfield
+|--- Official judge: no
+||--- Round <= 6
+|||--- class: Lewis (aggressive start)
+||--- Round > 6
+|||--- class: Holyfield (endurance factor)
+```
+
+Please note, this is a highly simplified and hypothetical example due to the lack of direct performance metrics in the provided features. In real-world scenarios, decision trees for sports outcomes would ideally incorporate more relevant data such as fighter statistics, in-fight actions, and other contextual information.
+
+
+#########################
+
+
+Here's how you can implement the decision tree as a Python function:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won the round based on the judge and round information.
+    
+    Parameters:
+    X (dict): A dictionary containing the features 'Judge', 'Official', 'Round'.
+    
+    Returns:
+    prediction (int): The predicted winner of the round (1 = Lewis, 0 = Holyfield).
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+    
+    # Initialize nodes with None
+    nodes = 2 * [None]
+    
+    # Node 0: Official judge
+    nodes[0] = X['Official'] == 1
+    
+    # Node 1: Judge or Round condition based on official judge status
+    if nodes[0]:
+        # If official judge, consider the judge's tendency
+        nodes[1] = X['Judge'] in [0, 1]  # E. Williams or L. O'Connell tend to favor Lewis
+    else:
+        # If not an official judge, consider the round number
+        nodes[1] = X['Round'] <= 6
+    
+    # Make prediction based on node values
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Lewis
+        else:
+            prediction = 0  # Holyfield
+    else:
+        if nodes[1]:
+            prediction = 1  # Lewis (aggressive start)
+        else:
+            prediction = 0  # Holyfield (endurance factor)
+    
+    # Convert boolean node values to integers
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+features = {
+    'Judge': 0,  # E. Williams
+    'Official': 1,  # Official judge
+    'Round': 3,
+}
+
+prediction, nodes = predict(features)
+print(f"Predicted winner: {['Holyfield', 'Lewis'][prediction]}")
+print(f"Node values: {nodes}")
+```
+
+This code implements the decision tree logic based on the provided features and target variable. The `predict` function takes a dictionary of features as input, makes predictions according to the decision tree rules, and returns both the predicted winner and the node values. Note that I've used the provided encoding for judges and assumed that E. Williams and L. O'Connell tend to favor Lewis based on their judging tendencies. You may need to adjust these assumptions or the threshold values based on actual data analysis or domain expertise.

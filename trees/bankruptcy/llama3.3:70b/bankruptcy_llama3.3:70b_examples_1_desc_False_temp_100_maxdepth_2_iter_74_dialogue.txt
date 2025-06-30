@@ -1,0 +1,114 @@
+To build a decision tree classifier that predicts whether a company went bankrupt or not based on the given financial features, we'll follow these steps:
+
+1. **Feature Selection**: Identify the most important features from the provided list: Working Capital/Total Assets, Retained Earnings/Total Assets, Earnings Before Interest and Tax/Total Assets, Sales/Total Assets, Book Value of Equity/Book Value of Liabilities.
+
+2. **Decision Tree Construction**: Construct a decision tree with a maximum depth of 2 using these features.
+
+Given the nature of this task, typically we would use data to train the model (e.g., via scikit-learn in Python), but since specific data isn't provided here, I'll simulate how one might think about constructing such a tree based on general knowledge of financial health indicators and the characteristics of decision trees. We aim for a simple example to illustrate the concept.
+
+### Step 1: Feature Importance
+In financial terms:
+- **Working Capital/Total Assets** indicates liquidity.
+- **Retained Earnings/Total Assets** shows profitability and reinvestment.
+- **Earnings Before Interest and Tax (EBIT)/Total Assets** measures operating efficiency.
+- **Sales/Total Assets** reflects asset utilization efficiency.
+- **Book Value of Equity/Book Value of Liabilities** is a measure of solvency.
+
+For bankruptcy prediction, solvency and liquidity are critical. Thus, we prioritize:
+1. Book Value of Equity/Book Value of Liabilities
+2. Working Capital/Total Assets
+
+### Step 2: Constructing the Decision Tree
+With a maximum depth of 2, our tree will have one main decision node at the root and up to two more levels of decisions.
+
+#### Root Node (Depth 1):
+- **Feature**: Book Value of Equity/Book Value of Liabilities. This is chosen because it directly relates to solvency.
+- **Threshold**: A low ratio indicates potential insolvency, so we might use a threshold like 0.5 as a rough indicator (companies with equity less than half their liabilities are at risk).
+
+#### Left Branch (Depth 2):
+- If Book Value of Equity/Book Value of Liabilities <= 0.5:
+  - **Feature**: Working Capital/Total Assets
+  - **Threshold**: For instance, if Working Capital/Total Assets < 0.1, it suggests severe liquidity issues, indicating a high risk of bankruptcy.
+
+#### Right Branch (Depth 2):
+- If Book Value of Equity/Book Value of Liabilities > 0.5:
+  - **Feature**: Still, Working Capital/Total Assets could be useful for further differentiation.
+  - **Threshold**: A higher threshold might indicate healthier companies; for example, if Working Capital/Total Assets >= 0.2, it suggests good liquidity and lower risk.
+
+### Example Decision Tree:
+
+|--- Book Value of Equity/Book Value of Liabilities <= 0.5
+||--- Working Capital/Total Assets < 0.1: **Bankrupt**
+||--- Working Capital/Total Assets >= 0.1: **At Risk but Survived**
+|--- Book Value of Equity/Book Value of Liabilities > 0.5
+||--- Working Capital/Total Assets < 0.2: **Survived with Challenges**
+||--- Working Capital/Total Assets >= 0.2: **Survived**
+
+Note that this is a highly simplified example and actual decision tree construction would require specific data for training, including labels (bankrupt or not) to accurately determine thresholds and feature importance. Additionally, real-world financial analysis for predicting bankruptcy involves more complex models and considerations.
+
+
+#########################
+
+
+Here's how you could implement the decision tree as a Python function based on the provided financial features and target variable:
+
+```python
+def predict_bankruptcy(X: dict):
+    """
+    Predicts whether a company will go bankrupt based on its financial metrics.
+    
+    Parameters:
+    X (dict): Dictionary containing the financial metrics of the company.
+             The keys should include 'WC/TA', 'RE/TA', 'EBIT/TA', 'S/TA', 'BVE/BVL'.
+             
+    Returns:
+    prediction (int): 0 if the company is predicted not to go bankrupt, 1 otherwise.
+    nodes (list): List of boolean values representing the conditions at each inner node.
+                  1 if the condition is satisfied, 0 otherwise.
+    """
+    
+    # Initialize the list to store the truth values of the inner nodes
+    nodes = 2 * [None]
+    
+    # Root Node: Check if Book Value of Equity/Book Value of Liabilities is less than or equal to 0.5
+    nodes[0] = X['BVE/BVL'] <= 0.5
+    
+    # If the company's BVE/BVL ratio is bad, check its liquidity (WC/TA)
+    if nodes[0]:
+        nodes[1] = X['WC/TA'] < 0.1
+    else:
+        # For companies with a better BVE/BVL ratio, also consider their WC/TA but with a different threshold
+        nodes[1] = X['WC/TA'] < 0.2
+    
+    # Make the prediction based on the conditions
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # High risk of bankruptcy due to poor solvency and liquidity
+        else:
+            prediction = 1  # At risk but slightly better liquidity
+    else:
+        if nodes[1]:
+            prediction = 0  # Survived with challenges (better solvency, manageable liquidity issues)
+        else:
+            prediction = 0  # Survived (good solvency and liquidity)
+    
+    # Convert boolean values in nodes to integers for consistency with the problem statement
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+financial_metrics = {
+    'WC/TA': 0.05,
+    'RE/TA': -0.1,
+    'EBIT/TA': 0.02,
+    'S/TA': 0.5,
+    'BVE/BVL': 0.3
+}
+
+prediction, nodes = predict_bankruptcy(financial_metrics)
+print(f"Prediction: {prediction}")
+print(f"Inner Nodes: {nodes}")
+```
+
+This code defines a function `predict_bankruptcy` that takes in a dictionary of financial metrics for a company and returns a prediction (0 or 1) indicating whether the company is likely to go bankrupt, along with a list representing the truth values of the conditions at each inner node of the decision tree. The example usage demonstrates how to call this function with sample financial data and print out the prediction and the state of the inner nodes.

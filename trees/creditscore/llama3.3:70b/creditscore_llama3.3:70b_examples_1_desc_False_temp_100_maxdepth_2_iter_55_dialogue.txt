@@ -1,0 +1,122 @@
+To build the decision tree with a maximum depth of 2 for classifying whether an application for credit is accepted or not, we first need to understand the features provided and their potential impact on credit acceptance. The features are:
+
+1. **Age (years)**: Older individuals might have a more established credit history.
+2. **Income per dependent (1.5 to 10)**: Higher income per dependent suggests better financial stability.
+3. **Monthly credit card expenses ($)**: Lower expenses could indicate better financial management.
+4. **Owning a home (yes / no)**: Homeownership can be seen as a sign of financial stability and responsibility.
+5. **Self-employed (yes / no)**: Self-employment can introduce variability in income, potentially affecting creditworthiness.
+6. **Number of derogatory reports**: More reports indicate poorer credit history.
+
+Given these features, we aim to construct a decision tree that classifies credit applications as accepted or not, with a maximum depth of 2. This means our tree will have one main split and then can split again from each of the initial two branches.
+
+For simplicity, let's assume that "number of derogatory reports" is highly indicative of creditworthiness because it directly reflects past financial issues. Therefore, we might consider this feature for our primary split due to its direct relevance to credit acceptance decisions.
+
+**Decision Tree:**
+
+1. **Number of derogatory reports <= 0**
+   - This suggests a good or no negative credit history.
+   - Further split based on **Income per dependent**: If income per dependent is high (let's say > 5), it indicates financial stability, making the application more likely to be accepted.
+     - **Class: Accepted**
+   - If income per dependent is low (<= 5), despite no derogatory reports, the financial stability might not be as strong.
+     - **Class: Not Accepted**
+
+2. **Number of derogatory reports > 0**
+   - Indicates some level of credit risk due to past issues.
+   - Further split based on **Age**: If age is higher (let's say > 35), it could indicate a longer time to potentially recover from past financial mistakes and establish a better credit history.
+     - **Class: Accepted** (considering they've had time to recover)
+   - If age is lower (<= 35), the individual might not have had enough time to recover from past financial issues, or their credit history might still be developing.
+     - **Class: Not Accepted**
+
+This decision tree uses a simple approach to classify credit applications based on direct indicators of creditworthiness and financial stability. The actual thresholds used (e.g., 0 derogatory reports, income per dependent > 5, age > 35) would ideally be determined through analysis of historical data to maximize the accuracy of predictions.
+
+**Decision Tree Representation:**
+
+|--- Number of derogatory reports <= 0
+||--- Income per dependent > 5
+|||--- Class: Accepted
+||--- Income per dependent <= 5
+|||--- Class: Not Accepted
+|--- Number of derogatory reports > 0
+||--- Age > 35
+|||--- Class: Accepted
+||--- Age <= 35
+|||--- Class: Not Accepted
+
+This tree provides a basic framework for classifying credit applications. Real-world applications would require more sophisticated analysis, potentially including additional features and more nuanced thresholds determined through data analysis techniques such as cross-validation to prevent overfitting.
+
+
+#########################
+
+
+Here's a Python function implementing the decision tree:
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether an application for credit is accepted or not based on a decision tree.
+
+    Args:
+    X (dict): A dictionary containing the features of the applicant.
+             The keys should match the feature names exactly, including case and punctuation.
+
+    Returns:
+    prediction (int): 1 if the application is predicted to be accepted, 0 otherwise.
+    nodes (list): A list of boolean values representing the truth values of the inner nodes.
+                  1 indicates the condition was satisfied, 0 otherwise.
+    """
+
+    # Initialize the list to store the truth values of the inner nodes
+    nodes = 2 * [None]
+
+    # First split: Number of derogatory reports <= 0
+    nodes[0] = X['Derogatory.reports'] <= 0
+
+    # Second split, based on the outcome of the first split
+    if nodes[0]:
+        # If no derogatory reports, further split based on income per dependent > 5
+        nodes[1] = X['Income.per.dependent'] > 5
+    else:
+        # If there are derogatory reports, further split based on age > 35
+        nodes[1] = X['Age'] > 35
+
+    # Make the prediction based on the splits
+    if nodes[0]:
+        # No derogatory reports
+        if nodes[1]:
+            # High income per dependent
+            prediction = 1  # Application accepted
+        else:
+            # Lower income per dependent
+            prediction = 0  # Application not accepted
+    else:
+        # Derogatory reports present
+        if nodes[1]:
+            # Older age, potentially more time to recover from past issues
+            prediction = 1  # Application accepted
+        else:
+            # Younger age, less time to recover or establish credit history
+            prediction = 0  # Application not accepted
+
+    # Convert boolean values in nodes to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+
+
+# Example usage:
+applicant_features = {
+    'Age': 30,
+    'Income.per.dependent': 6,
+    'Monthly.credit.card.exp': 500,
+    'Own.home': 1,
+    'Self.employed': 0,
+    'Derogatory.reports': 0
+}
+
+prediction, nodes = predict(applicant_features)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+
+```
+
+This function implements the decision tree as described earlier, using the provided features to make a prediction about whether an application for credit is accepted or not. The `nodes` list contains the truth values of the inner nodes in the decision tree, which can be useful for understanding how the prediction was made.

@@ -1,0 +1,107 @@
+To build a decision tree classifier with a maximum depth of 2 that classifies whether a company is solvent or not based on the provided financial features, we first need to understand the importance of each feature. However, without specific data or a method to determine feature importance (like mutual information, correlation analysis, or recursive feature elimination), I'll proceed by selecting features that are commonly considered significant in financial analyses related to solvency.
+
+1. **Earnings Before Interest and Taxes/Total Assets (EBIT/TA)**: This ratio indicates a company's profitability from its operations, ignoring the effects of financing and taxation. Higher values suggest better operational efficiency.
+2. **Net Income/Total Capital**: Reflects a company's ability to generate earnings from its capital. A higher ratio is generally seen as positive for solvency.
+3. **Equity/Total Liabilities (E/TPL)**: This ratio measures the extent to which shareholder equity can cover total liabilities in case of business cessation. Higher values indicate lower insolvency risk.
+
+Given these features, a simplified decision tree with a maximum depth of 2 might look like this:
+
+- **Root Node**: Equity/Total Liabilities (E/TPL)
+    - **Condition**: E/TPL <= 1
+        - **Left Child**: This condition suggests that the company's equity may not sufficiently cover its liabilities. We'll further evaluate based on another critical metric:
+            - **Net Income/Total Capital**:
+                - **Condition**: Net Income/Total Capital <= 0.1 (assuming a threshold where below this value indicates poor profitability)
+                    - **Class**: Insolvent
+                - **Condition**: Net Income/Total Capital > 0.1
+                    - **Class**: Solvent but at risk (due to the primary condition of E/TPL <= 1)
+    - **Condition**: E/TPL > 1
+        - **Right Child**: Indicates a healthier balance between equity and liabilities.
+            - **Earnings Before Interest and Taxes/Total Assets (EBIT/TA)**:
+                - **Condition**: EBIT/TA <= 0.05 (assuming this threshold indicates low operational profitability)
+                    - **Class**: Solvent but underperforming
+                - **Condition**: EBIT/TA > 0.05
+                    - **Class**: Solvent
+
+**Decision Tree:**
+
+|--- Equity/Total Liabilities <= 1
+||--- Net Income/Total Capital <= 0.1
+|||--- class: Insolvent
+||--- Net Income/Total Capital > 0.1
+|||--- class: Solvent but at risk
+|--- Equity/Total Liabilities > 1
+||--- EBIT/TA <= 0.05
+|||--- class: Solvent but underperforming
+||--- EBIT/TA > 0.05
+|||--- class: Solvent
+
+**Note:** The thresholds used (e.g., 1 for Equity/Total Liabilities, 0.1 for Net Income/Total Capital, and 0.05 for EBIT/TA) are hypothetical examples. Real-world application would require analysis of actual financial data to determine meaningful thresholds that distinguish between solvent and insolvent companies effectively. This decision tree is simplified and intended for illustrative purposes rather than direct application in financial analysis without further refinement and validation.
+
+
+#########################
+
+
+Here is a Python function that implements the decision tree for predicting company solvency based on financial features. The thresholds used are examples and may need to be adjusted based on actual data analysis.
+
+```python
+def predict_solvency(X: dict):
+    """
+    Predicts whether a company is solvent or not based on its financial features.
+    
+    Parameters:
+    X (dict): Dictionary containing the financial features of the company.
+        - 'EBIT/TA': Earnings Before Interest and Taxes/Total Assets
+        - 'NI/TC': Net Income/Total Capital
+        - 'Sales/TA': Sales/Total Assets
+        - 'EBIT/Sales': Earnings Before Interest and Taxes/Sales
+        - 'NI/Sales': Net Income/Sales
+        - 'WC/TA': Working Capital/Total Assets
+        - 'Equity/TL': Equity/Total Liabilities
+        - 'Equity/TA': Equity/Total Assets
+    
+    Returns:
+    prediction (int): 1 if the company is predicted to be solvent, 0 otherwise.
+    nodes (list): List of boolean values representing the truth values of the inner nodes.
+    """
+    
+    # Initialize nodes list with None
+    nodes = 2 * [None]
+    
+    # Node 1: Equity/Total Liabilities <= 1.5
+    nodes[0] = X['Equity/TL'] <= 1.5
+    
+    # Node 2: Net Income/Total Capital <= 0.1 (only evaluated if node 1 is True)
+    if nodes[0]:
+        nodes[1] = X['NI/TC'] <= 0.1
+    else:
+        nodes[1] = False  # This node is not relevant if node 1 is False
+    
+    # Make prediction based on the nodes
+    if not nodes[0]:  # Equity/TL > 1.5, company is likely solvent
+        prediction = 1
+    elif nodes[1]:  # NI/TC <= 0.1, company may be insolvent
+        prediction = 0
+    else:  # NI/TC > 0.1, company is likely solvent but at risk
+        prediction = 1
+    
+    return prediction, [int(node) for node in nodes]
+```
+
+You can use this function by passing a dictionary containing the financial features of the company:
+
+```python
+features = {
+    'EBIT/TA': 0.15,
+    'NI/TC': 0.12,
+    'Sales/TA': 2.5,
+    'EBIT/Sales': 0.06,
+    'NI/Sales': 0.04,
+    'WC/TA': 0.1,
+    'Equity/TL': 1.8,
+    'Equity/TA': 0.6
+}
+
+prediction, nodes = predict_solvency(features)
+print(f'Prediction: {prediction}')
+print(f'Nodes: {nodes}')
+```

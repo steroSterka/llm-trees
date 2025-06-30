@@ -1,0 +1,112 @@
+To induce a decision tree classifier based on the given features for determining which boxer won each round, we'll follow these steps:
+
+1. **Feature Selection**: Identify the most important features that contribute to the classification of who won the round.
+2. **Tree Construction**: Use the selected features to construct a decision tree with a maximum depth of 2.
+
+Given Features:
+- Judge (G. Hamada / B. Logist / J. Roth / HBO-Lederman / Sportsticker / Los Angeles Times-Kawakami / USA Today / Associated Press / Las Vegas Review-Journal / Los Angeles Times-Springer / van de Wiele)
+- Official judge (yes / no)
+- Round (1 to 12)
+
+### Step 1: Feature Selection
+
+For simplicity and due to the lack of specific data on how each feature influences the outcome, we'll consider "Judge" and "Round" as potentially impactful features since they directly relate to the scoring and progression of the fight. The "Official judge" feature might be important but could be less influential in a tree with a maximum depth of 2 due to its binary nature.
+
+### Step 2: Tree Construction
+
+Let's construct a simple decision tree based on these assumptions:
+
+1. **Root Node**: Judge
+   - This is because different judges may have different scoring biases or tendencies that significantly affect the outcome.
+   
+2. **Decision at Root Node**:
+   - For certain judges (e.g., G. Hamada, B. Logist), if their scores are critical in deciding rounds, we might see a split based on these judges' identities.
+   - Let's assume judges like HBO-Lederman and USA Today tend to favor Trinidad due to some pattern in scoring aggressive fighters higher.
+   - Judges like Los Angeles Times-Kawakami and Las Vegas Review-Journal might lean towards de la Hoya for being more technical.
+
+3. **Left Child Node**: If Judge is one that typically favors Trinidad (e.g., HBO-Lederman, USA Today), 
+   - Then check Round: if Round <= 6, classify as Trinidad.
+     - Early rounds might favor the more aggressive fighter.
+   - Else (Round > 6), classify as de la Hoya.
+     - Later rounds could see a shift towards the more technical fighter.
+
+4. **Right Child Node**: If Judge is one that typically favors de la Hoya or does not clearly favor Trinidad,
+   - Then check Round: if Round <= 3, classify as Trinidad.
+     - Early aggression might still pay off initially.
+   - Else (Round > 3), classify as de la Hoya.
+     - The technical advantage becomes more apparent as the fight progresses.
+
+### Decision Tree:
+
+|--- Judge is HBO-Lederman or USA Today
+||--- Round <= 6
+|||--- class: Trinidad
+||--- Round > 6
+|||--- class: de la Hoya
+|--- Judge is not HBO-Lederman or USA Today (e.g., favors de la Hoya or neutral)
+||--- Round <= 3
+|||--- class: Trinidad
+||--- Round > 3
+|||--- class: de la Hoya
+
+This tree is a simplified example and does not account for the complexity of real-world boxing matches, such as fighters' conditions, strategies, and how they adapt throughout the fight. Real data on judges' scoring tendencies, fighter performance metrics (like punch count, defense, etc.), and other relevant factors would be necessary to build an accurate decision tree classifier.
+
+
+#########################
+
+
+Based on the provided decision tree structure and features, here's how you can format it as a Python function:
+
+```python
+def predict(X: dict):
+    """
+    Predict which of the two boxing fighters won each round based on the given features.
+
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - 'Judge': Judge (0 = G. Hamada, 1 = B. Logist, 2 = J. Roth, 3 = HBO-Lederman, 4 = Sportsticker, 
+                     5 = Los Angeles Times-Kawakami, 6 = USA Today, 7 = Associated Press, 8 = Las Vegas Review-Journal, 
+                     9 = Los Angeles Times-Springer, 10 = van de Wiele)
+        - 'Official': Official judge (1 = Yes, 0 = No)
+        - 'Round': Round (1 to 12)
+
+    Returns:
+    prediction (int): The predicted winner of the round (0 = Trinidad, 1 = de la Hoya).
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+
+    # Initialize nodes
+    nodes = 2 * [None]
+
+    # Node 0: Check if Judge is one that typically favors Trinidad (e.g., HBO-Lederman or USA Today)
+    nodes[0] = X['Judge'] in [3, 6]  # HBO-Lederman or USA Today
+
+    # Node 1: Check Round
+    nodes[1] = X['Round'] <= 6
+
+    # Make prediction based on nodes
+    if nodes[0]:
+        # If Judge favors Trinidad, predict Trinidad if Round is early (<= 6), otherwise predict de la Hoya
+        prediction = 0 if nodes[1] else 1
+    else:
+        # If Judge does not favor Trinidad, predict Trinidad if Round is very early (<= 3), otherwise predict de la Hoya
+        prediction = 0 if X['Round'] <= 3 else 1
+
+    # Convert boolean values in nodes to integers (True -> 1, False -> 0)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+
+# Example usage:
+features = {
+    'Judge': 3,  # HBO-Lederman
+    'Official': 1,  # Yes
+    'Round': 5
+}
+
+prediction, nodes = predict(features)
+print(f"Predicted winner: {'Trinidad' if prediction == 0 else 'de la Hoya'}")
+print(f"Inner node values: {nodes}")
+```
+
+This function takes a dictionary `X` containing the features as input and returns the predicted winner of the round along with the truth values of the inner nodes. The decision tree logic is implemented based on the provided structure, using the Judge and Round features to make predictions.

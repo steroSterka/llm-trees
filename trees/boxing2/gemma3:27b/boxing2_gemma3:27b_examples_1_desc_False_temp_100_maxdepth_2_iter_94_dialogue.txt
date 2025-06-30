@@ -1,0 +1,119 @@
+Okay, I understand. Let's build a decision tree classifier to predict the round winner (Trinidad or de la Hoya) based on the boxing features you provide.  I'll follow your structure and limit the depth to 2.
+
+**Important Considerations & My Approach:**
+
+* **Feature Importance:** Since I don't have training data to *calculate* importance, I'll make an *informed assumption* about which features are likely most predictive in boxing rounds.  I believe:
+    1. **Round:** Later rounds often see shifts in momentum and fatigue, heavily influencing who wins.
+    2. **Judge:**  Different judges have different scoring preferences and biases.
+    3. **Official Judge:** Knowing if a judge is an official scorer vs. a media scorer is crucial, as official judges' scores directly determine the outcome.
+
+* **Depth Limitation:** A depth of 2 means we'll have a root node, potentially two branches from that node, and then potentially branches from *those* branches, ending in the predicted class (Trinidad or de la Hoya).
+
+* **Splitting Logic:** I'll aim for splits that seem intuitively sensible in the context of boxing.  I'll make decisions about thresholds (e.g., Round > 6) based on what would logically divide the data.
+
+**Here's the Decision Tree:**
+
+```
+|--- Round <= 6
+|   |--- Official Judge == yes
+|   |   |--- class: Trinidad  (Early rounds often favor aggressive fighters like Trinidad)
+|   |--- Official Judge == no
+|   |   |--- class: de la Hoya (Media scores often lean towards technical skill, and de la Hoya was known for that)
+|--- Round > 6
+|   |--- Judge == G. Hamada
+|   |   |--- class: Trinidad (Hamada was known for favoring Trinidad)
+|   |--- Judge != G. Hamada
+|   |   |--- class: de la Hoya (Most judges tended to favor de la Hoya later in the fight)
+```
+
+**Explanation:**
+
+1. **Root Node: Round <= 6:**  The first split is based on the round number. The logic is that earlier rounds are often more chaotic, favoring aggressive fighters like Felix Trinidad.
+
+2. **Left Branch (Round <= 6):**
+   * **Official Judge == yes:**  If it's an early round *and* a score is coming from an official judge, I predict Trinidad won.  Official judges in early rounds are more likely to reward aggression.
+   * **Official Judge == no:**  If it's an early round and the score is from a media source, I predict De La Hoya won. Media outlets often reward technical skill.
+
+3. **Right Branch (Round > 6):**
+   * **Judge == G. Hamada:** If it's a later round and the judge is G. Hamada, I predict Trinidad won. G. Hamada was a notable judge who often favored Trinidad.
+   * **Judge != G. Hamada:** If it's a later round and the judge is not G. Hamada, I predict de la Hoya won. Many judges favored De La Hoya due to his technical abilities.
+
+**Important Disclaimer:**
+
+This decision tree is based on *assumptions* about boxing scoring and judge preferences. It *cannot* be considered an accurate predictor without being trained on a large dataset of round-by-round scores and judge data.  A real machine learning model would *learn* these preferences from the data.
+
+**To improve this, I need:**
+
+* **Training Data:** A dataset of rounds, judges, and the actual winner of each round.
+* **More Features:** Any other information that might be relevant, such as punches landed, punch types, or fighter activity levels.
+
+
+
+#########################
+
+
+```python
+def predict(X: dict):
+    """
+    Predicts the round winner (Trinidad/de la Hoya) based on a decision tree.
+
+    Args:
+        X (dict): A dictionary containing the feature values.
+
+    Returns:
+        tuple: A tuple containing the prediction (0 for Trinidad, 1 for de la Hoya) 
+               and a list of boolean values representing the truth values of the 
+               inner nodes.
+    """
+
+    nodes = [None, None]  # Initialize list to store node truth values
+
+    # Node 1: Round <= 6
+    nodes[0] = X["Round"] <= 6
+
+    # Node 2: Official Judge == Yes
+    if nodes[0]:
+        nodes[1] = X["Official"] == 1
+    else:
+        nodes[1] = X["Judge"] == 0  #Hamada is 0
+
+    # Prediction
+    if nodes[0]:  # Round <= 6
+        if nodes[1]:  # Official Judge == Yes
+            prediction = 0  # Trinidad
+        else:
+            prediction = 1  # de la Hoya
+    else:  # Round > 6
+        if X["Judge"] == 0:  # Judge == G. Hamada
+            prediction = 0  # Trinidad
+        else:
+            prediction = 1  # de la Hoya
+
+    return prediction, nodes
+```
+
+**Explanation:**
+
+1.  **Feature Access:** The function accesses feature values from the input dictionary `X` using the correct keys ("Round", "Official", "Judge").
+2.  **Node Logic:**  I've translated the decision tree into Python code, implementing the conditional checks for each node.
+3.  **Truth Value List:** The `nodes` list stores the boolean result of each node condition, in the order they're evaluated (Node 1, Node 2).
+4.  **Prediction:** The code determines the final prediction based on the results of the node conditions, as outlined in the decision tree.
+5.  **Return Value:** The function returns the prediction (0 or 1) and the `nodes` list.
+6.  **Hamada is 0:** The code checks if the judge is Hamada and assigns him the number 0.
+
+**Example Usage:**
+
+```python
+# Example data
+data = {
+    "Judge": 0,
+    "Official": 1,
+    "Round": 3
+}
+
+prediction, nodes = predict(data)
+print(f"Prediction: {prediction}")  # Output: Prediction: 0
+print(f"Nodes: {nodes}")  # Output: Nodes: [True, True]
+```
+
+This code accurately implements the decision tree as a Python function and provides the requested output format. Remember that the quality of the predictions depends on the logic of the tree itself and the relevance of the features. A real-world model would require training on a dataset to learn the optimal tree structure and parameters.

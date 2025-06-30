@@ -1,0 +1,769 @@
+<think>
+
+Okay, so I need to build a decision tree classifier with a maximum depth of 2 using the provided financial features to predict whether a company went bankrupt or not. The features given are:
+
+1. Working Capital/Total Assets
+2. Retained Earnings/Total Assets
+3. Earnings Before Interest and Tax/Total Assets
+4. Sales/Total Assets
+5. Book Value of Equity/Book Value of Liabilities
+
+First, I should recall how decision trees work. The idea is to split the data based on the feature that provides the most information gain or the best split according to some criterion like Gini impurity or entropy. Since the user didn't specify which criterion to use, I'll assume Gini impurity is the default here, as it's commonly used.
+
+The maximum depth is 2, so the tree can have at most two levels of splitting after the root. That means one root node, then up to two child nodes, and each of those can have up to two children, but since depth is 2, the leaves can only be at depth 2. Wait, actually, the depth counts the number of splits from the root. So a maximum depth of 2 means the root is depth 1, then splits into two children (depth 2). So the leaves would be at depth 2. Therefore, the tree can have up to three levels: root, splits once, then splits again on each child, but since depth is 2, each branch can only have one split after the root. Wait, no. Let me clarify:
+
+The depth of a tree is the number of edges on the longest path from the root to a leaf. So if the maximum depth is 2, that means the root is depth 0, then splits into depth 1 nodes, and then each of those can split again into depth 2 nodes, which are leaves. So a depth of 2 allows for two layers of splits. Wait, maybe the way the example was given uses depth as the number of splits. In the iris example, the first split is the root, then the next splits are children. The depth in the example might be counting the depth from the root. The example has depth 2 because the second split (like petal width > 0.80) leads to another split at depth 2. Hmm.
+
+In any case, the user wants a maximum depth of 2, so the tree can have at most two splits from the root. So the structure would be:
+
+- Root node (first split)
+  - Child node (second split or leaf)
+  - Another child node (second split or leaf)
+
+Wait, perhaps the depth is the number of edges from root to leaf. So maximum depth of 2 means the deepest path from root to leaf is two edges. So the tree can have two levels of splits. So the root splits into two children, each of which can split again, so those grandchildren would be at depth 2, and the leaves can be at depth 2. So maximum depth is 2, meaning the leaves are at depth 2. So the tree can have up to four leaves (if each split branches twice), but maybe only two splits total.
+
+Alternatively, maybe the user is using depth as the number of layers. The example given for the iris has a depth of 3? Let me check the example provided:
+
+The example decision tree for iris:
+
+|--- petal width (cm) <= 0.80
+||--- class: setosa
+|--- petal width (cm) > 0.80
+||--- petal width (cm) <= 1.75
+|||--- class: versicolor
+||--- petal width (cm) > 1.75
+|||--- class: virginica
+
+Here, the root is petal width <=0.8. Then, if yes, it's a leaf (depth 1 split). If no, then splits again on petal width <=1.75. So the maximum depth here is 2 splits from the root (depth 2). So in that case, the maximum depth refers to the number of splits, so depth 2 allows for two splits. So in the problem's case, we need to have a tree with at most two splits, so each path from root to leaf has at most two splits. So the root splits, then each child can split once more, leading to leaves at depth 2. So the structure would be:
+
+Root split (depth 1)
+├─ Left child (split again at depth 2, leading to leaves)
+│  ├─ Leaf (depth 2)
+│  └─ Leaf (depth 2)
+└─ Right child (split again at depth 2, leading to leaves)
+   ├─ Leaf (depth 2)
+   └─ Leaf (depth 2)
+
+Alternatively, maybe only one of the children splits again, but that would make the maximum depth 2. Wait, perhaps it's better to structure it as the root, then each first split's children can either be leaves or split again, but the total depth can't exceed 2. So the tree can have up to two levels of splits. So each path from root to leaf can have up to two splits, so two levels of nodes after the root.
+
+Anyway, the key is to choose the best features to split on first and then again on the next level, ensuring we don't go beyond depth 2.
+
+Now, the features are all ratios. The target variable is Bankruptcy (Yes/No).
+
+First step: Determine which feature is the best first split. To do this, I need to know which feature provides the most information gain. Since I don't have the actual data, I have to make assumptions based on common bankruptcy prediction features.
+
+Common financial ratios used in bankruptcy prediction:
+
+- Working Capital/Total Assets: Measures liquidity. Lower values may indicate higher risk.
+- Retained Earnings/Total Assets: Negative retained earnings might indicate poor performance.
+- Earnings Before Interest and Tax/Total Assets (ROA): Low ROA could signal trouble.
+- Sales/Total Assets (Asset Turnover): High sales relative to assets is good, low might be bad.
+- Book Value of Equity/Book Value of Liabilities: If this ratio is low (close to zero or negative), it indicates high leverage and possible insolvency.
+
+So, based on bankruptcy prediction models like Altman's Z-Score or Ohlson's O-Score, certain ratios are more important. For example, Ohlson's model uses operating cash flow, days sales outstanding, etc., but here the given features might have some key indicators.
+
+Among the given features, perhaps "Book Value of Equity/Book Value of Liabilities" is a critical one because if the book value of equity is much lower than liabilities, the company might be near bankruptcy. Alternatively, "Retained Earnings/Total Assets" could be important because negative retained earnings indicate losses.
+
+Alternatively, "Earnings Before Interest and Tax/Total Assets" (ROA) being very low might be a key indicator. 
+
+But since I have to choose the best first feature to split on, perhaps "Book Value of Equity/Book Value of Liabilities" is the most critical. Let me think.
+
+Suppose we split first on "Book Value of Equity/Book Value of Liabilities". If this ratio is below a certain threshold, say 0.5, that might indicate higher risk. But maybe the split would be on whether it's positive or negative. However, book value of equity can't be negative (since it's book value), but if equity is less than liabilities, the ratio would be less than 1. Wait, the ratio is Book Value of Equity divided by Book Value of Liabilities. So if this ratio is less than 1, equity is less than liabilities, which is a sign of insolvency. So perhaps a threshold around 0.5 or 1.0.
+
+Alternatively, maybe "Working Capital/Total Assets" is a liquidity measure. A negative working capital could be bad. So if Working Capital/Total Assets is below zero, that's a red flag.
+
+Alternatively, "Retained Earnings/Total Assets" being negative (indicating cumulative losses) might be a strong predictor.
+
+Assuming that I have to choose the best first split, perhaps "Retained Earnings/Total Assets" is critical. Let me think of typical scenarios.
+
+Suppose a company with very low or negative retained earnings (Retained Earnings/TA < threshold) is more likely to go bankrupt. Similarly, a low ROA (Earnings/TA) could indicate problems.
+
+Alternatively, maybe "Sales/Total Assets" is a measure of efficiency. If sales are low relative to assets, maybe the company isn't generating enough revenue.
+
+But without data, I need to make an educated guess.
+
+Alternatively, in Altman's Z-Score, the variables include Working Capital/Total Assets, Retained Earnings/Total Assets, EBIT/Total Assets, Market Value of Equity/Total Liabilities, and Sales/Total Assets. So in that model, Working Capital/TA and Retained Earnings/TA are important, but the others too.
+
+Since the user wants a decision tree with maximum depth 2, I need to choose the top two features that are most important.
+
+Alternatively, perhaps I should structure the decision tree as follows, making logical splits.
+
+Let me consider that the first split could be on "Book Value of Equity/Book Value of Liabilities". Suppose the threshold is 0.5. If the ratio is <=0.5, the company might be more likely to go bankrupt. Then, the second split could be on another feature, like "Retained Earnings/Total Assets".
+
+Alternatively, first split on "Retained Earnings/Total Assets" at a threshold of, say, -0.1 (indicating negative retained earnings). Then, for those with negative retained earnings, check another feature like "Working Capital/Total Assets" to determine bankruptcy.
+
+Alternatively, first split on "Working Capital/Total Assets" at 0 (if negative working capital is bad), then split on "Earnings Before Interest and Tax/Total Assets".
+
+Alternatively, perhaps the first split is on "Book Value of Equity/Book Value of Liabilities" since that's a direct measure of solvency. Let me go with that as the root.
+
+Suppose the first split is:
+
+Book Value of Equity/Book Value of Liabilities <= 0.5 → Bankrupt (since equity is much less than liabilities)
+
+Wait, but the split needs to go to further splits. Wait, with a depth of 2, the first split is the root, then each child can split again once. So the structure would be:
+
+Root: Feature A <= Threshold
+
+If yes → split again on Feature B
+
+If no → split again on Feature C
+
+But actually, each branch can choose different features for the next split.
+
+Alternatively, it might be better to choose the best feature for the first split, then the best features for the next splits in each branch.
+
+Alternatively, to maximize the information gain, but without data, I have to make an educated guess.
+
+Let me think of possible splits step by step.
+
+First, choose the first feature to split on. Let's assume that the most important feature is "Book Value of Equity/Book Value of Liabilities" (let's call it BVE/BVL). Suppose the threshold is 0.5. So:
+
+Root node splits on BVE/BVL <= 0.5
+
+If yes (<=0.5), then the company might be more likely to go bankrupt. But since we can split again, perhaps in that branch, we split on another feature, like Retained Earnings/TA (RET/TA). 
+
+Alternatively, the "yes" branch could just be classified as Bankrupt, and the "no" branch splits again.
+
+Wait, but to reach depth 2, each path must have at most two splits. Wait, the depth is the maximum number of splits from root to leaf. So if the first split leads to a leaf, that's depth 1, but the maximum allowed is depth 2, so each path must have two splits. Wait, maybe not. The maximum depth is 2, so the tree can have paths with two splits (depth 2) or one split (depth 1). But the user probably wants all leaves at depth 2. So the tree must split twice on every path. So the root splits into two children, each of which must split again. So four leaves in total, each at depth 2.
+
+Therefore, the structure must have:
+
+Root split (first feature)
+
+Left child splits again on another feature (second split)
+
+Right child splits again on another feature (second split)
+
+Therefore, each path from root to leaf has two splits (depth 2).
+
+Hence, the first split is the root, then each child is split again on a different feature.
+
+So the first split needs to be the most important feature, then the next splits on the next important features in each branch.
+
+Alternatively, perhaps the first split is on the most important feature, then the next splits on the next most important features, but depending on the branch.
+
+Alternatively, perhaps the first split is on BVE/BVL, then in the left branch (those with BVE/BVL <= threshold), split on another feature like EBIT/TA, and in the right branch (BVE/BVL > threshold), split on another feature like Sales/TA.
+
+Alternatively, let's try to structure it step by step.
+
+First, choose the first feature as BVE/BVL (Book Value Equity over Liabilities). Suppose the threshold is 0.5.
+
+So:
+
+Root: BVE/BVL <= 0.5 ?
+
+If yes: go to left child, which then splits on another feature, say EBIT/TA (Earnings Before Interest and Tax over Total Assets).
+
+Suppose the next split on EBIT/TA is whether it's <= 0 (meaning negative earnings). 
+
+If EBIT/TA <=0 → Bankrupt (Yes)
+
+Else → Not Bankrupt (No)
+
+On the right branch (BVE/BVL >0.5), maybe split on another feature like Working Capital/TA (WC/TA). Suppose the threshold is 0. 
+
+If WC/TA <=0 → Bankrupt (since negative working capital is bad)
+
+Else → Not Bankrupt.
+
+Alternatively, maybe the right branch splits on Retained Earnings/TA (RET/TA) with a threshold of -0.1.
+
+If RET/TA <= -0.1 → Bankrupt, else Not.
+
+Alternatively, let me think through possible thresholds and splits.
+
+Alternatively, perhaps the first split is on Retained Earnings/TA (RET/TA), since negative retained earnings indicate accumulated losses. Suppose the threshold is 0.
+
+Root: RET/TA <=0 ?
+
+If yes (RET/TA is negative), then split further on BVE/BVL.
+
+Suppose in the left branch (RET negative), split on BVE/BVL <= 0.5 → Bankrupt, else Not.
+
+In the right branch (RET positive), split on EBIT/TA > some threshold (like 0.05) → Not Bankrupt, else Bankrupt.
+
+Hmm, but need to make sure that the splits make sense.
+
+Alternatively, here's a possible structure:
+
+First, split on BVE/BVL (Book Value Equity over Liabilities) at threshold 0.5.
+
+Left branch (BVE/BVL <=0.5):
+
+Then split on EBIT/TA (Earnings over Assets) at 0. So if EBIT is negative, then Bankrupt. Otherwise, maybe Not? Or another threshold.
+
+Wait, but if BVE/BVL is low, even if EBIT is positive, maybe the company is still at risk. Hmm, perhaps the split on EBIT/TA could be at a higher threshold?
+
+Alternatively, in the left branch (BVE/BVL <=0.5), the next split could be on Working Capital/TA (WC/TA) at 0. So if WC/TA is negative, then Bankrupt, else Not.
+
+Right branch (BVE/BVL >0.5):
+
+Then split on Retained Earnings/TA (RET/TA) at 0. If negative, then maybe Bankrupt, else Not.
+
+Alternatively, since BVE/BVL is healthy, even if Retained Earnings are negative, maybe it's not bankrupt yet.
+
+Alternatively, in the right branch, split on Sales/TA (Sales over Assets) at a threshold like 0.2. If Sales are low, then Bankrupt.
+
+Hmm, I'm not sure, but this is speculative.
+
+Alternatively, let's think of the most critical features first.
+
+Another approach: The first split should be on the feature that gives the best separation between the classes. Suppose among all features, "Book Value of Equity/Book Value of Liabilities" has the highest information gain. Then split on that. Then, the next splits on the next important features in each branch.
+
+Alternatively, maybe the first split is on "Working Capital/Total Assets" because liquidity is critical. Suppose the threshold is 0. If Working Capital is negative (WC/TA <=0), then more likely bankrupt.
+
+Then, in the left branch (WC negative), split on another feature like BVE/BVL <=0.5 → Bankrupt, else maybe Not.
+
+In the right branch (WC positive), split on EBIT/TA, maybe whether it's positive or not.
+
+Alternatively, let's try to construct a plausible tree.
+
+Let me try this structure:
+
+Root: "Book Value of Equity/Book Value of Liabilities" <= 0.5 ?
+
+Left branch (<=0.5):
+
+Split on "Retained Earnings/Total Assets" <= -0.1 ?
+
+Left-left: Retained Earnings are also negative → Bankrupt (Yes)
+
+Left-right: Retained Earnings >-0.1 → Not Bankrupt (No)
+
+Right branch (>0.5):
+
+Split on "Earnings Before Interest and Tax/Total Assets" <= 0.05 ?
+
+Right-left: Low EBIT → Bankrupt (Yes)
+
+Right-right: Higher EBIT → Not Bankrupt (No)
+
+This way, the tree has a maximum depth of 2. Each path from root to leaf has two splits.
+
+Alternatively, perhaps the splits are as follows:
+
+First split on "Retained Earnings/Total Assets" <= -0.1 ?
+
+Left (<=-0.1): Split on "Book Value of Equity/Book Value of Liabilities" <= 0.5 → Bankrupt (left-left), else Not (left-right)
+
+Right (> -0.1): Split on "Earnings Before Interest and Tax/Total Assets" <= 0.05 → Bankrupt (right-left), else Not (right-right)
+
+Alternatively, the exact thresholds are arbitrary without data, but the structure should make sense.
+
+Alternatively, the first split is on "Working Capital/Total Assets" <=0 ?
+
+Left (negative WC): Split on "Book Value of Equity/Book Value of Liabilities" <=0.5 → Bankrupt (left-left), else Not (left-right)
+
+Right (positive WC): Split on "Earnings Before Interest and Tax/Total Assets" <=0.05 → Bankrupt (right-left), else Not (right-right)
+
+This also makes sense.
+
+Alternatively, let me think of the most straightforward:
+
+Root feature: Book Value of Equity/Book Value of Liabilities (BVE/BVL) ≤ 0.5?
+
+- If yes (BVE is ≤50% of liabilities), then the next split could be on Working Capital (WC/TA) ≤0 (negative working capital):
+
+   - If yes → Bankrupt (left-left)
+
+   - If no → Not Bankrupt (left-right)
+
+- If no (BVE/BVL >0.5), then split on EBIT/TA ≤0.05 (low earnings):
+
+   - If yes → Bankrupt (right-left)
+
+   - If no → Not Bankrupt (right-right)
+
+This structure ensures that even if BVE is okay, but EBIT is too low, it might still be Bankrupt, while high BVE and good EBIT is safe.
+
+Another possibility is:
+
+Root: Retained Earnings/TA ≤ -0.1?
+
+- If yes → Split on BVE/BVL ≤0.5 → Bankrupt (left-left), else Not (left-right)
+
+- If no → Split on EBIT/TA >0.1 → Not Bankrupt (right-right), else Bankrupt (right-left)
+
+Alternatively, without overcomplicating, perhaps the first split is on BVE/BVL, then on EBIT/TA.
+
+Alternatively, I think the key is to choose features that are logically connected. Since I need to present a plausible decision tree with max depth 2, I'll go with the following structure:
+
+First split on the most critical solvency measure: Book Value of Equity over Liabilities (BVE/BVL) ≤ 0.5?
+
+- Left branch (BVE/BVL ≤0.5): Split on Working Capital/TA (WC/TA) ≤0?
+
+   - Yes → Bankrupt (WC negative, low equity → high risk)
+
+   - No → Not Bankrupt (even though BVE is low, WC is positive, maybe manageable)
+
+- Right branch (BVE/BVL >0.5): Split on EBIT/TA ≤0.05 (low profitability)?
+
+   - Yes → Bankrupt (even with good equity, low earnings might lead to bankruptcy)
+
+   - No → Not Bankrupt (good equity and sufficient earnings)
+
+Alternatively, the EBIT/TA threshold could be higher, like 0.1, but 0.05 is a low but positive threshold.
+
+Alternatively, if EBIT/TA is positive, then it's safer.
+
+This structure makes logical sense. The first split checks solvency (equity vs liabilities). If solvency is low (BVE/BVL ≤0.5), then check liquidity (WC/TA). If liquidity is also bad (negative WC), then Bankrupt. Else, maybe not.
+
+If solvency is okay (BVE/BVL >0.5), then check profitability (EBIT/TA). If profitability is too low (≤0.05), then Bankrupt, else Not.
+
+This seems reasonable.
+
+Alternatively, the second split on the right branch could be on Retained Earnings (RET/TA) instead of EBIT. Let me think:
+
+If BVE is okay, but retained earnings are negative (accumulated losses), then maybe Bankrupt.
+
+So:
+
+Right branch split on RET/TA ≤-0.1?
+
+   - If yes → Bankrupt
+
+   - If no → Not
+
+This could also be good.
+
+I think either is plausible. Since the user might expect the most straightforward, I'll proceed with the first version.
+
+Therefore, the decision tree would be structured as follows:
+
+Root: Book Value of Equity/Book Value of Liabilities ≤ 0.5 ?
+
+   Yes → Left Child: Split on Working Capital/Total Assets ≤0 ?
+
+      Yes → Bankrupt (Yes)
+
+      No → Not Bankrupt (No)
+
+   No → Right Child: Split on Earnings Before Interest and Tax/Total Assets ≤0.05 ?
+
+      Yes → Bankrupt (Yes)
+
+      No → Not Bankrupt (No)
+
+Alternatively, the thresholds can be adjusted, but these are logical.
+
+Alternatively, to make it even more clear, maybe the first split on BVE/BVL at 0.5, then on the left, split on WC/TA at 0, and on the right split on EBIT/TA at 0 (instead of 0.05). Let me see:
+
+Right branch: if EBIT/TA ≤0 (negative earnings), then Bankrupt, else Not.
+
+This is simpler.
+
+So the tree would be:
+
+Root split: BVE/BVL ≤0.5 ?
+
+Left branch (BVE low):
+
+   Split WC/TA ≤0 ?
+
+      Yes → Bankrupt
+
+      No → Not
+
+Right branch (BVE okay):
+
+   Split EBIT/TA ≤0 ?
+
+      Yes → Bankrupt
+
+      No → Not
+
+This is a simpler structure and maybe more logical since if EBIT is negative, even with good equity, the company might be heading towards bankruptcy.
+
+Therefore, this is probably a better choice.
+
+Thus, the final decision tree would be:
+
+1. Start at root: Is (Book Value of Equity / Book Value of Liabilities) ≤ 0.5?
+
+   - If Yes → Go to left child.
+
+      - Check if (Working Capital / Total Assets) ≤ 0?
+
+         - If Yes → Classify as Bankrupt (Yes).
+
+         - If No → Classify as Not Bankrupt (No).
+
+   - If No → Go to right child.
+
+      - Check if (Earnings Before Interest and Tax / Total Assets) ≤ 0?
+
+         - If Yes → Classify as Bankrupt (Yes).
+
+         - If No → Classify as Not Bankrupt (No).
+
+This structure has a maximum depth of 2 and uses the key features logically.
+</think>
+
+Here's a decision tree with a maximum depth of 2 to determine bankruptcy status, using logical splits based on key financial metrics:
+
+### Decision Tree Structure:
+
+#### **Root Node:**
+**Feature:** Book Value of Equity / Book Value of Liabilities (BVE/BVL) ≤ 0.5?  
+- **Threshold:** 0.5  
+
+---
+
+### **Left Branch (BVE/BVL ≤ 0.5):**  
+**Decision:** Low solvency (Equity is ≤50% of liabilities).  
+**Next Split:**  
+**Feature:** Working Capital / Total Assets (WC/TA) ≤ 0?  
+- **Threshold:** 0  
+
+  - **Left-Left Node (WC/TA ≤ 0):**  
+    **Decision:** Negative working capital → **Bankrupt (Yes)**.  
+  - **Left-Right Node (WC/TA > 0):**  
+    **Decision:** Positive working capital → **Not Bankrupt (No)**.  
+
+---
+
+### **Right Branch (BVE/BVL > 0.5):**  
+**Decision:** Sufficient solvency (Equity >50% of liabilities).  
+**Next Split:**  
+**Feature:** Earnings Before Interest and Tax / Total Assets (EBIT/TA) ≤ 0?  
+- **Threshold:** 0  
+
+  - **Right-Left Node (EBIT/TA ≤ 0):**  
+    **Decision:** Negative profitability → **Bankrupt (Yes)**.  
+  - **Right-Right Node (EBIT/TA > 0):**  
+    **Decision:** Positive profitability → **Not Bankrupt (No)**.  
+
+---
+
+### **Summary Table:**
+| Pathway                                                                 | Bankruptcy Status |
+|-------------------------------------------------------------------------|-------------------|
+| BVE/BVL ≤ 0.5 AND WC/TA ≤ 0                                             | **Yes**           |
+| BVE/BVL ≤ 0.5 AND WC/TA > 0                                             | **No**            |
+| BVE/BVL > 0.5 AND EBIT/TA ≤ 0                                           | **Yes**           |
+| BVE/BVL > 0.5 AND EBIT/TA > 0                                           | **No**            |
+
+---
+
+### **Key Logic:**
+1. **Root Split (BVE/BVL):**  
+   - Prioritizes solvency (ability to cover liabilities with equity).  
+   - A BVE/BVL ≤ 0.5 indicates potential insolvency, prompting further checks.
+
+2. **Left Branch (Low Solvency):**  
+   - Checks **working capital** (liquidity). Negative WC signals immediate liquidity issues → bankruptcy.  
+
+3. **Right Branch (Sufficient Solvency):**  
+   - Checks **profitability** (EBIT/TA). Negative earnings despite good equity suggests unsustainable losses → bankruptcy.  
+
+This structure ensures a clear, two-step decision process aligned with financial health indicators.
+
+
+#########################
+
+
+<think>
+Okay, I need to create a Python function based on the provided decision tree structure for predicting company bankruptcy. The user mentioned formatting the decision tree as a function that returns a prediction and a list of node truth values. The features given are WC/TA, RE/TA, EBIT/TA, S/TA, BVE/BVL, and the target is 'target' (0 or 1).
+
+First, I should figure out the structure of the decision tree. The example provided had a depth of 2, so maybe this one is similar. But the user didn't specify the exact tree structure here. Wait, the user's instruction says "format this decision tree as a Python function" but they didn't provide the actual tree. Hmm, maybe I need to infer the tree based on the features and their typical usage in bankruptcy prediction models. Oh right, the user also mentioned that if there are placeholders for thresholds, fill them with meaningful values. So I need to make educated guesses on the splits.
+
+Common financial ratios used in bankruptcy prediction (like Altman's Z-Score) might use similar features. Let me think: WC/TA (Working Capital/Total Assets) – a higher ratio indicates better short-term liquidity. Maybe a threshold here could be something like 0.2? If it's below, it's bad. 
+
+RE/TA (Retained Earnings/Total Assets) – Retained earnings are profits not distributed to shareholders. A lower ratio might indicate financial trouble. Maybe a threshold of 0.05?
+
+EBIT/TA (Earnings before interest and tax over Total Assets) – higher is better. Maybe a threshold like 0.03?
+
+S/TA (Sales/Total Assets) – higher indicates efficiency. Maybe 1.5?
+
+BVE/BVL (Book Value Equity over Liabilities) – if this is below 1, equity is less than liabilities, which is risky. Maybe threshold 1.0?
+
+Assuming a simple decision tree structure. Let's suppose the tree has a root node splitting on WC/TA. If WC/TA <= 0.2, then check another feature, say RE/TA. If that's also low, predict bankruptcy (1). Else, maybe another split. Alternatively, maybe the first split is on EBIT/TA. Let me try to construct a plausible tree.
+
+Alternatively, maybe the first split is on EBIT/TA. Suppose if EBIT/TA <= 0.03, then go to the next node. Let's say the next node is S/TA. If S/TA <= 1.5, then predict 1 (bankrupt). Otherwise, maybe check another feature. But since the example had depth 2, maybe the tree is two layers. Let's think of a two-level tree.
+
+Wait, the example had two nodes (depth 2, so nodes 0 and 1). So perhaps the root is the first node (index 0), and the second node (index1) is a child of the first. Let's structure it like that.
+
+Let me try to build a possible tree. Let's say the root is EBIT/TA <= 0.03. If yes (so condition is true, nodes[0] is 1), then check another condition, say WC/TA <= 0.2. If that's also true, predict 1. Else maybe 0. If the first condition is false (EBIT/TA >0.03), then maybe predict 0. But I need to structure it such that the nodes list has entries for each inner node.
+
+Alternatively, let's try another approach. Suppose the first split is on WC/TA. Let's say the root node is WC/TA <= 0.2. If yes, then check RE/TA. If RE/TA <= 0.05, predict 1. Else, maybe 0. If WC/TA >0.2, then check another feature like BVE/BVL. But since the example had depth 2, maybe the second level only has one node. Hmm, need to make sure the nodes list has entries for each internal node. 
+
+Alternatively, maybe the decision tree is structured as:
+
+Root node: EBIT/TA <= 0.03 → if true, go left (node 1), else right (node 2? but the example's nodes were 2 elements, so maybe depth 2 with 2 nodes total?)
+
+Wait the example had nodes array of size 2, which for depth 2 (root and one child), so two nodes. So in the example, the first node is the root, the second is the left child. The right path may not have a node? Or perhaps the nodes array includes all internal nodes, not leaves. 
+
+In the example, nodes[0] is the root condition, nodes[1] is the left child's condition. Then the prediction is based on those. So in our case, let's design a similar structure. Let's choose two features for splitting. Let's say the first split is on BVE/BVL. Suppose if BVE/BVL <= 1, then the company is at risk. So root node is BVE/BVL <= 1.0 → nodes[0]. Then, if that's true, check another feature like EBIT/TA. Suppose the next node (nodes[1]) is EBIT/TA <= 0.03. If both are true, predict 1. Else maybe 0.
+
+Alternatively, let's try to construct a plausible tree. Since I need to make up the thresholds, I have to pick values that make sense. Let's try:
+
+Root node (node 0): WC/TA <= 0.2. If yes, then check RE/TA (node 1) <=0.05 → predict 1. If node 0 is true but node1 is false, maybe predict 0. If node0 is false (WC/TA>0.2), then maybe predict 0. 
+
+Wait but then the nodes array would have two entries. Let me see:
+
+def predict(X):
+    nodes = [None, None]
+    nodes[0] = X['WC/TA'] <= 0.2
+    nodes[1] = X['RE/TA'] <= 0.05
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1
+        else:
+            prediction = 0
+    else:
+        prediction = 0
+
+    return prediction, nodes
+
+But then if WC/TA is above 0.2, it's safe. If WC is low, then check RE. If RE is also low, predict bankrupt (1). Else, 0. That makes sense. 
+
+Alternatively, maybe the second node is a different feature. Like after WC/TA is low, check EBIT/TA. Let me think of another structure. Suppose the root is EBIT/TA <= 0.03. Then if that's true (bad), check S/TA. Suppose S/TA <= 1.2 → predict 1. 
+
+Another possibility. Let me pick features that are commonly used. Since the user provided the keys, I need to use those. 
+
+Alternatively, perhaps the first split is on BVE/BVL. Let's say BVE/BVL <=1.0 (since if equity is less than liabilities, that's a bad sign). So nodes[0] = X['BVE/BVL'] <=1.0. If that's true (bad), then check another feature like EBIT/TA. Suppose the next node (node1) is EBIT/TA <=0.02. If both are true, predict 1. Else, maybe 0. 
+
+Alternatively, the second node could be something like S/TA. Let me pick numbers that make sense. 
+
+I think I need to pick thresholds that are plausible. For example, WC/TA being below 0.2 might indicate low liquidity. EBIT/TA below 0.03 (3%) might indicate low profitability. 
+
+Alternatively, maybe the root is S/TA (Sales over Total Assets) because high sales are good. So if S/TA is below a threshold like 1.0, then it's bad. 
+
+But since the user didn't specify the tree structure, I have to make a reasonable guess. Let's go with the first idea where the root is WC/TA and the second split is RE/TA. Let me write the code for that.
+
+Wait but the example function's nodes list has the same length as the number of internal nodes. Since in a depth-2 tree, there are two internal nodes (root and one child), so the nodes list has two entries. 
+
+Another possible structure: Root is EBIT/TA <=0.03 → node0. If yes, then node1 is WC/TA <=0.2 → if both true, predict 1 else 0. Else (node0 is false), predict 0. 
+
+Alternatively, the code could look like:
+
+def predict(X):
+    nodes = [None, None]
+    nodes[0] = X['EBIT/TA'] <= 0.03
+    nodes[1] = X['WC/TA'] <= 0.2
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1
+        else:
+            prediction = 0
+    else:
+        prediction = 0
+
+    return prediction, nodes
+
+But what's the logic here? If EBIT is low (<=0.03), then check WC. If WC is also low, then bankrupt. Else, maybe not. 
+
+Alternatively, maybe the second node is a different feature. Like after EBIT is low, check BVE/BVL. 
+
+Alternatively, let's try a different approach. Suppose the first split is on BVE/BVL. If BVE/BVL <=1.0 → node0 is true, then check another feature like S/TA. Suppose S/TA <=1.0 → node1. If both are true, predict 1. 
+
+Alternatively, the root is BVE/BVL, and the next node is WC/TA. 
+
+I think I need to pick a structure and thresholds that make sense, even if it's an arbitrary choice. 
+
+Let me go with the following structure:
+
+Root node (node0): WC/TA <= 0.2 → if yes, then go to node1 (RE/TA <= 0.05). If both are true → predict 1. If node0 is true but node1 is false → predict 0. If node0 is false (WC/TA>0.2), predict 0. 
+
+This way, the code would be:
+
+def predict(X: dict):
+    nodes = 2 * [None]
+    nodes[0] = X["WC/TA"] <= 0.2
+    nodes[1] = X["RE/TA"] <= 0.05
+    
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1
+        else:
+            prediction = 0
+    else:
+        prediction = 0
+
+    return prediction, nodes
+
+Wait but maybe the second condition should be on another feature. Like if WC is low, then check EBIT. Let me see. 
+
+Alternatively, maybe after WC/TA is low, check EBIT/TA. So node1 is EBIT/TA <=0.03. 
+
+Then:
+
+nodes[0] = WC/TA <=0.2 → if yes, check nodes[1] = EBIT/TA <=0.03 → if both yes → bankrupt (1). 
+
+So code:
+
+def predict(X):
+    nodes = [None]*2
+    nodes[0] = X['WC/TA'] <= 0.2
+    nodes[1] = X['EBIT/TA'] <= 0.03
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction =1
+        else:
+            prediction =0
+    else:
+        prediction =0
+    return prediction, nodes
+
+This might be better because if WC is low but EBIT is okay (so EBIT/TA is above 0.03), then maybe not bankrupt. But if both are low, then yes.
+
+Alternatively, the second node could be S/TA. Like if WC is low, but sales are high, maybe it's okay. 
+
+Hmm, perhaps using EBIT makes sense. 
+
+Alternatively, the root could be on BVE/BVL. Let's try that:
+
+root: BVE/BVL <=1 → node0. If yes (bad), then check another feature like RE/TA <=0.05 (node1). If both true → predict 1. 
+
+So code:
+
+def predict(X):
+    nodes = [None]*2
+    nodes[0] = X['BVE/BVL'] <= 1.0
+    nodes[1] = X['RE/TA'] <=0.05
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction =1
+        else:
+            prediction=0
+    else:
+        prediction=0
+    return prediction, nodes
+
+This also makes sense. If equity is less than liabilities (BVE/BVL <1), and retained earnings are low, then bankrupt. 
+
+Which of these is better? Since the user didn't specify, I have to choose. I'll go with BVE/BVL first since that seems like a critical ratio. 
+
+Alternatively, let's think of another structure where the root is EBIT/TA. 
+
+Suppose:
+
+nodes[0] = EBIT/TA <=0.03 → if yes (low profitability), check WC/TA.
+
+nodes[1] = WC/TA <=0.2 → if yes, then predict 1. 
+
+So code would be:
+
+def predict(X):
+    nodes = [None]*2
+    nodes[0] = X['EBIT/TA'] <=0.03
+    nodes[1] = X['WC/TA'] <=0.2
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction =1
+        else:
+            prediction=0
+    else:
+        prediction=0
+    return prediction, nodes
+
+This way, if EBIT is low AND WC is low → bankrupt. 
+
+Hmm, any of these could work. Since the user wants the code, I think I need to pick one. Let's pick the first structure I thought of with WC/TA and RE/TA. 
+
+Wait, the example used two features (HbA1c and blood glucose). So in the example, the root was HbA1c, then blood glucose. 
+
+So following that pattern, maybe the first split is on a key indicator like EBIT/TA, then another on WC/TA. 
+
+Alternatively, the first split is on the most important feature. 
+
+Alternatively, let me look for common features in bankruptcy prediction models. 
+
+Altman's Z-Score uses Working Capital/Total Assets (WC/TA), Retained Earnings/Total Assets (RE/TA), EBIT/TA, MVE/TL (Market Value of Equity over Total Liabilities), and Sales/TA. Since we have WC/TA, RE/TA, EBIT/TA, S/TA, and BVE/BVL (which is similar to BVE/BVL being equity over liabilities). 
+
+BVE/BVL is equity over liabilities. If that's less than 1, equity is less than liabilities, which is a bad sign. 
+
+Perhaps the first split is on BVE/BVL <=1.0. Then, if that's true, check another feature like EBIT/TA. 
+
+So:
+
+nodes[0] = BVE/BVL <=1 → bad equity. 
+
+nodes[1] = EBIT/TA <=0.02 → low profitability. 
+
+If both, predict 1. 
+
+Alternatively, the second node could be WC/TA. 
+
+So, let's go with that:
+
+def predict(X):
+    nodes = [None, None]
+    nodes[0] = X['BVE/BVL'] <=1.0
+    nodes[1] = X['EBIT/TA'] <=0.02
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction =1
+        else:
+            prediction =0
+    else:
+        prediction =0
+    return prediction, nodes
+
+But what thresholds to choose? Let me think: For EBIT/TA, a threshold of 0.02 (2%) might be low. 
+
+Alternatively, maybe 0.03. 
+
+Alternatively, maybe the second condition is S/TA. 
+
+Alternatively, the second condition could be RE/TA. 
+
+This is a bit arbitrary, but I need to pick. 
+
+Alternatively, let me think of another approach. Let's pick the first two features in the list. The user provided the features in the order WC/TA, RE/TA, EBIT/TA, S/TA, BVE/BVL. 
+
+So maybe first split on WC/TA, then RE/TA. 
+
+So code as before:
+
+def predict(X):
+    nodes = [None]*2
+    nodes[0] = X['WC/TA'] <=0.2
+    nodes[1] = X['RE/TA'] <=0.05
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction =1
+        else:
+            prediction =0
+    else:
+        prediction =0
+    return prediction, nodes
+
+This is simple and uses the first two features. 
+
+Alternatively, maybe the second node is a different feature. 
+
+Alternatively, the root could be on S/TA. 
+
+Suppose nodes[0] is S/TA <=1.0 (if sales are low relative to assets), then check another feature. 
+
+But I think that's less intuitive. 
+
+Given the time I've spent, I'll proceed with the first structure I thought of with WC/TA and RE/TA, using thresholds of 0.2 and 0.05. 
+
+Wait, but let me check if those numbers make sense. 
+
+WC/TA ratio: working capital is current assets minus current liabilities. WC/TA being below 0.2 means that the working capital is 20% of total assets. That might be low, but depends on the industry. 
+
+RE/TA is retained earnings over total assets. A low ratio could indicate insufficient retained earnings. 
+
+Alternatively, maybe setting the threshold for RE/TA at 0.05 (5%) is reasonable. 
+
+Alternatively, perhaps 0.1 (10%). 
+
+But I think the exact threshold isn't critical as long as it's a plausible number. 
+
+Thus, I'll proceed with the code as follows. 
+
+Another check: In the example given by the user, the nodes were HbA1c and blood glucose. The structure was if node0 (HbA1c) is true, then check node1 (blood glucose). 
+
+So in this case, following the same structure, using two features with their thresholds, the code is acceptable. 
+
+Therefore, I think this should be the answer.
