@@ -3,14 +3,15 @@
 class Config:
 
     root = "." # Root directory for the project
-    dataset = "irish"  # Set the dataset name here
+    dataset = "heart_h"  # Set the dataset name here
     # method = "gpt-4o"  # Set the method here (options: "gpt-4o", "gpt-o1", "gemini", "claude")
+
+    method = "llama3.1:70b"
 
     # method = "llama3.1:70b" #done
     # method = "gemma3:27b" done
     # method="qwq:32b-fp16" #done
     # method = "deepseek-r1:70b" #done
-    method = "llama3.3:70b"
     
     tree_file = ""            # << Muss gesetzt werden beim Einlesen eines Baums
     dataset_name = "irish"     # << Wird von postprocess benötigt
@@ -26,7 +27,7 @@ class Config:
     train_split = 0.67 # Train/test split ratio
 
     # embedding settings
-    classifier = "mlp" # Downstream classifier
+    classifier = "classification" # Downstream classifier
     append_raw_features = True # Append raw features to the embeddings
 
     # LLM prompting settings
@@ -39,7 +40,7 @@ class Config:
     use_role_prompt = False  # Use role-based prompts for the LLM
 
     # Additional settings
-    num_trees = 5
+    num_trees = 100
     seed = 42
     generate_tree_if_missing = True
     regenerating_invalid_trees = True
