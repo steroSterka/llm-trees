@@ -1,0 +1,139 @@
+To build a decision tree classifier with a maximum depth of 2 for determining whether a horse colic lesion is surgical or not, we first need to identify the most important features from the given dataset. Since the actual dataset values are not provided, I'll guide you through a general approach using Python and its libraries, pandas for data manipulation and scikit-learn for machine learning tasks.
+
+Given the complexity and the number of features, it's essential to select the most relevant ones before training the model. We will assume that the `surgery` feature is our target variable (yes/no indicating surgical or not), and all other features are potential predictors.
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.metrics import accuracy_score
+
+# Assuming df is your DataFrame with all the features and 'surgery' as the target
+df = pd.read_csv('your_data.csv')
+
+# Separate features (X) from the target variable (y)
+X = df.drop('surgery', axis=1)
+y = df['surgery']
+
+# Convert categorical variables into numerical variables
+X = pd.get_dummies(X, drop_first=True)
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Select K best features according to the ANOVA F-value
+selector = SelectKBest(f_classif, k=5)  # Choosing top 5 features for simplicity
+X_train_selected = selector.fit_transform(X_train, y_train)
+X_test_selected = selector.transform(X_test)
+
+# Train a decision tree classifier with max depth of 2
+clf = DecisionTreeClassifier(max_depth=2, random_state=42)
+clf.fit(X_train_selected, y_train)
+
+# Make predictions on the test set
+y_pred = clf.predict(X_test_selected)
+
+# Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Model Accuracy: {accuracy}")
+
+# To visualize or understand the decision tree, you can use sklearn's tree.plot_tree
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10,8))
+plot_tree(clf, filled=True, feature_names=X.columns.values[selector.get_support(indices=True)], class_names=['Not Surgical', 'Surgical'])
+plt.show()
+```
+
+**Note:** 
+1. The actual implementation might require adjustments based on the specifics of your dataset (e.g., handling missing values, encoding categorical variables).
+2. Feature selection is a critical step; this example uses `SelectKBest` with ANOVA F-value for simplicity and assumes that the top 5 features are most relevant.
+3. Decision trees can be prone to overfitting, especially when dealing with many features or complex interactions. Regularization techniques (like pruning) or ensemble methods might improve performance.
+
+Without access to your specific dataset, this example provides a general framework for building a decision tree classifier. Remember to adjust the feature selection method and the parameters of the decision tree based on your dataset's characteristics and the problem's requirements.
+
+
+#########################
+
+
+Here is the Python function that implements a decision tree of depth 2 to predict whether a horse colic lesion is surgical or not:
+
+```python
+def predict_horse_colic(X: dict):
+    """
+    Predicts whether a horse colic lesion is surgical or not based on given features.
+
+    Args:
+        X (dict): A dictionary containing the feature values.
+            - 'rectal_temperature': Rectal Temperature (°C)
+            - 'pulse': Pulse (beats per minute)
+            - 'respiratory_rate': Respiratory Rate (breaths per minute)
+            - 'temp_extremities': Temperature of Extremities (1 = cold, 2 = cool, 3 = normal, 4 = warm)
+            - 'peripheral_pulse': Strength of Peripheral Pulse (1 = absent, 2 = increased, 3 = normal, 4 = reduced)
+            - 'mucous_membranes': Appearance of Mucous Membranes (1 = bright pink, 2 = bright red, 3 = dark cyanotic, 4 = normal pink, 5 = pale cyanotic, 6 = pale pink)
+            - 'capillary_refill_time': Capillary Refill Time (0 = more than 3 seconds, 1 = less than 3 seconds, 2 = missing, 3 = meaning unknown)
+            - 'pain': Degree of Pain (1 = alert, 2 = continuous severe pain, 3 = depressed, 4 = intermittent mild pain, 5 = intermittent severe pain)
+            - 'peristalsis': peristalsis (1 = absent, 2 = hypermotile, 3 = hypomotile, 4 = normal)
+            - 'abdominal_distension': Abdominal Distension (1 = moderate, 2 = none, 3 = severe, 4 = slight)
+            - 'nasogastric_tube': Nasogastric Tube (1 = none, 2 = significant, 3 = slight)
+            - 'nasogastric_reflux': Nasogastric Reflux (0 = more then 1 liter, 1 = less then 1 liter, 2 = missing, 3 = none)
+            - 'nasogastric_reflux_PH': Nasogastric Reflux pH
+            - 'rectal_examination': Rectal Examination Findings (1 = absent, 2 = decreased, 3 = increased, 4 = normal)
+            - 'abdomen': Abdomen Appearance (1 = distended large, 2 = distended small, 3 = firm feces in large intestine, 4 = normal, 5 = other)
+            - 'packed_cell_volume': Packed Cell Volume (%)
+            - 'total_protein': Total Protein (g/dl)
+            - 'abdominocentesis_appearance': Abdominocentesis Appearance (1 = clear, 2 = cloudy, 3 = serosanguinous)
+            - 'abdomcentesis_total_protein': Abdominocentesis Total Protein (g/dl)
+
+    Returns:
+        tuple: A tuple containing the prediction (0 = no surgery, 1 = surgery) and a list of node values.
+    """
+
+    nodes = 2 * [None]
+    # Node 0: Check if abdominal distension is severe
+    nodes[0] = X['abdominal_distension'] == 3
+    
+    # Node 1: Check if rectal examination findings are increased
+    nodes[1] = X['rectal_examination'] == 3
+
+    prediction = 0  # Default to no surgery
+    
+    # If abdominal distension is severe and rectal examination findings are increased, predict surgery
+    if nodes[0] and nodes[1]:
+        prediction = 1
+    
+    # Convert boolean node values to integers (1 for True, 0 for False)
+    node_values = [int(node) for node in nodes]
+
+    return prediction, node_values
+
+
+# Example usage:
+X = {
+    'rectal_temperature': 38.5,
+    'pulse': 40,
+    'respiratory_rate': 24,
+    'temp_extremities': 3,
+    'peripheral_pulse': 2,
+    'mucous_membranes': 4,
+    'capillary_refill_time': 1,
+    'pain': 5,
+    'peristalsis': 1,
+    'abdominal_distension': 3,  # Severe abdominal distension
+    'nasogastric_tube': 2,
+    'nasogastric_reflux': 0,
+    'nasogastric_reflux_PH': 5.5,
+    'rectal_examination': 3,  # Increased rectal examination findings
+    'abdomen': 1,
+    'packed_cell_volume': 35,
+    'total_protein': 6.2,
+    'abdominocentesis_appearance': 3,
+    'abdomcentesis_total_protein': 4.5
+}
+
+prediction, node_values = predict_horse_colic(X)
+print(f"Prediction: {prediction}")
+print(f"Node values: {node_values}")
+```

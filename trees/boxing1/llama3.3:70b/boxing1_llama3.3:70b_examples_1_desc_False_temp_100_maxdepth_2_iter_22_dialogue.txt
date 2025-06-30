@@ -1,0 +1,98 @@
+To build a decision tree classifier for determining which boxer won each round based on the provided features, we'll follow these steps:
+
+1. **Feature Selection**: Since the task involves classifying rounds won by either Lewis or Holyfield, and given the features are about judges and rounds, the most relevant features would likely be "Judge" and "Round". The feature "Offical judge" might also play a role but seems less directly influential compared to the others.
+
+2. **Decision Tree Construction**: We aim for a tree with a maximum depth of 2, meaning we can have one main decision node (root) that splits into two child nodes, each of which can further split once more if necessary.
+
+Given the nature of the features:
+- "Judge" is categorical and could influence the outcome based on individual biases or scoring tendencies.
+- "Round" is numerical and might reflect a pattern in how fights progress, with some rounds potentially being more decisive than others due to fatigue or strategic adjustments.
+- "Offical judge" is binary and indicates whether the judge's decision contributes to the official outcome.
+
+Here's a hypothetical decision tree that could classify which boxer won each round based on these features:
+
+|--- Judge == HBO-Lederman / ESPN
+||--- Round <= 6
+|||--- class: Lewis (assuming early rounds favor the more aggressive fighter, which is often subjective and dependent on actual fight dynamics)
+||--- Round > 6
+|||--- class: Holyfield (potentially benefiting from late-round endurance or strategic adjustments)
+
+|--- Judge != HBO-Lederman / ESPN
+||--- Offical judge == yes
+|||--- class: Lewis (official judges might favor a certain style or performance metric more aligned with Lewis's strategy)
+||--- Offical judge == no
+|||--- class: Holyfield (non-official judges, like those from specific media outlets, might have different criteria that could favor Holyfield)
+
+This decision tree is speculative and based on hypothetical interpretations of the features. In a real-world scenario:
+- **Actual Data Analysis**: You would need to analyze the scoring patterns, fighter strategies, and judge tendencies from past fights or training data.
+- **Feature Engineering**: Possibly creating new features like "average score given by judges in early rounds" or "difference in scores between official and non-official judges."
+- **Model Training**: The decision tree classifier would be trained on a dataset where each instance represents a round, with the target variable being which fighter won that round.
+
+Keep in mind, this example is simplified and intended to illustrate how one might approach building a decision tree for classifying rounds in a boxing match. Real-world applications require more detailed data analysis and potentially complex modeling approaches.
+
+
+#########################
+
+
+Here is the Python function representing the decision tree:
+
+```python
+def predict(X: dict):
+    """
+    Predict which boxer won a round based on Judge and Round features.
+
+    Args:
+    X (dict): A dictionary containing the input features.
+        - 'Judge': The judge evaluating the round (0-9).
+        - 'Official': Whether the judge is an official judge (1 = Yes, 0 = No).
+        - 'Round': The round number (1-12).
+
+    Returns:
+    tuple: A tuple containing the predicted winner and a list of node truth values.
+        - prediction (int): The predicted winner (1 = Lewis, 0 = Holyfield).
+        - nodes (list): A list of boolean values representing the conditions at each inner node.
+    """
+
+    # Initialize nodes with None
+    nodes = 2 * [None]
+    
+    # Node 0: Check if the judge is HBO-Lederman or ESPN
+    nodes[0] = X['Judge'] in [3, 8]  # 3 = HBO-Lederman, 8 = ESPN
+    
+    # Node 1: Check if the round is less than or equal to 6
+    nodes[1] = X['Round'] <= 6
+
+    prediction = None
+    if nodes[0]:
+        # If judge is HBO-Lederman or ESPN, predict based on round
+        if nodes[1]:
+            # Early rounds favor Lewis
+            prediction = 1
+        else:
+            # Late rounds favor Holyfield
+            prediction = 0
+    else:
+        # If judge is not HBO-Lederman or ESPN, predict based on official status
+        if X['Official'] == 1:  # Official judge
+            prediction = 1  # Favor Lewis for official judges
+        else:
+            prediction = 0  # Favor Holyfield for non-official judges
+
+    return prediction, [int(node) for node in nodes]
+```
+
+This function takes a dictionary `X` as input and returns the predicted winner of a round along with a list of boolean values representing the conditions at each inner node. The decision tree is constructed based on the provided features and target variable encoding.
+
+Example usage:
+
+```python
+input_features = {
+    'Judge': 3,  # HBO-Lederman
+    'Official': 1,  # Official judge
+    'Round': 5
+}
+
+prediction, nodes = predict(input_features)
+print(f"Predicted winner: {prediction}")
+print(f"Node truth values: {nodes}")
+```

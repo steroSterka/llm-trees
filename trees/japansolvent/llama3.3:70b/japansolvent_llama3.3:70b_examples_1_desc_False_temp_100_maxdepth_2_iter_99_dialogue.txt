@@ -1,0 +1,103 @@
+To induce a decision tree classifier that determines whether a company is solvent or not based on the given financial features, we will follow these steps:
+
+1. **Select the Most Important Features**: The most relevant features for determining solvency are typically those directly related to profitability, leverage, and liquidity. Among the provided features:
+   - **Earnings Before Interest and Taxes/Total Assets (EBIT/TA)**: Reflects a company's profitability relative to its assets.
+   - **Net Income/Total Capital**: Shows how efficiently a company generates net income from its capital.
+   - **Equity/Total Liabilities**: Indicates the level of leverage, with higher ratios suggesting lower debt and potentially better solvency.
+
+2. **Build the Decision Tree**:
+   Given the requirement for a maximum depth of 2, we will focus on the two most critical features that can split our data effectively into solvent and non-solvent companies. We'll choose **EBIT/TA** as the first feature because it directly reflects profitability, and then **Equity/Total Liabilities** as the second feature due to its relevance to solvency through leverage.
+
+3. **Decision Tree Structure**:
+   - At the root node (Depth 1), we split based on **EBIT/TA**.
+     - A higher ratio suggests better profitability and potentially lower risk of insolvency. Let's assume a threshold value for EBIT/TA, say > 0.10, indicates good profitability.
+   - For companies with **EBIT/TA <= 0.10**, we further split based on **Equity/Total Liabilities** at Depth 2.
+     - A higher ratio here suggests better solvency due to lower leverage. Let's assume a threshold of > 1.00 indicates good solvency.
+
+4. **Decision Tree**:
+   ```
+   |--- EBIT/TA > 0.10
+   ||--- class: Solvent
+   |--- EBIT/TA <= 0.10
+   ||--- Equity/Total Liabilities > 1.00
+   |||--- class: Solvent
+   ||--- Equity/Total Liabilities <= 1.00
+   |||--- class: Non-Solvent
+   ```
+
+This tree suggests that companies with EBIT/TA above 0.10 are considered solvent due to their profitability. For those below this threshold, having an equity to total liabilities ratio above 1.00 (indicating more equity than debt) is crucial for being classified as solvent; otherwise, they're classified as non-solvent.
+
+**Note**: The specific threshold values used here are hypothetical and would need to be determined based on actual data analysis or financial expertise. In practice, you would use a dataset of companies with known solvency status to train the decision tree model, allowing it to learn the optimal split points for each feature.
+
+
+#########################
+
+
+Here's a Python function that implements the decision tree for predicting company solvency based on financial features. This function takes in a dictionary `X` containing the feature values and returns a tuple with the predicted target value (0 for insolvent, 1 for solvent) and a list of truth values representing the inner nodes.
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a company is solvent based on financial features.
+    
+    Parameters:
+    X (dict): A dictionary containing feature values.
+        - 'EBIT/TA': Earnings Before Interest and Taxes/Total Assets
+        - 'NI/TC': Net Income/Total Capital
+        - 'Sales/TA': Sales/Total Assets
+        - 'EBIT/Sales': Earnings Before Interest and Taxes/Sales
+        - 'NI/Sales': Net Income/Sales
+        - 'WC/TA': Working Capital/Total Assets
+        - 'Equity/TL': Equity/Total Liabilities
+        - 'Equity/TA': Equity/Total Assets
+    
+    Returns:
+    tuple: A tuple containing the predicted target value (0 for insolvent, 1 for solvent)
+           and a list of truth values representing the inner nodes.
+    """
+    
+    # Initialize nodes with None
+    nodes = 2 * [None]
+    
+    # Node 0 condition: EBIT/TA > 0.05 (indicating good profitability)
+    nodes[0] = X['EBIT/TA'] > 0.05
+    
+    # If the company has poor profitability, check its leverage
+    if not nodes[0]:
+        # Node 1 condition: Equity/TL > 0.8 (indicating low debt and potentially better solvency)
+        nodes[1] = X['Equity/TL'] > 0.8
+    else:
+        # If the company has good profitability, we don't need to check its leverage for this prediction
+        nodes[1] = True
+    
+    # Make prediction based on node conditions
+    if nodes[0]:
+        prediction = 1  # Company is likely solvent due to good profitability
+    elif nodes[1]:
+        prediction = 1  # Despite poor profitability, the company's low debt suggests it might still be solvent
+    else:
+        prediction = 0  # Poor profitability and high debt suggest insolvency
+    
+    # Convert boolean node values to integers (1 for True, 0 for False)
+    nodes = [int(node) if node is not None else None for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+X = {
+    'EBIT/TA': 0.08,
+    'NI/TC': 0.2,
+    'Sales/TA': 1.5,
+    'EBIT/Sales': 0.05,
+    'NI/Sales': 0.03,
+    'WC/TA': 0.2,
+    'Equity/TL': 0.9,
+    'Equity/TA': 0.6
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This code defines a decision tree with two inner nodes based on the `EBIT/TA` and `Equity/TL` features. The predicted target value (solvent or insolvent) is determined by the conditions at these nodes, with threshold values chosen to reflect common financial analysis practices. Note that you may need to adjust these thresholds based on your specific dataset and requirements.

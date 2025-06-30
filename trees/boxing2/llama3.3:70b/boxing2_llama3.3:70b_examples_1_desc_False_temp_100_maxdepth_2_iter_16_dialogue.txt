@@ -1,0 +1,133 @@
+To build a decision tree that classifies which of the two boxing fighters (Trinidad or de la Hoya) won each round based on the given features, we'll need to follow these steps:
+
+1. **Feature Selection**: Since the actual dataset isn't provided, I'll describe how you can approach this with your data.
+2. **Decision Tree Construction**: We will conceptually construct a decision tree using the most important features.
+
+Given Features:
+- Judge
+- Official judge (yes / no)
+- Round (1 to 12)
+
+### Step 1: Feature Selection
+
+To select the most important features, you would typically use techniques like mutual information, correlation analysis, or recursive feature elimination. However, without access to your dataset, we'll assume that all features have some relevance but vary in importance.
+
+- **Judge**: This could be a very influential feature since different judges might have different scoring tendencies.
+- **Official judge (yes / no)**: This might not be as influential if the decision is based more on the subjective judgment of who won each round, rather than the official status of the judge.
+- **Round (1 to 12)**: The round number could influence the outcome due to factors like fighter fatigue or strategy changes mid-fight.
+
+### Step 2: Decision Tree Construction
+
+Given that we want a maximum depth of 2 and assuming `Judge` is the most influential feature in determining who won each round, our decision tree might look something like this:
+
+```
+|--- Judge == G. Hamada
+||--- Round <= 6
+|||--- class: Trinidad
+||--- Round > 6
+|||--- class: de la Hoya
+
+|--- Judge != G. Hamada
+||--- Official judge == yes
+|||--- class: Trinidad
+||--- Official judge == no
+|||--- class: de la Hoya
+```
+
+Or, if `Round` is considered more critical in the first split:
+
+```
+|--- Round <= 6
+||--- Judge == HBO-Lederman
+|||--- class: Trinidad
+||--- Judge != HBO-Lederman
+|||--- class: de la Hoya
+
+|--- Round > 6
+||--- Official judge == yes
+|||--- class: de la Hoya
+||--- Official judge == no
+|||--- class: Trinidad
+```
+
+### Important Notes:
+- The above trees are conceptual and based on assumptions since the actual data is not provided.
+- In practice, you would use a decision tree classifier from a library like scikit-learn in Python to build the tree. You can specify the `max_depth` parameter to control the depth of the tree.
+- Feature importance can be evaluated using methods such as permutation feature importance or through the `feature_importances_` attribute if you're using a `DecisionTreeClassifier` or `RandomForestClassifier` from scikit-learn.
+
+To implement this in Python, you might do something like:
+
+```python
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+
+# Assuming X is your feature matrix and y is your target vector
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+clf = DecisionTreeClassifier(max_depth=2, random_state=42)
+clf.fit(X_train, y_train)
+
+# Evaluate the model
+accuracy = clf.score(X_test, y_test)
+print(f"Accuracy: {accuracy:.3f}")
+```
+
+Remember, this is a simplified example. Real-world applications require careful data preprocessing, feature engineering, and model tuning for optimal performance.
+
+
+#########################
+
+
+Here's a Python function that represents the decision tree for predicting which of the two boxing fighters won each round. The tree has a maximum depth of 2 and uses the features 'Judge', 'Official', and 'Round'.
+
+```python
+def predict(X: dict):
+    """
+    Predicts which of the two boxing fighters won each round based on a decision tree.
+
+    Args:
+        X (dict): A dictionary containing the input features.
+            - Judge (int): The judge's ID (0 = G. Hamada, 1 = B. Logist, ..., 10 = van de Wiele)
+            - Official (int): Whether the judge is official (1 = Yes, 0 = No)
+            - Round (int): The round number (1 to 12)
+
+    Returns:
+        tuple: A tuple containing the predicted outcome and a list of node values.
+            - prediction (int): The predicted winner (0 = Trinidad, 1 = de la Hoya)
+            - nodes (list): A list of boolean values representing the inner nodes
+    """
+
+    # Initialize the nodes list with None values
+    nodes = 2 * [None]
+
+    # Define the conditions for each node
+    nodes[0] = X["Judge"] == 3  # HBO-Lederman is a key judge
+    nodes[1] = X["Round"] <= 6  # Early rounds might favor one fighter
+
+    # Make predictions based on the node values
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 0  # Trinidad might have an advantage in early rounds with HBO-Lederman
+        else:
+            prediction = 1  # de la Hoya might gain momentum in later rounds with HBO-Lederman
+    else:
+        if X["Official"] == 1:  # Official judges might favor one fighter
+            prediction = 0  # Trinidad might be favored by official judges
+        else:
+            prediction = 1  # de la Hoya might be favored by non-official judges
+
+    return prediction, [int(node) for node in nodes]
+
+# Example usage
+input_features = {
+    "Judge": 3,
+    "Official": 1,
+    "Round": 5
+}
+
+prediction, nodes = predict(input_features)
+print(f"Predicted winner: {['Trinidad', 'de la Hoya'][prediction]}")
+print(f"Node values: {nodes}")
+```
+
+In this example, the decision tree uses the 'Judge' and 'Round' features to make predictions. The tree has two inner nodes: one for the judge being HBO-Lederman and another for the round being early (less than or equal to 6). The prediction is made based on these node values. If the judge is HBO-Lederman, the tree predicts Trinidad in early rounds and de la Hoya in later rounds. Otherwise, it uses the official status of the judge to make a prediction.
