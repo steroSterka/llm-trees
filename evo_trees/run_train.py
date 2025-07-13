@@ -10,13 +10,13 @@ import os
 
 config = Config()
 config.method = "llama3.1:70b"
-config.dataset = "heart_h"
+config.dataset = "bankruptcy"
 
 
 config.root = "." 
 config.tree_file = ""          
-config.dataset_name = "irish"    
-config.llm = "claude"           
+config.dataset_name = "bankruptcy"    
+config.llm = "llama3.1:70b"           
 config.task_type = "classification" 
 config.temperature = 1  
 config.iter = 0 
@@ -41,7 +41,7 @@ config.skip_existing = True
 
 
 
-# Daten laden
+# load data
 path = os.path.join(".", f"data_sets/{config.dataset}")
 X1 = pd.read_csv(os.path.join(path, "X.csv"))
 Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
@@ -50,7 +50,7 @@ Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
 
 X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.33, random_state=42)
 
-# Initialpopulation laden
+# load initialpopulation
 initial_population = load_initial_population_from_folder(f"trees/{config.dataset}/{config.method}", config, X_train)
 print(f"Initialpopulation geladen, Länge: {len(initial_population) if initial_population else 0}")
 pop_size = len(initial_population) if initial_population is not None else 150
@@ -70,7 +70,7 @@ clf.fit(
 )
 
 
-# Vorhersage und Evaluation
+# prediction and evaluation
 y_pred = clf.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
 print("Test Accuracy:", acc)
