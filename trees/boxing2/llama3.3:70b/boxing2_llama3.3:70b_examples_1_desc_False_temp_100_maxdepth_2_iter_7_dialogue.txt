@@ -1,0 +1,95 @@
+To build a decision tree classifier for determining which boxer won each round based on the given features, we'll follow these steps:
+
+1. **Feature Selection**: Identify the most important features from the provided list that could influence the outcome of a boxing round.
+2. **Tree Construction**: Construct a decision tree with a maximum depth of 2 using the selected features.
+
+Given features:
+- Judge (various judges)
+- Offical judge (yes / no)
+- Round (1 to 12)
+
+**Feature Selection**:
+The most influential feature in determining the winner of a round would likely be the "Judge" since different judges might have scored rounds differently. The "Round" could also be significant as it might reflect patterns or strategies employed by the boxers at different stages of the fight. The "Offical judge" feature seems less important because, while it might affect scoring legitimacy, the outcome (win/loss) per round is more directly tied to who scored what.
+
+**Decision Tree Construction**:
+With a maximum depth of 2 and focusing on the most impactful features ("Judge" and "Round"), our decision tree could look something like this:
+
+|--- Judge == G. Hamada / B. Logist
+||--- Round <= 6
+|||--- class: Trinidad
+||--- Round > 6
+|||--- class: de la Hoya
+|--- Judge != G. Hamada / B. Logist
+||--- Round <= 9
+|||--- class: Trinidad
+||--- Round > 9
+|||--- class: de la Hoya
+
+This decision tree assumes:
+- Judges G. Hamada and B. Logist tend to favor Trinidad in the early rounds (1-6) but switch their preference to de la Hoya later in the fight.
+- For other judges, Trinidad has an edge up until round 9, after which de la Hoya gains an advantage.
+
+**Note**: This decision tree is a simplified example and might not accurately predict real-world outcomes without actual data on how these specific features (judges and rounds) influence boxing match results. Real predictive modeling would require detailed scoring data from the judges across multiple fights to identify patterns that could inform such a model.
+
+
+#########################
+
+
+Here's the Python function representing the decision tree for predicting which boxer won each round based on the provided features:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer (Trinidad or de la Hoya) won a round based on the judge and round number.
+
+    Parameters:
+    X (dict): Dictionary containing the features.
+        - 'Judge': The judge scoring the fight (0 = G. Hamada, 1 = B. Logist, 2 = J. Roth, 3 = HBO-Lederman, 4 = Sportsticker, 
+                  5 = Los Angeles Times-Kawakami, 6 = USA Today, 7 = Associated Press, 8 = Las Vegas Review-Journal, 
+                  9 = Los Angeles Times-Springer, 10 = van de Wiele)
+        - 'Official': Whether the judge is official (1 = Yes, 0 = No)
+        - 'Round': The round number (1 to 12)
+
+    Returns:
+    prediction (int): The predicted winner of the round (0 = Trinidad, 1 = de la Hoya)
+    nodes (list): A list representing the truth values of the inner nodes
+    """
+
+    # Initialize the nodes list with None values
+    nodes = 2 * [None]
+
+    # Check if the judge is G. Hamada or B. Logist and the round number is less than or equal to 6
+    nodes[0] = (X['Judge'] == 0 or X['Judge'] == 1) and X['Round'] <= 6
+
+    # Check if the round number is greater than 9
+    nodes[1] = X['Round'] > 9
+
+    # Make a prediction based on the nodes
+    if nodes[0]:
+        prediction = 0  # Trinidad wins
+    elif nodes[1]:
+        prediction = 1  # de la Hoya wins
+    else:
+        prediction = 0  # Trinidad wins by default for other conditions
+
+    # Convert boolean node values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+
+
+# Example usage
+X = {
+    'Judge': 0,  # G. Hamada
+    'Official': 1,  # Official judge
+    'Round': 5  # Round number
+}
+
+prediction, nodes = predict(X)
+print(f"Predicted winner: {'Trinidad' if prediction == 0 else 'de la Hoya'}")
+print(f"Nodes: {nodes}")
+```
+
+In this function, we first check if the judge is G. Hamada or B. Logist and the round number is less than or equal to 6. If this condition is true, we predict Trinidad as the winner. Otherwise, we check if the round number is greater than 9 and predict de la Hoya as the winner if true. For other conditions, we default to predicting Trinidad as the winner.
+
+The `nodes` list contains the truth values of the inner nodes, which are converted to integers (1 for True, 0 for False) before being returned along with the prediction.

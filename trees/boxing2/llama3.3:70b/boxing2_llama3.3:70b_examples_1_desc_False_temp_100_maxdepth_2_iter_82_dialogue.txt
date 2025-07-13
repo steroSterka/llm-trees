@@ -1,0 +1,105 @@
+To build a decision tree with a maximum depth of 2 that classifies which boxer won each round based on the provided features, we'll first need to understand the context and potential relationships between these features and the outcome. However, since the actual dataset containing the outcomes (wins by Trinidad or de la Hoya) for each combination of judges, rounds, etc., is not provided, I will simulate a logical approach based on hypothetical data analysis.
+
+Given the unique nature of the features:
+- **Judge**: This could influence the decision significantly as different judges might have different scoring criteria or biases.
+- **Official Judge (yes/no)**: The official status of the judge could affect the weight given to their scores.
+- **Round (1 to 12)**: The round number could potentially impact the judgment due to factors like fatigue, strategy adjustments, etc.
+
+Let's hypothetically induce a decision tree. We will assume that we've analyzed the data and determined the most important features based on information gain or Gini impurity reduction.
+
+### Decision Tree Induction
+
+1. **Root Node**: The most influential feature is chosen as the root node. Let's say the analysis shows that "Judge" has the highest impact due to varying scoring tendencies among judges.
+   
+2. **First Split (Depth 1)**: 
+   - If the judge is known for favoring aggressive fighters (e.g., HBO-Lederman, Las Vegas Review-Journal), we place them in one branch.
+   - Otherwise, if the judge tends to score more technically (e.g., Los Angeles Times-Kawakami, Associated Press), they go into another.
+
+3. **Second Split (Depth 2)**:
+   - For judges favoring aggressive fighters, a further split based on "Round" might be crucial because aggression could wane or increase as the fight progresses.
+     - Rounds 1-6: Fighters are generally fresher; an aggressive strategy might pay off more here, potentially favoring Trinidad if he's seen as the aggressor.
+     - Rounds 7-12: Late-round performances can swing decisions; de la Hoya might gain an edge here with strategic adjustments and endurance.
+   - For technically oriented judges, "Official Judge" status could be the deciding factor because their opinions carry more weight in close rounds, potentially leaning towards de la Hoya if he's considered more technical.
+
+### Decision Tree
+
+```
+|--- Judge: Aggressive (HBO-Lederman, Las Vegas Review-Journal)
+||--- Round <= 6
+|||--- class: Trinidad
+||--- Round > 6
+|||--- class: de la Hoya
+|--- Judge: Technical (Los Angeles Times-Kawakami, Associated Press)
+||--- Official Judge: yes
+|||--- class: de la Hoya
+||--- Official Judge: no
+|||--- class: Trinidad
+```
+
+**Note**: This decision tree is a hypothetical construct based on the assumption that certain judges favor aggressive or technical fighting styles and that these preferences influence their scoring. The actual performance of the fighters (Trinidad and de la Hoya) in each round, as well as other factors like fight conditions, training, and strategies employed, would be crucial in determining real outcomes. Without access to specific data on how each judge scored each round, this tree represents a simplified model based on hypothetical preferences and tendencies.
+
+
+#########################
+
+
+Here is a Python function that implements the decision tree:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won the round based on the judge and round information.
+
+    Args:
+    X (dict): A dictionary containing the features.
+        - 'Judge': The judge of the round (0 = G. Hamada, 1 = B. Logist, 2 = J. Roth, 3 = HBO-Lederman, 
+                  4 = Sportsticker, 5 = Los Angeles Times-Kawakami, 6 = USA Today, 7 = Associated Press, 
+                  8 = Las Vegas Review-Journal, 9 = Los Angeles Times-Springer, 10 = van de Wiele)
+        - 'Official': Whether the judge is an official judge (1 = Yes, 0 = No)
+        - 'Round': The round number (1 to 12)
+
+    Returns:
+    tuple: A tuple containing the predicted winner of the round and a list representing the truth values of the inner nodes.
+           The predicted winner is encoded as 0 for Trinidad and 1 for de la Hoya. The inner nodes are represented as 
+           a list where each element is 1 if the condition of the corresponding node is satisfied, and 0 otherwise.
+    """
+
+    # Initialize the inner nodes with None
+    nodes = 2 * [None]
+
+    # Define the conditions for the inner nodes
+    # Node 0: Is the judge known for favoring aggressive fighters?
+    nodes[0] = X['Judge'] in [3, 8]  # HBO-Lederman and Las Vegas Review-Journal are considered aggressive judges
+
+    # Node 1: Is the round number less than or equal to 6?
+    nodes[1] = X['Round'] <= 6
+
+    # Make predictions based on the inner nodes
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 0  # Trinidad is predicted to win if the judge favors aggressive fighters and it's an early round
+        else:
+            prediction = 1  # de la Hoya is predicted to win if the judge favors aggressive fighters but it's a late round
+    else:
+        if X['Official'] == 1:  # If the judge is official, de la Hoya is predicted to win
+            prediction = 1
+        else:
+            prediction = 0  # Otherwise, Trinidad is predicted to win
+
+    return prediction, [int(node) for node in nodes]
+```
+
+Example usage:
+
+```python
+X = {
+    'Judge': 3,
+    'Official': 0,
+    'Round': 5
+}
+
+prediction, nodes = predict(X)
+print("Predicted winner:", "Trinidad" if prediction == 0 else "de la Hoya")
+print("Inner nodes:", nodes)
+```
+
+This function implements the decision tree based on the provided features and target variable. It uses a simple if-else structure to make predictions based on the inner nodes, which represent the conditions of the decision tree. The predicted winner is encoded as 0 for Trinidad and 1 for de la Hoya, and the inner nodes are represented as a list where each element is 1 if the condition of the corresponding node is satisfied, and 0 otherwise.

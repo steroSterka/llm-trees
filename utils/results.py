@@ -330,6 +330,59 @@ def get_result_summary(result_path, title="Results", score="f1_score", split="67
 
     return table
 
+def get_evolutionary_result_summary(result_path, title="Results", score="f1_score", split="67/33", aggregation="median", embedding_methods=None):
+    if not isinstance(result_path, list):
+        result_path = [result_path]
+
+    # Read results of all pathes and concatenate the dataframes
+    df = pd.concat([pd.read_csv(path) for path in result_path])
+
+    # Filter for the desired split
+    df = df[df["split"] == split]
+
+    summary = df.groupby(["dataset", "method"]).agg({score: aggregation}).reset_index()
+
+    # Calculate median values across all datasets for each metric/method
+    median = df.groupby("method").agg({score: aggregation}).reset_index().set_index('method').T
+    median.index = [aggregation.title()]
+
+    pivot_summary = summary.pivot(index="dataset", columns="method", values=[score])
+    pivot_summary.columns = [f"{method}" for metric, method in pivot_summary.columns]
+
+    # rearrange columns, so that they are in the order of embedding_methods.keys()
+    if "no" in pivot_summary.columns:
+        pivot_summary = pivot_summary[embedding_methods]
+
+    # Append median row to the summary
+    pivot_summary = pd.concat([pivot_summary, median])
+
+    if "no" in pivot_summary.columns:
+        pivot_summary, columns = calculate_baseline_diff(pivot_summary, "no")
+
+        for col in columns:
+            pivot_summary[col] = pivot_summary[col].apply(lambda x: format_percentage(x, add_sign=True))
+
+
+    # Pretty print the table
+    table = PrettyTable()
+    table.title = title
+    table.field_names = ["Dataset"] + list(pivot_summary.columns)
+    for index, row in pivot_summary.iterrows():
+        row_data = [f"{value:.2f}" if isinstance(value, (float, int)) else value for value in row]
+
+        if index == aggregation.title():
+            table.add_row(["-" * 8] + ["-" * len(str(value)) for value in row_data])
+        table.add_row([index] + row_data)
+
+    # Save the table to a file
+    table_txt = table.get_string()
+    with open(result_path[0].replace(".csv", f"_{score}_summary.txt"), "w") as f:
+        f.write(table_txt)
+
+    return table
+
+
+
 def calculate_baseline_diff(summary, base_column="no"):
     """
     Calculate the F1-score differences for each method relative to 'no embedding'.

@@ -229,6 +229,7 @@ def generate_local_llm_tree(config: Config):
 
     #Todo: Define the base URL and endpoints for the local LLM server
     base_url = ""
+
     chat_url = f"{base_url}/api/chat"
     generate_url = f"{base_url}/api/generate"
 

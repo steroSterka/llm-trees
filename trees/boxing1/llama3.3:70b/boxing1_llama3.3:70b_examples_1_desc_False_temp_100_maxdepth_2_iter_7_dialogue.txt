@@ -1,0 +1,92 @@
+To build a decision tree classifier that determines which of the two boxing fighters (Lewis and Holyfield) won each round based on the given features, we first need to understand the importance of each feature in predicting the outcome. However, without specific data on how these features correlate with the winners of rounds in boxing matches between Lewis and Holyfield, we must make some educated guesses about which features might be most influential.
+
+Given features:
+1. Judge (E. Williams / L. O'Connell / S. Christodoulu / HBO-Lederman / Sportsticker / Boxing Times / Sportsline / Associated Press / ESPN / Boxing Monthly-Leach)
+2. Official judge (yes / no)
+3. Round (1 to 12)
+
+Let's hypothesize that the most important features for determining which fighter won a round could be:
+- The identity of the judge, as different judges might have different scoring preferences or biases.
+- Whether the judge is an official judge, as this could impact the legitimacy or accuracy of their scoring.
+- The round number, as the strategy and condition of fighters can change over rounds.
+
+Given these considerations, a simplified decision tree with a maximum depth of 2 could look something like this:
+
+|--- Judge in (HBO-Lederman, ESPN, Boxing Monthly-Leach)
+    |--- Official judge == yes
+        |--- class: Lewis
+    |--- Official judge == no
+        |--- class: Holyfield
+|--- Judge not in (HBO-Lederman, ESPN, Boxing Monthly-Leach)
+    |--- Round <= 6
+        |--- class: Lewis
+    |--- Round > 6
+        |--- class: Holyfield
+
+This decision tree makes the following assumptions:
+- Judges from HBO-Lederman, ESPN, and Boxing Monthly-Leach might have a bias towards Lewis when they are official judges.
+- For other judges or when the judge is not an official one, Holyfield might have an advantage.
+- In rounds 1 through 6, Lewis is assumed to have the upper hand due to potentially better conditioning at the start of the fight.
+- In rounds 7 through 12, Holyfield is assumed to gain the upper hand as Lewis tires.
+
+Please note, this is a highly speculative decision tree without actual data. Real-world application would require historical fight data to train and validate such a model accurately. The performance and accuracy of this decision tree would depend on how well these assumptions match real outcomes in fights between Lewis and Holyfield.
+
+
+#########################
+
+
+Based on the provided features and target variable, here's a Python function that implements a decision tree classifier to predict which of the two boxing fighters (Lewis or Holyfield) won each round.
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won the round based on the given features.
+    
+    Parameters:
+    X (dict): Dictionary containing the features 'Judge', 'Official', 'Round'.
+    
+    Returns:
+    prediction (int): The predicted winner of the round (1 = Lewis, 0 = Holyfield).
+    nodes (list): A list representing the truth values of the inner nodes in the decision tree.
+    """
+    
+    # Initialize nodes with None
+    nodes = 2 * [None]
+    
+    # Node 1: Judge is one of HBO-Lederman, ESPN, or Boxing Monthly-Leach
+    # These judges are encoded as 3, 8, and 9 respectively in the 'Judge' feature
+    nodes[0] = X["Judge"] in [3, 8, 9]
+    
+    # Node 2: Round is less than or equal to 6
+    nodes[1] = X["Round"] <= 6
+    
+    # Make prediction based on the decision tree
+    if nodes[0]:
+        # If the judge is one of HBO-Lederman, ESPN, or Boxing Monthly-Leach,
+        # predict Lewis as the winner regardless of the round
+        prediction = 1
+    else:
+        # For other judges, predict Lewis if the round is less than or equal to 6,
+        # and Holyfield otherwise
+        if nodes[1]:
+            prediction = 1
+        else:
+            prediction = 0
+    
+    # Convert boolean node values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage:
+features = {
+    "Judge": 3,
+    "Official": 1,
+    "Round": 5
+}
+prediction, nodes = predict(features)
+print(f"Predicted winner: {'Lewis' if prediction == 1 else 'Holyfield'}")
+print(f"Inner node values: {nodes}")
+```
+
+This function first checks if the judge is one of HBO-Lederman, ESPN, or Boxing Monthly-Leach. If so, it predicts Lewis as the winner regardless of the round. Otherwise, it predicts Lewis if the round is less than or equal to 6 and Holyfield otherwise. The `nodes` list contains the truth values of these conditions, converted to integers (1 for True, 0 for False).
