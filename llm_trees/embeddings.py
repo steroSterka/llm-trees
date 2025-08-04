@@ -17,7 +17,7 @@ def eval_embedding(config):
     try:
 
         # Generate trees if necessary
-        if config.method in ["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "qwq:32b-fp16", "gemma3:27b"]:
+        if config.method in ["llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "qwq:32b-fp16", "gemma3:27b"]:
             for tree_idx in range(config.num_trees):
                 config.iter = tree_idx
                 generate_tree(config)

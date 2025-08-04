@@ -115,13 +115,13 @@ def induction(
                             for include_description in include_description_list:
                                 for split_idx, split in enumerate(induction_splits):
 
-                                    temp = temperature[method] if isinstance(temperature, dict) else temperature
+                                    temp = 0
                                     config = Config(
-                                        dataset=dataset,
+                                        dataset="bankruptcy",
                                         force_decision_tree=force_decision_tree,
                                         include_description=include_description,
                                         max_tree_depth=max_tree_depth,
-                                        method=method,
+                                        method="llama3.1:70b",
                                         num_examples=num_examples,
                                         num_iters=1,
                                         root=os.getcwd(),
@@ -199,7 +199,7 @@ def embeddings(
                                                 method=method,
                                                 num_examples=num_examples,
                                                 num_iters=5,
-                                                num_trees=num_trees,
+                                                num_trees=5,
                                                 root=os.getcwd(),
                                                 train_split=split,
                                             )

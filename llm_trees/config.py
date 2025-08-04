@@ -19,7 +19,7 @@ class Config:
     task_type = "classification" 
 
 
-    temperature = 1  # Set the temperature of the llm
+    temperature = 0  # Set the temperature of the llm
 
     # Settings for train/test splits
     iter = 0 # iteration counter
@@ -40,11 +40,11 @@ class Config:
     use_role_prompt = False  # Use role-based prompts for the LLM
 
     # Additional settings
-    num_trees = 100
+    num_trees = 5
     seed = 42
     generate_tree_if_missing = True
     regenerating_invalid_trees = True
-    skip_existing = True
+    skip_existing = False
 
     def __init__(self, **kwargs):
         # Override default properties with any provided keyword arguments

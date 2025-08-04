@@ -6,7 +6,7 @@ import pandas as pd
 
 from .config import Config
 from .io import get_data
-from .llms import generate_gpt_tree, generate_claude_tree, generate_gemini_tree, generate_local_llm_tree
+from .llms import generate_local_llm_tree
 
 
 def generate_tree(config, force=False):
@@ -15,13 +15,13 @@ def generate_tree(config, force=False):
     if force or not os.path.exists(tree_path):
         print(f"$$$ -> {config.method.upper()}: {config.dataset}-{config.iter}")
 
-        if config.method in ["gpt-4o", "gpt-o1"]:
-            prompting_result = generate_gpt_tree(config)
-        elif config.method == "claude":
-            prompting_result = generate_claude_tree(config)
-        elif config.method == "gemini":
-            prompting_result = generate_gemini_tree(config)
-        elif config.method in [
+        # if config.method in ["gpt-4o", "gpt-o1"]:
+        #     prompting_result = generate_gpt_tree(config)
+        # elif config.method == "claude":
+        #     prompting_result = generate_claude_tree(config)
+        # elif config.method == "gemini":
+        #     prompting_result = generate_gemini_tree(config)
+        if config.method in [
             "llama3.1:70b", "llama3.3:70b", "gemma3:27b",
             "deepseek-r1:70b", "qwq:32b-fp16"
         ]:
