@@ -34,7 +34,7 @@ class Config:
     force_decision_tree = True  # If False, generate free-form model
     include_description = False  # Include feature descriptions of the dataset in the prompt
     llm_dialogue = True  # If True, generate a two-step dialogue with the LLM
-    max_tree_depth = 2  # Maximum depth of the decision tree
+    max_tree_depth = 5  # Maximum depth of the decision tree
     num_examples = 1  # Number of examples to provide in the prompt
     num_retry_llm = 10  # Number of retries for generating a valid tree
     use_role_prompt = False  # Use role-based prompts for the LLM
