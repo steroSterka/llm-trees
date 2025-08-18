@@ -53,7 +53,7 @@ if __name__ == "__main__":
         result_path_dimensions = "./results/embedding_dimensions"
         experiments.embedding_dimensions(
             result_path=result_path_dimensions,
-            model_list=["claude", "gemini", "gpt-4o", "gpt-o1", "llama3.1:70b", "gemma3:27b", "deepseek-r1:70b", "qwq:32b-fp16"],
+            model_list=["claude", "gemini", "gpt-4o", "gpt-o1", "llama3.1:70b", "gemma3:27b", "deepseek-r1:70b"],
         )
 
     ### Ablation Setting 1: Tree Depth for Induction

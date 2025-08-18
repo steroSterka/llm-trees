@@ -1,0 +1,119 @@
+To build a decision tree with the given features that classifies which of the two boxing fighters (Trinidad or de la Hoya) won each round, we first need to understand the data. However, since the actual dataset isn't provided here, I'll guide you through a general approach using Python and the Scikit-learn library, assuming we have a dataset with the specified features.
+
+Let's assume our dataset looks something like this:
+
+| Judge               | Official Judge | Round | Winner    |
+|---------------------|----------------|-------|-----------|
+| G. Hamada           | yes            | 1     | Trinidad  |
+| B. Logist           | no             | 2     | de la Hoya|
+| J. Roth             | yes            | 3     | Trinidad  |
+| ...                 | ...            | ...   | ...       |
+
+We would first need to preprocess the data, especially categorical features like "Judge" and "Winner", into a numerical format that can be processed by machine learning algorithms.
+
+Here's how you might approach building a decision tree classifier with a maximum depth of 2:
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import LabelEncoder
+
+# Assuming 'data' is your DataFrame
+data = pd.read_csv('your_data.csv')
+
+# Encoding categorical variables
+le = LabelEncoder()
+data['Judge'] = le.fit_transform(data['Judge'])
+data['Winner'] = le.fit_transform(data['Winner'])
+data['Official Judge'] = le.fit_transform(data['Official Judge'])
+
+# Defining features and target
+X = data[['Judge', 'Official Judge', 'Round']]
+y = data['Winner']
+
+# Splitting dataset into training set and test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+
+# Creating Decision Tree classifier with max depth of 2
+clf = DecisionTreeClassifier(max_depth=2, random_state=1)
+
+# Training the model
+clf.fit(X_train, y_train)
+
+# Predicting the Test set results
+y_pred = clf.predict(X_test)
+
+# Evaluating the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+
+# To visualize or understand the decision tree, you might want to export it as a dot file or use a library like graphviz
+from sklearn.tree import export_graphviz
+export_graphviz(clf, out_file='tree.dot', feature_names=X.columns, class_names=['Trinidad', 'de la Hoya'], filled=True)
+```
+
+Please replace `'your_data.csv'` with the path to your actual dataset file. This example assumes that the `Winner` column in your dataset is coded as either "Trinidad" or "de la Hoya", which would be encoded into numerical values by the `LabelEncoder`.
+
+The decision tree structure itself, with a maximum depth of 2, will depend on the specific patterns and relationships within your data. The features that are most important for predicting the winner (based on information gain or Gini impurity) will be selected at each node.
+
+Remember, without access to your actual dataset, it's not possible to generate the exact decision tree structure here. However, this code snippet should guide you through building and evaluating a simple decision tree classifier for your problem.
+
+
+#########################
+
+
+Based on the provided features and target variable, here is a Python function that implements a decision tree of depth 2 to predict which of the two boxing fighters won each round:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won the round based on the given features.
+
+    Args:
+        X (dict): A dictionary containing the features.
+            - 'Judge': The judge's ID (0-10)
+            - 'Official': Whether the judge is official (1 = Yes, 0 = No)
+            - 'Round': The round number (1-12)
+
+    Returns:
+        tuple: A tuple containing the predicted winner and a list of truth values for the inner nodes.
+            - prediction: The predicted winner (0 = Trinidad, 1 = de la Hoya)
+            - nodes: A list of truth values for the inner nodes
+    """
+    nodes = 2 * [None]
+    # Node 0: Check if the judge is official and the round is early (Round <= 6)
+    nodes[0] = X["Official"] == 1 and X["Round"] <= 6
+    
+    # Node 1: Check if the judge is not official or the round is late (Round > 6) and the judge's ID is high (Judge >= 5)
+    nodes[1] = (X["Official"] == 0 or X["Round"] > 6) and X["Judge"] >= 5
+    
+    # Make prediction based on the nodes
+    if nodes[0]:
+        prediction = 0  # Trinidad wins early rounds with official judges
+    elif nodes[1]:
+        prediction = 1  # de la Hoya wins late rounds or with non-official judges and high judge IDs
+    else:
+        prediction = 0  # Default to Trinidad in other cases
+    
+    return prediction, [int(node) for node in nodes]
+
+# Example usage:
+X = {
+    "Judge": 8,
+    "Official": 1,
+    "Round": 5
+}
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction} (0 = Trinidad, 1 = de la Hoya)")
+print(f"Nodes: {nodes}")
+```
+
+This decision tree uses the following logic:
+
+* If the judge is official and the round is early (Round <= 6), Trinidad wins.
+* If the judge is not official or the round is late (Round > 6) and the judge's ID is high (Judge >= 5), de la Hoya wins.
+* Otherwise, default to Trinidad.
+
+Note that this is just one possible implementation of a decision tree based on the provided features and target variable. The actual performance of the model may vary depending on the specific data and the chosen hyperparameters.

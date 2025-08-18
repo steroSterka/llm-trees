@@ -10,7 +10,6 @@ class Config:
 
     # method = "llama3.1:70b" #done
     # method = "gemma3:27b" done
-    # method="qwq:32b-fp16" #done
     # method = "deepseek-r1:70b" #done
     
     tree_file = ""            # << Muss gesetzt werden beim Einlesen eines Baums

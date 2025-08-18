@@ -1,0 +1,111 @@
+To build a decision tree classifier with the given financial features to determine whether a company is solvent or not, we first need to understand that solvency is generally related to a company's ability to meet its long-term debts. The most relevant features for determining solvency would typically include ratios that reflect a company's profitability, efficiency, and leverage.
+
+Given the features:
+1. Earnings Before Interest and Taxes/Total Assets (EBIT/TA)
+2. Net Income/Total Capital (NI/TC)
+3. Sales/Total Assets (S/TA)
+4. Earnings Before Interest and Taxes/Sales (EBIT/S)
+5. Net Income/Sales (NI/S)
+6. Working Capital/Total Assets (WC/TA)
+7. Equity/Total Liabilities (E/TLD)
+8. Equity/Total Assets (E/TA)
+
+We aim to build a decision tree with a maximum depth of 2, focusing on the most important features for solvency determination.
+
+### Step 1: Feature Selection
+For determining solvency, we prioritize features that directly reflect a company's financial health and ability to pay debts. `Equity/Total Liabilities (E/TLD)` and `Net Income/Total Capital (NI/TC)` are strong indicators of a company's leverage and profitability relative to its capital structure.
+
+### Step 2: Building the Decision Tree
+Let's hypothetically build the tree based on these features, assuming we have labeled data for solvent and insolvent companies.
+
+1. **Root Node**: The most important feature is chosen as the root. Let's say `Equity/Total Liabilities (E/TLD)` is selected because it directly reflects a company's leverage.
+2. **First Split**: Companies with high `E/TLD` ratios are generally more solvent, so we might set a threshold where companies above this threshold are classified as solvent at the first level.
+
+Example:
+- If `E/TLD > 1.5`, then classify as Solvent.
+
+3. **Second Level**: For companies that don't meet the first criterion (`E/TLD <= 1.5`), we use another feature to further discern solvency. Let's say `Net Income/Total Capital (NI/TC)` is used because it indicates profitability in relation to capital.
+
+Example:
+- If `E/TLD <= 1.5`, then:
+  - If `NI/TC > 0.2`, classify as Solvent.
+  - Else, classify as Insolvent.
+
+### Decision Tree:
+
+|--- Equity/Total Liabilities (E/TLD) > 1.5
+||--- class: Solvent
+|--- Equity/Total Liabilities (E/TLD) <= 1.5
+||--- Net Income/Total Capital (NI/TC) > 0.2
+|||--- class: Solvent
+||--- Net Income/Total Capital (NI/TC) <= 0.2
+|||--- class: Insolvent
+
+This is a simplified example based on hypothetical thresholds and feature importance. In practice, you would need actual data to train the model, determine the most important features through techniques like recursive feature elimination or mutual information, and optimize threshold values for classification accuracy using cross-validation.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree for predicting whether a company is solvent or not. This function uses the provided financial features and returns both the prediction (1 for solvent, 0 for insolvent) and a list of truth values for the inner nodes.
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a company is solvent based on its financial features.
+    
+    Parameters:
+    X (dict): Dictionary containing the financial features.
+             Keys: 'EBIT/TA', 'NI/TC', 'Sales/TA', 'EBIT/Sales', 'NI/Sales', 'WC/TA', 'Equity/TL', 'Equity/TA'
+    
+    Returns:
+    prediction (int): 1 if the company is predicted to be solvent, 0 otherwise.
+    nodes (list): List of truth values for the inner nodes. 1 if the condition is met, 0 otherwise.
+    """
+    
+    # Initialize nodes list with None
+    nodes = 2 * [None]
+    
+    # Node 0: Check if Equity/TL ratio is greater than 1.5
+    nodes[0] = X['Equity/TL'] > 1.5
+    
+    # If the first condition is not met, check the second condition
+    if not nodes[0]:
+        # Node 1: Check if NI/TC ratio is greater than 0.2
+        nodes[1] = X['NI/TC'] > 0.2
+    else:
+        # If the first condition is met, we don't need to check the second condition
+        nodes[1] = True
+    
+    # Make prediction based on the nodes
+    if nodes[0]:
+        prediction = 1  # Company is solvent if Equity/TL > 1.5
+    else:
+        if nodes[1]:
+            prediction = 1  # Company is solvent if NI/TC > 0.2 and Equity/TL <= 1.5
+        else:
+            prediction = 0  # Company is insolvent if both conditions are not met
+    
+    # Convert boolean values in nodes to integers (True -> 1, False -> 0)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage:
+X = {
+    'EBIT/TA': 0.15,
+    'NI/TC': 0.25,
+    'Sales/TA': 2.5,
+    'EBIT/Sales': 0.06,
+    'NI/Sales': 0.05,
+    'WC/TA': 0.3,
+    'Equity/TL': 1.8,
+    'Equity/TA': 0.7
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This function uses the `Equity/TL` and `NI/TC` ratios as the primary features for determining solvency, with thresholds of 1.5 and 0.2, respectively. The example usage demonstrates how to use this function with a sample set of financial data.

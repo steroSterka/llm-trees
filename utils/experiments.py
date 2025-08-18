@@ -37,7 +37,6 @@ induction_methods = {
     "llama3.1:70b": "llama3.1:70b",
     "llama3.3:70b": "llama3.3:70b",
     "deepseek-r1:70b": "deepseek-r1:70b",
-    "qwq:32b-fp16": "qwq:32b-fp16",
     "gemma3:27b": "gemma3:27b"
 }
 
@@ -57,7 +56,6 @@ embedding_methods = {
     "llama3.1:70b": "llama3.1:70b\nunsupervised",
     "llama3.3:70b": "llama3.3:70b\nunsupervised",
     "deepseek-r1:70b": "deepseek-r1:70b\nunsupervised",
-    "qwq:32b-fp16": "qwq:32b-fp16\nunsupervised",
     "gemma3:27b": "gemma3:27b\nunsupervised",
 }
 
@@ -117,11 +115,16 @@ def induction(
 
                                     temp = 0
                                     config = Config(
-                                        dataset="bankruptcy",
+                                        dataset=dataset,
                                         force_decision_tree=force_decision_tree,
                                         include_description=include_description,
                                         max_tree_depth=max_tree_depth,
-                                        method="llama3.1:70b",
+                                        method=method,
+                                        # dataset="bankruptcy",
+                                        # force_decision_tree=force_decision_tree,
+                                        # include_description=include_description,
+                                        # max_tree_depth=max_tree_depth,
+                                        # method="gemma3:27b",
                                         num_examples=num_examples,
                                         num_iters=1,
                                         root=os.getcwd(),
@@ -208,7 +211,7 @@ def embeddings(
                                                 config.iter = iter
                                                 config.seed = iter
 
-                                                if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "qwq:32b-fp16","gemma3:27b"]:
+                                                if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b"]:
                                                     config.temperature = temperature[method] if isinstance(temperature, dict) else temperature
 
                                                 if config.skip_existing and result_handler.is_result_present(config):

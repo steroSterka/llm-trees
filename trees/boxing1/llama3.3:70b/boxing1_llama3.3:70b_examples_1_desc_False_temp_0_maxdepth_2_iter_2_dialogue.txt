@@ -1,0 +1,135 @@
+To build a decision tree classifier for determining which boxer won each round based on the provided features, we'll follow these steps:
+
+1. **Feature Importance**: Identify the most important features that contribute to the classification.
+2. **Tree Construction**: Use the selected features to construct a decision tree with a maximum depth of 2.
+
+Given features:
+- Judge (E. Williams / L. O'Connell / S. Christodoulu / HBO-Lederman / Sportsticker / Boxing Times / Sportsline / Associated Press / ESPN / Boxing Monthly-Leach)
+- Offical judge (yes / no)
+- Round (1 to 12)
+
+Since we're dealing with categorical and numerical data, and without actual dataset values or a clear indication of how these features directly influence the outcome (Lewis winning or Holyfield winning), we'll have to make some assumptions for demonstration purposes.
+
+### Assumptions:
+- **Judge**: Different judges might have biases towards certain fighters. For simplicity, let's assume that judges can be grouped into those who favor Lewis and those who favor Holyfield based on their scoring patterns.
+- **Offical judge**: Official judges are more likely to make unbiased decisions compared to non-official ones.
+- **Round**: The round number could influence the outcome due to factors like fighter endurance, strategy changes, etc.
+
+### Feature Importance:
+Without specific data, we can't run feature importance algorithms. However, for a boxing match:
+- **Judge** might be crucial as different judges may score rounds differently.
+- **Offical judge** could be important because their decision is likely more objective.
+- **Round** could influence due to factors like fatigue.
+
+Let's assume that after running a feature importance algorithm, we find that **Judge** and **Round** are the most critical features for predicting which boxer won a round.
+
+### Decision Tree Construction:
+Given our assumptions and focusing on **Judge** and **Round**, here's a simplified decision tree with a maximum depth of 2:
+
+|--- Round <= 6
+||--- Judge in (E. Williams, HBO-Lederman, ESPN)  # Assuming these judges favor Lewis
+|||--- class: Lewis
+||--- Judge not in (E. Williams, HBO-Lederman, ESPN)
+|||--- class: Holyfield
+|--- Round > 6
+||--- Official judge == yes
+|||--- class: Holyfield  # Assuming official judges tend to favor Holyfield in later rounds due to objective scoring
+||--- Official judge == no
+|||--- class: Lewis
+
+This decision tree is highly speculative and based on simplified assumptions. Real-world application would require actual data analysis, including the outcomes of previous fights judged by these individuals, their scoring patterns, and how round numbers influence fight outcomes.
+
+### Python Implementation Example:
+```python
+from sklearn.tree import DecisionTreeClassifier
+import pandas as pd
+
+# Sample dataset (you need to create or load your actual dataset)
+data = {
+    'Judge': ['E. Williams', 'L. O\'Connell', 'S. Christodoulu', 'HBO-Lederman', 'Sportsticker'],
+    'Official judge': [True, False, True, False, True],
+    'Round': [1, 2, 3, 4, 5],
+    'Winner': ['Lewis', 'Holyfield', 'Lewis', 'Holyfield', 'Lewis']
+}
+
+df = pd.DataFrame(data)
+
+# Convert categorical variables into numerical ones
+df['Judge'] = df['Judge'].astype('category')
+df['Judge'] = df['Judge'].cat.codes
+
+X = df[['Judge', 'Official judge', 'Round']]
+y = df['Winner']
+
+# Map winner to numerical values for classification
+winner_map = {'Lewis': 0, 'Holyfield': 1}
+y = y.map(winner_map)
+
+clf = DecisionTreeClassifier(max_depth=2)
+clf.fit(X, y)
+
+print("Decision Tree Classifier trained.")
+```
+
+Please note, this Python example is a placeholder. You would need to replace the `data` dictionary with your actual dataset and possibly preprocess it (e.g., handling categorical variables appropriately). The decision tree provided in the explanation section is for illustrative purposes based on the initial problem description.
+
+
+#########################
+
+
+Here's the Python function representing the decision tree for predicting which boxer won each round:
+
+```python
+def predict(X: dict):
+    """
+    This function predicts which boxer won each round based on a decision tree.
+
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - 'Judge': The judge scoring the round (0 = E. Williams, 1 = L. O'Connell, 2 = S. Christodoulu, 3 = HBO-Lederman, 4 = Sportsticker, 5 = Boxing Times, 6 = Sportsline, 7 = Associated Press, 8 = ESPN, 9 = Boxing Monthly-Leach)
+        - 'Official': Whether the judge is an official judge (1 = Yes, 0 = No)
+        - 'Round': The round number (1 to 12)
+
+    Returns:
+    prediction (int): The predicted winner of the round (1 = Lewis, 0 = Holyfield)
+    nodes (list): A list representing the truth values of the inner nodes
+    """
+
+    # Initialize the inner nodes with None
+    nodes = 2 * [None]
+
+    # Check if the round is less than or equal to 6
+    nodes[0] = X["Round"] <= 6
+
+    # Check if the judge is one of the assumed Lewis-favoring judges (for example, let's assume E. Williams and HBO-Lederman favor Lewis)
+    lewis_favoring_judges = [0, 3]
+    nodes[1] = X["Judge"] in lewis_favoring_judges
+
+    # Make predictions based on the inner nodes
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Lewis wins if it's early rounds and a Lewis-favoring judge
+        else:
+            prediction = 0  # Holyfield wins if it's early rounds but not a Lewis-favoring judge
+    else:
+        prediction = 0  # Holyfield wins in later rounds regardless of the judge
+
+    # Convert boolean values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+
+
+# Example usage:
+features = {
+    "Judge": 0,
+    "Official": 1,
+    "Round": 5
+}
+
+prediction, nodes = predict(features)
+print(f"Predicted winner: {['Holyfield', 'Lewis'][prediction]}")
+print(f"Inner nodes: {nodes}")
+```
+
+This decision tree assumes that certain judges favor Lewis and that Holyfield has a better chance of winning in later rounds. Please note that these assumptions are speculative and may not reflect real-world data or trends. The actual performance of the model would depend on the quality and characteristics of the training data.

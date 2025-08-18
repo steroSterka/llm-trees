@@ -1,0 +1,115 @@
+To build a decision tree classifier with the given financial features to predict whether a company went bankrupt or not, we'll follow these steps:
+
+1. **Feature Selection**: Identify the most important features that contribute significantly to the classification.
+2. **Tree Construction**: Construct the decision tree using the selected features, ensuring it doesn't exceed a maximum depth of 2.
+
+Given the financial features:
+- Working Capital/Total Assets
+- Retained Earnings/Total Assets
+- Earnings Before Interest and Tax/Total Assets
+- Sales/Total Assets
+- Book Value of Equity/Book Value of Liabilities
+
+We'll select features based on their potential impact on bankruptcy. Generally, in financial analysis:
+- **Working Capital/Total Assets** indicates liquidity and the ability to meet short-term obligations.
+- **Retained Earnings/Total Assets** shows profitability and reinvestment in the company.
+- **Earnings Before Interest and Tax/Total Assets (EBIT/TA)** is a measure of profitability without considering financial structure or tax environment.
+- **Sales/Total Assets** reflects asset efficiency in generating sales.
+- **Book Value of Equity/Book Value of Liabilities** indicates the company's solvency and leverage.
+
+For simplicity, let's assume after analyzing these features for their importance in predicting bankruptcy, we prioritize:
+1. **Working Capital/Total Assets**: A key indicator of short-term financial health.
+2. **Book Value of Equity/Book Value of Liabilities**: Reflects long-term solvency.
+
+**Decision Tree Construction:**
+
+- The tree starts with a root node representing all companies.
+- At the first split (depth 1), we use **Working Capital/Total Assets** as it directly relates to short-term financial health and ability to avoid bankruptcy. A common threshold might be around 0.2, but for simplicity, let's assume:
+    - If **Working Capital/Total Assets > 0.15**, the company is likely financially healthy.
+    - If **Working Capital/Total Assets <= 0.15**, we proceed to consider long-term solvency.
+
+- For companies with **Working Capital/Total Assets <= 0.15** (indicating potential short-term financial stress), at depth 2, we examine **Book Value of Equity/Book Value of Liabilities**:
+    - If **Book Value of Equity/Book Value of Liabilities > 1**, the company has more equity than liabilities, suggesting better long-term solvency and lower risk of bankruptcy.
+    - If **Book Value of Equity/Book Value of Liabilities <= 1**, it indicates a higher risk of bankruptcy due to high leverage.
+
+Thus, the decision tree could look like this:
+
+```
+|--- Working Capital/Total Assets > 0.15
+||--- class: Not Bankrupt (Financially Healthy)
+|--- Working Capital/Total Assets <= 0.15
+    |--- Book Value of Equity/Book Value of Liabilities > 1
+    ||--- class: Not Bankrupt (Sufficient Solvency)
+    |--- Book Value of Equity/Book Value of Liabilities <= 1
+        ||--- class: Bankrupt (High Risk Due to Leverage and Low Liquidity)
+```
+
+This decision tree uses a simple, hypothetical threshold for demonstration purposes. Real-world application would require actual data analysis to determine optimal thresholds and possibly incorporate additional features or complexities not covered here.
+
+
+#########################
+
+
+Here's how you can format the decision tree as a Python function that returns a single prediction and a list representing the truth values of the inner nodes.
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company went bankrupt based on financial features.
+    
+    Parameters:
+    X (dict): A dictionary containing the financial features.
+        - WC/TA (float): Working Capital/Total Assets
+        - RE/TA (float): Retained Earnings/Total Assets
+        - EBIT/TA (float): Earnings Before Interest and Tax/Total Assets
+        - S/TA (float): Sales/Total Assets
+        - BVE/BVL (float): Book Value of Equity/Book Value of Liabilities
+    
+    Returns:
+    tuple: A tuple containing the prediction (0 = no bankruptcy, 1 = bankruptcy) 
+           and a list representing the truth values of the inner nodes.
+    """
+    
+    # Initialize the nodes with None
+    nodes = 2 * [None]
+    
+    # Node 0: Check if Working Capital/Total Assets is greater than 0.15
+    nodes[0] = X["WC/TA"] > 0.15
+    
+    # If Node 0 is True, then check the second condition for Node 1
+    if nodes[0]:
+        nodes[1] = True  # This node will not be used in prediction
+    else:
+        # Node 1: Check if Book Value of Equity/Book Value of Liabilities is greater than 1
+        nodes[1] = X["BVE/BVL"] > 1
+    
+    # Make the prediction based on the nodes
+    if nodes[0]:
+        prediction = 0  # Company is financially healthy, no bankruptcy
+    else:
+        if nodes[1]:
+            prediction = 0  # Company has sufficient solvency, no bankruptcy
+        else:
+            prediction = 1  # Company has high risk of bankruptcy
+    
+    # Convert boolean values to integers (True -> 1, False -> 0)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage:
+X = {
+    "WC/TA": 0.2,
+    "RE/TA": 0.3,
+    "EBIT/TA": 0.1,
+    "S/TA": 0.5,
+    "BVE/BVL": 2.0
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+
+```
+
+This function takes a dictionary `X` containing the financial features as input and returns a tuple with the prediction (0 or 1) and a list of truth values for the inner nodes. The example usage demonstrates how to use this function with sample data.

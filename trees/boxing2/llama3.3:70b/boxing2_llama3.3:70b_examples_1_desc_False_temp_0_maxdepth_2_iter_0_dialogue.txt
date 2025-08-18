@@ -1,0 +1,113 @@
+To build a decision tree classifier for determining which boxer won each round based on the provided features, we first need to understand that the task involves classifying rounds into two categories: Trinidad or de la Hoya. However, without actual data or examples of how these features (Judge, Official judge, Round) relate to the outcome of each round, I'll create a hypothetical decision tree based on logical assumptions about what might influence a judge's scoring in boxing.
+
+Given the maximum depth of 2 for our decision tree and assuming that:
+
+1. The identity of the judge could significantly impact how rounds are scored due to personal bias or judging style.
+2. Whether the judge is an official one (yes/no) could also affect the outcome, as unofficial judges might have different criteria or less experience.
+3. The round number might influence scoring, especially in later rounds where fighters may tire, but this feature seems less directly related to the immediate decision of who wins a round.
+
+Here's a hypothetical decision tree with these considerations and assuming we are classifying each round as either won by Trinidad (T) or de la Hoya (D):
+
+|--- Judge = HBO-Lederman / Las Vegas Review-Journal
+||--- Official judge = yes: Class: Trinidad
+||--- Official judge = no: Class: de la Hoya
+|--- Judge ≠ HBO-Lederman / Las Vegas Review-Journal
+||--- Round <= 6
+|||--- Class: Trinidad (assuming early rounds might favor the more aggressive fighter)
+||--- Round > 6
+|||--- Class: de la Hoya (assuming later rounds favor endurance and tactical adjustments)
+
+This decision tree is highly speculative without actual data on how judges scored each round based on these features. In real-world applications, you would use a dataset with examples of past fights, including the features mentioned and the outcomes of each round, to train a model like this.
+
+Here's a note on how one might approach building such a decision tree in Python using scikit-learn if we had an actual dataset:
+
+```python
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+import pandas as pd
+
+# Assuming 'data' is your DataFrame with features and target variable ('Winner')
+X = data[['Judge', 'Official judge', 'Round']]  # Features
+y = data['Winner']  # Target variable (Trinidad or de la Hoya)
+
+# Convert categorical variables into numerical ones if needed
+X = pd.get_dummies(X, columns=['Judge', 'Official judge'])
+
+# Split dataset into training set and test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+
+# Create Decision Tree classifier with max depth of 2
+clf = DecisionTreeClassifier(random_state=1, max_depth=2)
+
+# Train the model using the training sets
+clf.fit(X_train, y_train)
+
+# Make predictions
+predictions = clf.predict(X_test)
+```
+
+This example code snippet doesn't include the actual tree visualization but demonstrates how one might start building a classifier with given features and a target variable. For visualizing the decision tree as in your initial example, you could use `sklearn.tree.plot_tree` or libraries like Graphviz for more complex visualizations.
+
+
+#########################
+
+
+Based on the provided features and target variable, here's a Python function that implements a decision tree of depth 2 to predict which boxer won each round:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won each round based on the given features.
+
+    Args:
+        X (dict): A dictionary containing the features.
+            - 'Judge': The judge's ID (0-10).
+            - 'Official': Whether the judge is official (1) or not (0).
+            - 'Round': The round number (1-12).
+
+    Returns:
+        tuple: A tuple containing the prediction (0 = Trinidad, 1 = de la Hoya) and a list of truth values for the inner nodes.
+    """
+
+    # Initialize nodes with None
+    nodes = 2 * [None]
+
+    # Node 0: Check if the judge is HBO-Lederman or Las Vegas Review-Journal (IDs 3 and 8)
+    nodes[0] = X['Judge'] in [3, 8]
+
+    # Node 1: Check if the round is less than or equal to 6
+    nodes[1] = X['Round'] <= 6
+
+    # Make prediction based on the nodes
+    if nodes[0]:
+        prediction = 0  # Trinidad wins if HBO-Lederman or Las Vegas Review-Journal judges
+    else:
+        if nodes[1]:
+            prediction = 0  # Trinidad wins in early rounds
+        else:
+            prediction = 1  # de la Hoya wins in late rounds
+
+    # Convert boolean node values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+```
+
+This function takes a dictionary `X` containing the features as input and returns a tuple with the predicted winner (`0` for Trinidad, `1` for de la Hoya) and a list of truth values for the inner nodes. The decision tree is based on the following logic:
+
+* If the judge is HBO-Lederman or Las Vegas Review-Journal (IDs 3 and 8), predict Trinidad as the winner.
+* Otherwise, if the round is less than or equal to 6, predict Trinidad as the winner; otherwise, predict de la Hoya as the winner.
+
+You can use this function by passing a dictionary with the features as follows:
+
+```python
+features = {
+    'Judge': 3,
+    'Official': 1,
+    'Round': 5
+}
+
+prediction, nodes = predict(features)
+print(f"Predicted winner: {['Trinidad', 'de la Hoya'][prediction]}")
+print(f"Node values: {nodes}")
+```
