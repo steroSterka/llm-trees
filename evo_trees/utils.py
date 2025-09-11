@@ -15,7 +15,7 @@ def parse_predict_function(predict_fn_str: str, feature_to_index: dict) -> Node:
     tree = ast.parse(predict_fn_str)
     func = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "predict"), None)
     if func is None:
-        raise ValueError("Keine predict()-Funktion gefunden.")
+        raise ValueError("No predict()-function found.")
     return convert_ast_to_node(func.body, feature_to_index)
 
 def _extract_nodes_index(sub: ast.Subscript) -> int:
