@@ -1,66 +1,67 @@
-Based on the provided features, I will induce a decision tree classifier with a maximum depth of 2 to predict whether a company went bankrupt or not. Here is the decision tree:
+Based on the provided features, I will build a decision tree classifier with a maximum depth of 2 to predict whether a company went bankrupt or not. Here is the induced decision tree:
 
-|--- Working Capital/Total Assets <= 0.10
+|--- Retained Earnings/Total Assets <= -0.20
 ||--- class: Bankrupt
-|--- Working Capital/Total Assets > 0.10
-||--- Retained Earnings/Total Assets <= 0.20
+|--- Retained Earnings/Total Assets > -0.20
+||--- Working Capital/Total Assets <= 0.15
 |||--- class: Bankrupt
-||--- Retained Earnings/Total Assets > 0.20
-|||--- class: Not Bankrupt
-
-The decision tree uses the following features:
-
-1. Working Capital/Total Assets (most important feature)
-2. Retained Earnings/Total Assets (second most important feature)
-
-Note that the thresholds used in the decision tree (0.10 and 0.20) are arbitrary and may vary depending on the specific dataset and problem. This is just one possible solution.
+||--- Working Capital/Total Assets > 0.15
+|||--- class: Non-Bankrupt
 
 Here's a brief explanation of the decision tree:
 
-* If a company has a low Working Capital/Total Assets ratio (<= 0.10), it is likely to be bankrupt.
-* If a company has a moderate to high Working Capital/Total Assets ratio (> 0.10) but a low Retained Earnings/Total Assets ratio (<= 0.20), it is still likely to be bankrupt.
-* If a company has both a moderate to high Working Capital/Total Assets ratio (> 0.10) and a high Retained Earnings/Total Assets ratio (> 0.20), it is likely to be not bankrupt.
+* The most important feature is Retained Earnings/Total Assets, which indicates the company's profitability and ability to generate earnings.
+* If the Retained Earnings/Total Assets ratio is less than or equal to -0.20, it suggests that the company has significant accumulated losses, and therefore, the class is predicted as Bankrupt.
+* If the Retained Earnings/Total Assets ratio is greater than -0.20, the next feature considered is Working Capital/Total Assets, which represents the company's liquidity position.
+* If the Working Capital/Total Assets ratio is less than or equal to 0.15, it indicates that the company may face difficulties in meeting its short-term obligations, and therefore, the class is predicted as Bankrupt.
+* If the Working Capital/Total Assets ratio is greater than 0.15, it suggests that the company has a relatively stable liquidity position, and therefore, the class is predicted as Non-Bankrupt.
 
-Please note that this decision tree is a simplification and may not accurately reflect the complexities of bankruptcy prediction in real-world scenarios.
+Note: The thresholds used in this decision tree (-0.20 for Retained Earnings/Total Assets and 0.15 for Working Capital/Total Assets) are arbitrary and may need to be adjusted based on the specific dataset being used.
 
 
 #########################
 
 
-Here is the Python function that returns a single prediction as well as a list representing the truth values of the inner nodes for the decision tree with a maximum depth of 2:
+Here is the Python function that implements the decision tree classifier for predicting whether a company went bankrupt or not:
 
 ```python
 def predict(X: dict):
-    """
-    Predicts whether a company went bankrupt or not based on financial features.
-
-    Parameters:
-    X (dict): A dictionary containing the financial features of the company.
-              Required keys: 'WC/TA', 'RE/TA'
-
-    Returns:
-    tuple: A tuple containing the predicted class label (0 = no, 1 = yes) and a list
-           representing the truth values of the inner nodes.
-    """
     nodes = 2 * [None]
-    # Inner node 1: WC/TA <= 0.10
-    nodes[0] = X['WC/TA'] <= 0.10
+    nodes[0] = X["RE/TA"] <= -0.20
+    nodes[1] = X["WC/TA"] <= 0.15
     
-    # Inner node 2: RE/TA <= 0.20 (only evaluated if inner node 1 is False)
-    nodes[1] = not nodes[0] and X['RE/TA'] <= 0.20
+    if nodes[0]:
+        prediction = 1
+    else:
+        if nodes[1]:
+            prediction = 1
+        else:
+            prediction = 0
 
-    prediction = int(nodes[0] or nodes[1])  # Convert boolean to integer (True -> 1, False -> 0)
-
-    return prediction, [int(node) for node in nodes]
+    return prediction, nodes
 ```
 
-This function takes a dictionary `X` as input, where the keys are the financial features of the company. The function predicts whether the company went bankrupt or not based on these features and returns a tuple containing the predicted class label (0 = no, 1 = yes) and a list representing the truth values of the inner nodes.
+In this function:
 
-The decision tree is implemented using two inner nodes:
+*   We first create a list `nodes` to store the truth values of the inner nodes.
+*   We evaluate the conditions for each node: `RE/TA <= -0.20` and `WC/TA <= 0.15`.
+*   Based on these conditions, we make predictions about whether the company went bankrupt or not:
+    *   If `RE/TA <= -0.20`, the prediction is always 1 (bankrupt).
+    *   Otherwise, if `WC/TA <= 0.15`, the prediction is 1 (bankrupt); otherwise, it's 0 (non-bankrupt).
 
-* Inner node 1: `WC/TA <= 0.10`
-* Inner node 2: `RE/TA <= 0.20` (only evaluated if inner node 1 is False)
+This function returns a tuple containing the predicted class label and the list of node truth values.
 
-If either of these conditions is true, the company is predicted to have gone bankrupt (class label = 1). Otherwise, the company is predicted not to have gone bankrupt (class label = 0).
+You can call this function with a dictionary representing the input features, like so:
 
-The list representing the truth values of the inner nodes is created by converting each boolean value to an integer using `int(node)`, where True is converted to 1 and False is converted to 0.
+```python
+input_features = {
+    "RE/TA": -0.25,
+    "WC/TA": 0.10,
+    "EBIT/TA": 0.05,
+    "S/TA": 2.5,
+    "BVE/BVL": 1.2
+}
+prediction, nodes = predict(input_features)
+print("Prediction:", prediction)  # Output: Prediction: 1
+print("Node Truth Values:", nodes)  # Output: Node Truth Values: [True, True]
+```
