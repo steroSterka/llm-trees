@@ -9,14 +9,14 @@ import os
 
 
 config = Config()
-config.method = "llama3.1:70b"
+config.method = "llama3.3:70b"
 config.dataset = "bankruptcy"
 
 
 config.root = "." 
 config.tree_file = ""          
 config.dataset_name = "bankruptcy"    
-config.llm = "llama3.1:70b"           
+config.llm = "llama3.3:70b"           
 config.task_type = "classification" 
 config.temperature = 1  
 config.iter = 0 
@@ -48,7 +48,7 @@ Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
 
 
 
-X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.67, random_state=45)
+X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.9, random_state=45)
 
 # load initialpopulation
 initial_population = load_initial_population_from_folder(f"trees/{config.dataset}/{config.method}", config, X_train)
@@ -65,7 +65,7 @@ clf.fit(
     X_train,
     y_train,
     population_size=pop_size,
-    max_iter=5,
+    max_iter=100,
     initial_population=initial_population
 )
 
