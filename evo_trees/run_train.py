@@ -48,7 +48,7 @@ Y1 = pd.read_csv(os.path.join(path, "y.csv"))["target"]
 
 
 
-X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.33, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X1, Y1, test_size=0.67, random_state=45)
 
 # load initialpopulation
 initial_population = load_initial_population_from_folder(f"trees/{config.dataset}/{config.method}", config, X_train)
@@ -57,7 +57,7 @@ pop_size = len(initial_population) if initial_population is not None else 150
 
 
 clf = GATreeClassifier(
-    max_depth=10,
+    max_depth=2,
     random_state=42
 )
 
@@ -65,7 +65,7 @@ clf.fit(
     X_train,
     y_train,
     population_size=pop_size,
-    max_iter=40,
+    max_iter=5,
     initial_population=initial_population
 )
 
