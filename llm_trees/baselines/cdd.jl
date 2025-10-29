@@ -24,7 +24,7 @@ for dataset in ["boxing1", "boxing2", "japansolvent", "colic", "heart_h", "hepat
     "house_votes_84", "labor", "penguins", "vote", "bankruptcy", "creditscore", "irish",
     "acl", "posttrauma"]
     for sub_method in ["claude", "gemini", "gpt-4o", "gpt-o1", "bss", "oct", "autogluon",
-        "autoprognosis", "tabpfn"]
+        "autoprognosis", "tabpfn", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"]
 
         eval_results_induction_acc = eval_results[
             (eval_results[!, :dataset] .== dataset) .&
@@ -61,7 +61,7 @@ for dataset in ["boxing1", "boxing2", "japansolvent", "colic", "heart_h", "hepat
     "house_votes_84", "labor", "penguins", "vote", "bankruptcy", "creditscore", "irish",
     "acl", "posttrauma"]
     for sub_method in ["no", "claude", "gemini", "gpt-4o", "gpt-o1", "rt-us", "et-ss",
-        "rf-ss", "xg-ss", "et-sv", "rf-sv", "xg-sv"]
+        "rf-ss", "xg-ss", "et-sv", "rf-sv", "xg-sv", "llama3.1:70b","llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"]
 
         eval_results_embedding_acc = eval_results[
             (eval_results[!, :dataset] .== dataset) .&

@@ -6,7 +6,7 @@ import pandas as pd
 
 from .config import Config
 from .io import get_data
-from .llms import generate_gpt_tree, generate_claude_tree, generate_gemini_tree
+from .llms import generate_gpt_tree, generate_claude_tree, generate_gemini_tree, generate_local_llm_tree
 
 
 def generate_tree(config):
@@ -22,6 +22,8 @@ def generate_tree(config):
                 prompting_result = generate_claude_tree(config)
             elif config.method == "gemini":
                 prompting_result = generate_gemini_tree(config)
+            elif config.method in ["llama3.1:70b", "llama3.3:70b", "gemma3:27b", "deepseek-r1:70b", "gpt-oss:120b"]:
+                prompting_result = generate_local_llm_tree(config)
             else:
                 raise ValueError(f"Unknown model: {config.method}")
 
@@ -242,7 +244,7 @@ def count_keys_in_file(keys, file_paths):
 
 def get_feature_count(config: Config):
 
-    methods = ["gpt-4o", "gpt-o1", "gemini", "claude"]
+    methods = ["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"]
     key_counts = {method: {} for method in methods}
 
     X, y = get_data(config.root, config.dataset)

@@ -17,7 +17,7 @@ def eval_embedding(config):
     try:
 
         # Generate trees if necessary
-        if config.method in ["gpt-4o", "gpt-o1", "gemini", "claude"]:
+        if config.method in ["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"]:
             for tree_idx in range(config.num_trees):
                 config.iter = tree_idx
                 generate_tree(config)
@@ -33,6 +33,16 @@ def eval_embedding(config):
         elif config.method == "gpt-4o":
             pipeline = llm_embedding(X_train, y_train.values.ravel(), config)
         elif config.method == "gpt-o1":
+            pipeline = llm_embedding(X_train, y_train.values.ravel(), config)
+        elif config.method == "llama3.1:70b":
+            pipeline = llm_embedding(X_train, y_train.values.ravel(), config)
+        elif config.method == "llama3.3:70b":
+            pipeline = llm_embedding(X_train, y_train.values.ravel(), config)
+        elif config.method == "deepseek-r1:70b":
+            pipeline = llm_embedding(X_train, y_train.values.ravel(), config)
+        elif config.method == "gpt-oss:120b":
+            pipeline = llm_embedding(X_train, y_train.values.ravel(), config)
+        elif config.method == "gemma3:27b":
             pipeline = llm_embedding(X_train, y_train.values.ravel(), config)
         elif config.method == "rt-us":
             pipeline = rt_embedding(X_train, y_train.values.ravel(), config)

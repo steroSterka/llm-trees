@@ -61,13 +61,13 @@ def generate_latex_table(approach: str, score: str, split: str, aggregation: str
     if approach == "induction":
         summary = summary.map(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
         columns = ["claude", "gemini", "gpt-4o", "gpt-o1", "bss", "oct", "autogluon",
-                   "autoprognosis", "tabpfn"]
+                   "autoprognosis", "tabpfn", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"]
     elif approach == "embedding":
         summary[base_column] = summary[base_column].apply(lambda x: f"{x:.2f}")
         for col in columns:
             summary[col] = summary[col].apply(lambda x: f"{x:+.2f}")
         columns = ["no", "claude", "gemini", "gpt-4o", "gpt-o1", "rt-us", "et-ss",
-                   "rf-ss", "xg-ss", "et-sv", "rf-sv", "xg-sv"]
+                   "rf-ss", "xg-ss", "et-sv", "rf-sv", "xg-sv", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"]
 
     # LaTeX table rows
     rows = r"\textbf{Dataset}""" + "".join([f" & \\textbf{{{col}}}" for col in columns]) + \

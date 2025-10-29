@@ -33,6 +33,11 @@ induction_methods = {
     "gemini": "Gemini 1.5 Pro",
     "gpt-4o": "GPT-4o",
     "gpt-o1": "GPT-o1",
+    "llama3.1:70b": "llama3.1:70b",
+    "llama3.3:70b": "llama3.3:70b",
+    "deepseek-r1:70b": "deepSeek-r1:70b",
+    "gemma3:27b": "gemma3:27b",
+    "gpt-oss:120b": "gpt-oss:120b",
 }
 
 embedding_methods = {
@@ -41,6 +46,11 @@ embedding_methods = {
     "gemini": "Gemini 1.5 Pro\nunsupervised",
     "gpt-4o": "GPT-4o\nunsupervised",
     "gpt-o1": "GPT-o1\nunsupervised",
+    "llama3.1:70b": "llama3.1:70b\nunsupervised",
+    "llama3.3:70b": "llama3.3:70b\nunsupervised",
+    "deepseek-r1:70b": "deepSeek-r1:70b\nunsupervised",
+    "gemma3:27b": "gemma3:27b\nunsupervised",
+    "gpt-oss:120b": "gpt-oss:120b\nunsupervised",
     "rt-us": "Random Trees\nunsupervised",
     "et-ss": "Extra Trees\nself-supervised",
     "rf-ss": "Random Forest\nself-supervised",
@@ -197,7 +207,7 @@ def embeddings(
                                                 config.iter = iter
                                                 config.seed = iter
 
-                                                if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt"]:
+                                                if method in ["claude", "gemini", "gpt-4o", "gpt-o1", "gpt", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"]:
                                                     config.temperature = temperature[method] if isinstance(temperature, dict) else temperature
 
                                                 if config.skip_existing and result_handler.is_result_present(config):

@@ -3,18 +3,18 @@ from utils import experiments
 run_config = {
     "induction": True,
     "embedding": True,
-    "setting_1_tree_depth_induction": True,
-    "setting_2_tree_depth_embeddings": True,
-    "setting_3_number_of_trees_embeddings": True,
-    "setting_4_temperature_induction": True,
-    "setting_5_temperature_embeddings": True,
-    "setting_6_number_of_examples_induction": True,
-    "setting_7_number_of_examples_embeddings": True,
-    "setting_8_append_raw_features": True,
-    "setting_9_decision_tree_vs_free_form_induction": True,
-    "setting_10_description_induction": True,
-    "setting_11_description_embeddings": True,
-    "setting_12_classifier_embeddings": True,
+    "setting_1_tree_depth_induction": False,
+    "setting_2_tree_depth_embeddings": False,
+    "setting_3_number_of_trees_embeddings": False,
+    "setting_4_temperature_induction": False,
+    "setting_5_temperature_embeddings": False,
+    "setting_6_number_of_examples_induction": False,
+    "setting_7_number_of_examples_embeddings": False,
+    "setting_8_append_raw_features": False,
+    "setting_9_decision_tree_vs_free_form_induction": False,
+    "setting_10_description_induction": False,
+    "setting_11_description_embeddings": False,
+    "setting_12_classifier_embeddings": False,
 }
 
 ### Induction Experiments
@@ -48,7 +48,7 @@ if run_config["embedding"]:
     result_path_dimensions = "./results/embedding_dimensions"
     experiments.embedding_dimensions(
         result_path=result_path_dimensions,
-        model_list=["claude", "gemini", "gpt-4o", "gpt-o1"],
+        model_list=["claude", "gemini", "gpt-4o", "gpt-o1", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
     )
 
 ### Ablation Setting 1: Tree Depth for Induction
@@ -74,7 +74,7 @@ if run_config["setting_2_tree_depth_embeddings"]:
         temperature_list=[1],
         append_raw_features_list=[True],
         include_description_list=[False],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
         classifier_list=["mlp"],
     )
 
@@ -89,7 +89,7 @@ if run_config["setting_3_number_of_trees_embeddings"]:
         temperature_list=[1],
         append_raw_features_list=[True],
         include_description_list=[False],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b","llama3.3:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
         classifier_list=["mlp"],
     )
 
@@ -141,7 +141,7 @@ if run_config["setting_6_number_of_examples_induction"]:
         temperature_list=[1],
         force_decision_tree_list=[True],
         include_description_list=[False],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
     )
 
 ### Ablation Setting 7: Number of In-Context Examples for Embeddings
@@ -155,7 +155,7 @@ if run_config["setting_7_number_of_examples_embeddings"]:
         temperature_list=[1],
         append_raw_features_list=[True],
         include_description_list=[False],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
         classifier_list=["mlp"],
     )
 
@@ -170,7 +170,7 @@ if run_config["setting_8_append_raw_features"]:
         temperature_list=[1],
         append_raw_features_list=[False, True],
         include_description_list=[False],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
         classifier_list=["mlp"],
     )
 
@@ -184,7 +184,7 @@ if run_config["setting_9_decision_tree_vs_free_form_induction"]:
         temperature_list=[0],
         force_decision_tree_list=[True, False],
         include_description_list=[False],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
     )
 
 ### Ablation Setting 10: Description for Induction
@@ -198,7 +198,7 @@ if run_config["setting_10_description_induction"]:
         force_decision_tree_list=[True],
         include_description_list=[True, False],
         dataset_list=["bankruptcy"],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
     )
 
 ### Ablation Setting 11: Description for Embeddings
@@ -213,7 +213,7 @@ if run_config["setting_11_description_embeddings"]:
         append_raw_features_list=[False, True],
         include_description_list=[True, False],
         dataset_list=["bankruptcy"],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
         classifier_list=["mlp"],
     )
 
@@ -228,6 +228,6 @@ if run_config["setting_12_classifier_embeddings"]:
         temperature_list=[1],
         append_raw_features_list=[True],
         include_description_list=[False],
-        model_list=["gpt-4o", "gpt-o1", "gemini", "claude"],
+        model_list=["gpt-4o", "gpt-o1", "gemini", "claude", "llama3.1:70b", "deepseek-r1:70b", "gemma3:27b", "gpt-oss:120b"],
         classifier_list=["mlp", "hgbdt", "lr"],
     )
