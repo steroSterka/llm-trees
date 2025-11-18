@@ -1,0 +1,102 @@
+**Decision Tree (max depth = 2) – Penguin Species (Adelie / Chinstrap / Gentoo)**  
+
+```
+|--- flipper length (mm) <= 205
+||--- body mass (g) <= 3800
+|||--- class: Adelie
+||--- body mass (g) > 3800
+|||--- class: Chinstrap
+|--- flipper length (mm) > 205
+||--- body mass (g) <= 4700
+|||--- class: Chinstrap
+||--- body mass (g) > 4700
+|||--- class: Gentoo
+```
+
+**How the tree was built**
+
+* **Feature importance (derived from the Palmer Penguins data)** –  
+  1️⃣ Flipper length (mm) – strongest separator of the three species.  
+  2️⃣ Body mass (g) – refines the split, especially to distinguish Adelie from Chinstrap and Gentoo from Chinstrap.  
+
+* **Thresholds** – Chosen from the typical ranges observed in the dataset:  
+  * Adelie: flipper ≈ 190 mm, body ≈ 3500‑3800 g  
+  * Chinstrap: flipper ≈ 200‑210 mm, body ≈ 3800‑4700 g  
+  * Gentoo: flipper ≈ 220 mm+, body ≈ 4700 g+
+
+The tree respects the requested maximum depth of 2 (root → first split → leaf or second split). It uses the two most informative continuous features, providing a clear and easy‑to‑interpret rule set for classifying penguin species.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict_penguin(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo)
+    using a decision tree of maximum depth 2.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the feature values with the exact keys
+        used in the Palmer‑Penguins dataset:
+        - 'flipper_length_mm' (int/float)
+        - 'body_mass_g'       (int/float)
+
+        Example:
+        X = {
+            "flipper_length_mm": 210,
+            "body_mass_g": 4800,
+        }
+
+    Returns
+    -------
+    prediction : int
+        0 → Adelie, 1 → Chinstrap, 2 → Gentoo
+    nodes : list[int]
+        Truth values (1 = True, 0 = False) for each inner node in the tree,
+        in *pre‑order* (root, left child, right child).
+
+        nodes[0] – flipper_length_mm ≤ 205
+        nodes[1] – body_mass_g      ≤ 3800   (left branch of the root)
+        nodes[2] – body_mass_g      ≤ 4700   (right branch of the root)
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Evaluate the three inner‑node conditions (store as 1/0)
+    # ------------------------------------------------------------------
+    nodes = [0, 0, 0]                     # initialise list of length 3
+    nodes[0] = 1 if X["flipper_length_mm"] <= 205 else 0
+    nodes[1] = 1 if X["body_mass_g"]      <= 3800 else 0
+    nodes[2] = 1 if X["body_mass_g"]      <= 4700 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the tree to obtain the class label
+    # ------------------------------------------------------------------
+    if nodes[0] == 1:                     # flipper_length_mm ≤ 205
+        # left subtree
+        if nodes[1] == 1:                 # body_mass_g ≤ 3800
+            prediction = 0                # Adelie
+        else:                             # body_mass_g  > 3800
+            prediction = 1                # Chinstrap
+    else:                                 # flipper_length_mm > 205
+        # right subtree
+        if nodes[2] == 1:                 # body_mass_g ≤ 4700
+            prediction = 1                # Chinstrap
+        else:                             # body_mass_g  > 4700
+            prediction = 2                # Gentoo
+
+    return prediction, nodes
+```
+
+### How the function works
+| Inner node (pre‑order) | Condition evaluated | Meaning of `1` | Meaning of `0` |
+|------------------------|---------------------|----------------|----------------|
+| `nodes[0]` | `flipper_length_mm ≤ 205` | Penguin has a relatively short flipper (typical of Adelie/Chinstrap) | Flipper is longer (typical of Gentoo) |
+| `nodes[1]` | `body_mass_g ≤ 3800` (only relevant when `nodes[0]==1`) | Light bird → Adelie | Heavier → Chinstrap |
+| `nodes[2]` | `body_mass_g ≤ 4700` (only relevant when `nodes[0]==0`) | Medium weight → Chinstrap | Very heavy → Gentoo |
+
+The returned `prediction` follows the encoding you provided (`0 = Adelie`, `1 = Chinstrap`, `2 = Gentoo`). The `nodes` list gives a quick snapshot of which split decisions were true for the supplied observation.

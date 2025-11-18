@@ -1,0 +1,106 @@
+To build a decision tree classifier with a maximum depth of 2 that determines which boxer won each round based on the provided features, we'll have to follow these steps:
+
+1. **Identify the Most Important Features**: Given the features are `Judge`, `Offical judge`, and `Round`, we need to determine which of these are most predictive of the outcome (Lewis winning or Holyfield winning).
+
+2. **Decision Tree Construction**: With a maximum depth of 2, our tree can have at most one internal node splitting into two child nodes (which are leaf nodes in this case). The first split should be based on the most informative feature regarding the class labels.
+
+Given the nature of the features:
+- `Judge` could be highly influential since different judges might have biases or tendencies.
+- `Offical judge` is a binary feature that indicates if the judge was an official one, which might also influence the outcome due to perceived authority or stricter adherence to judging criteria.
+- `Round` could affect the decision as fighters' strategies and conditions change over rounds.
+
+Let's construct a hypothetical decision tree based on these features. We will prioritize `Judge` for the first split because it offers multiple categories that can be compared against each other directly, potentially leading to clearer distinctions in voting patterns or tendencies among judges.
+
+### Hypothetical Decision Tree
+
+Given we are predicting which fighter won (Lewis or Holyfield) and assuming we have a balanced dataset where both fighters had an equal chance of winning:
+
+1. **First Split (`Judge`)**: 
+   - If `Judge` is one of the less frequently mentioned sources (e.g., Boxing Times, Sportsline), we might hypothesize these judges could lean towards Lewis due to some unseen factors or biases.
+   - Otherwise, for more frequently mentioned or traditional sources (e.g., HBO-Lederman, Associated Press), Holyfield might have an edge in perception.
+
+2. **Second Split (`Offical judge`)**:
+   - For the branch where `Judge` suggests a leaning towards Lewis, further splitting based on `Offical judge` could refine this prediction. An official judge (`yes`) might be less biased, potentially favoring Holyfield if we assume official judges are stricter.
+   - Conversely, for branches leaning towards Holyfield, an unofficial judge (`no`) might stick with the initial leaning or shift based on round-specific strategies.
+
+### Example Tree Structure
+
+|--- Judge is one of (Boxing Times, Sportsline)
+||--- Offical judge: yes -> class: Lewis
+||--- Offical judge: no -> class: Holyfield
+|--- Judge is not one of (Boxing Times, Sportsline)
+||--- Round <= 6 -> class: Holyfield
+||--- Round > 6 -> class: Lewis
+
+This decision tree structure assumes:
+- Less traditional or less frequently mentioned judges might initially favor Lewis.
+- Official judges are more likely to follow stricter criteria, potentially favoring the technically superior fighter (which could be either depending on the round and strategy).
+- The round number influences the outcome based on fighter strategies and conditions.
+
+### Note
+This tree is highly speculative without actual data. Real-world application requires training a decision tree classifier on a dataset containing these features and their corresponding outcomes to determine which judges, official status, and rounds are most predictive of wins for Lewis or Holyfield.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree to predict which of the two boxing fighters won each round:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won based on Judge, Official judge status, and Round.
+
+    Args:
+        X (dict): A dictionary containing 'Judge', 'Official', 'Round' features.
+        
+    Returns:
+        prediction (int): The predicted winner of the round (1 = Lewis, 0 = Holyfield).
+        nodes (list): A list representing the truth values of the inner nodes.
+    """
+
+    # Initialize nodes with None
+    nodes = 2 * [None]
+
+    # First split based on Judge being one of the less frequently mentioned sources
+    nodes[0] = X['Judge'] in [5, 6]  # Boxing Times and Sportsline are indices 5 and 6
+
+    # Second split based on Official judge status if first condition is met
+    if nodes[0]:
+        nodes[1] = X['Official'] == 1  # Official judge is Yes (1)
+    else:
+        # If Judge doesn't favor Lewis initially, consider Round for further prediction
+        nodes[1] = X['Round'] <= 6
+
+    # Prediction logic based on the decision tree structure
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Lewis wins if official judge and less frequent source
+        else:
+            prediction = 0  # Holyfield wins otherwise
+    else:
+        if nodes[1]:
+            prediction = 0  # Holyfield wins in earlier rounds or more traditional sources
+        else:
+            prediction = 1  # Lewis wins in later rounds with non-official judges from other sources
+
+    return prediction, [int(node) for node in nodes]
+
+# Example usage
+X = {
+    'Judge': 5,  # Boxing Times
+    'Official': 1,  # Official judge: Yes
+    'Round': 3  # Round 3
+}
+
+prediction, nodes = predict(X)
+print(f"Predicted winner: {'Lewis' if prediction == 1 else 'Holyfield'}")
+print("Inner node truth values:", nodes)
+
+```
+
+In this function:
+- The first split is based on whether the `Judge` is one of the less frequently mentioned sources (Boxing Times or Sportsline).
+- If the judge is from these sources, we further check if they are an official judge to predict Lewis as the winner.
+- For other judges, we consider the round number for prediction. Holyfield is predicted to win in earlier rounds (rounds 1-6) with non-official or more traditional judges, and Lewis in later rounds.
+- The `nodes` list contains boolean values indicating whether each condition was met, converted to integers (0 or 1) before being returned.

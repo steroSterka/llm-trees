@@ -1,0 +1,110 @@
+To build a decision tree classifier with a maximum depth of 2 for determining whether a company is solvent or not based on the given financial features, we first need to understand that the "class" in this context will be either "Solvent" or "Insolvent". Without specific data or target variable information (i.e., which companies are solvent and which are insolvent), I'll demonstrate how one might approach building such a tree using the most important features. 
+
+The process involves:
+
+1. **Feature Selection**: Identifying the most predictive features.
+2. **Decision Tree Construction**: Using these features to build the decision tree.
+
+Given the financial ratios as features:
+- Earnings Before Interest and Taxes/Total Assets (EBIT/TA)
+- Net Income/Total Capital (NI/TC)
+- Sales/Total Assets (S/TA)
+- Earnings Before Interest and Taxes/Sales (EBIT/S)
+- Net Income/Sales (NI/S)
+- Working Capital/Total Assets (WC/TA)
+- Equity/Total Liabilities (E/Tl)
+- Equity/Total Assets (E/TA)
+
+Let's assume after analyzing the data, we found that `Earnings Before Interest and Taxes/Total Assets` and `Equity/Total Liabilities` are the most important features for predicting solvency. This could be due to their direct implications on a company's financial health: profitability (EBIT/TA) and leverage (E/Tl).
+
+Here is a hypothetical decision tree with a maximum depth of 2:
+
+|--- EBIT/TA <= 0.10
+||--- class: Insolvent
+|--- EBIT/TA > 0.10
+||--- E/Tl <= 1.00
+|||--- class: Insolvent
+||--- E/Tl > 1.00
+|||--- class: Solvent
+
+**Explanation**:
+- **First Split (Root Node)**: If the `Earnings Before Interest and Taxes/Total Assets` ratio is less than or equal to 0.10, it suggests poor profitability relative to total assets, which could indicate financial distress, thus classifying the company as "Insolvent".
+- **Second Split (Left Child of Root)**: For companies with better profitability (`EBIT/TA > 0.10`), we examine their leverage using `Equity/Total Liabilities`. A ratio less than or equal to 1.00 may indicate higher debt levels compared to equity, suggesting potential insolvency risks.
+- **Third Split (Right Child of Root)**: Companies with both good profitability (`EBIT/TA > 0.10`) and a healthy leverage position (`E/Tl > 1.00`), indicating more equity than total liabilities, are classified as "Solvent".
+
+Please note, the thresholds used here (e.g., `0.10` for `EBIT/TA`, `1.00` for `E/Tl`) are hypothetical and would need to be determined from actual data analysis, possibly using techniques like cross-validation to find optimal splits that minimize classification error.
+
+This approach demonstrates how a decision tree can be used to classify companies based on financial health indicators but requires real data for accurate threshold determination and feature importance assessment.
+
+
+#########################
+
+
+Here is the Python function that implements the decision tree for predicting company solvency based on financial ratios. The function `predict_solvency` takes a dictionary `X` containing the financial features of a company and returns a tuple where the first element is the predicted solvency status (1 = solvent, 0 = insolvent) and the second element is a list representing the truth values of the inner nodes.
+
+```python
+def predict_solvency(X: dict):
+    """
+    Predicts whether a company is solvent or not based on its financial ratios.
+    
+    Parameters:
+    X (dict): A dictionary containing the financial features of the company.
+              The keys should match the feature names exactly, including case and spacing.
+              Required keys: 'EBIT/TA', 'Equity/TL'
+              
+    Returns:
+    tuple: A tuple where the first element is the predicted solvency status (1 = solvent, 0 = insolvent)
+           and the second element is a list representing the truth values of the inner nodes.
+    """
+    
+    # Initialize nodes with None
+    nodes = 2 * [None]
+    
+    # First split: EBIT/TA <= 0.10
+    nodes[0] = X['EBIT/TA'] <= 0.10
+    
+    # Second split, conditional on the first: Equity/TL <= 1.00
+    if not nodes[0]:  # If EBIT/TA > 0.10
+        nodes[1] = X['Equity/TL'] <= 1.00
+    else:
+        nodes[1] = False  # This node is only relevant when the first condition is false
+    
+    # Prediction logic
+    if nodes[0]:  # EBIT/TA <= 0.10, company likely insolvent
+        prediction = 0
+    else:  # EBIT/TA > 0.10
+        if nodes[1]:  # Equity/TL <= 1.00, company might be insolvent due to high leverage
+            prediction = 0
+        else:  # Equity/TL > 1.00, company likely solvent with good profitability and leverage position
+            prediction = 1
+    
+    # Convert boolean nodes to integers (True -> 1, False -> 0)
+    node_values = [int(node) for node in nodes]
+    
+    return prediction, node_values
+
+# Example usage:
+company_features = {
+    'EBIT/TA': 0.05,
+    'NI/TC': 0.10,
+    'Sales/TA': 1.20,
+    'EBIT/Sales': 0.15,
+    'NI/Sales': 0.08,
+    'WC/TA': 0.30,
+    'Equity/TL': 0.80,
+    'Equity/TA': 0.60
+}
+
+prediction, node_values = predict_solvency(company_features)
+print(f"Predicted Solvency Status: {prediction}")
+print(f"Node Values: {node_values}")
+
+```
+
+In this code:
+
+- The function `predict_solvency` is defined to take a dictionary `X` containing the company's financial features.
+- It calculates the values of two nodes based on the conditions for `EBIT/TA` and `Equity/TL`.
+- Based on these node values, it predicts whether the company is solvent (1) or insolvent (0).
+- The function returns a tuple where the first element is the predicted solvency status and the second element is a list of integers representing the truth values of the inner nodes.
+- An example usage is provided to demonstrate how to use this function with a set of financial features for a company.

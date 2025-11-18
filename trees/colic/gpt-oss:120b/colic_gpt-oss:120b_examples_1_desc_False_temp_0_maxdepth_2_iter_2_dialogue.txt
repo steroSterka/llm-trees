@@ -1,0 +1,109 @@
+**Decision‑Tree Classifier (max depth = 2) – “Surgical vs Non‑Surgical” Colic Lesion**
+
+```
+|--- Degree of Pain (none / mild)
+||--- Nasogastric Reflux (significant)          -->  class: Surgical
+||--- Nasogastric Reflux (none / <1 L)           -->  class: Non‑Surgical
+|--- Degree of Pain (moderate / severe)
+||--- Abdominal Distension (moderate / severe) -->  class: Surgical
+||--- Abdominal Distension (none / slight)      -->  class: Non‑Surgical
+```
+
+### Why these features?
+
+| Rank | Feature                     | Clinical relevance for “surgical” colic |
+|------|----------------------------|------------------------------------------|
+| 1    | **Degree of Pain**         | Horses with moderate‑to‑severe pain are far more likely to have a lesion that requires surgery (e.g., strangulating or ruptured intestine). |
+| 2    | **Abdominal Distension**   | Marked distension reflects gas/fluid accumulation from an obstructive or perforated lesion – a classic surgical indication. |
+| 3    | **Nasogastric Reflux**     | Large or “significant” reflux (≥ 1 L) usually indicates an obstructive process that cannot be resolved medically. |
+| 4    | (used only in the other branch) | – |
+
+The tree uses the **two most discriminative variables** (pain and, depending on the pain level, either abdominal distension or nasogastric reflux) and stops after **two splitting levels** (root + one child split). Each leaf gives the predicted class:
+
+* **Surgical** – lesion likely needs operative correction.  
+* **Non‑Surgical** – lesion can often be managed medically.
+
+> *Note:* The splits are expressed in plain language for readability. In a real implementation the categorical values would be encoded (e.g., `Degree_of_Pain ∈ {moderate, severe}`) and the decision rule applied accordingly.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**  
+(“Surgical = 1”, “Non‑surgical = 0”)
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a horse with colic needs surgery (target = 1) or not (target = 0).
+
+    The tree (max depth = 2) uses the two most discriminative variables that are
+    available in the dataset:
+
+    1. *pain* (Degree of Pain) – root split
+       - values 1 (alert) and 4 (intermittent mild pain) are considered “mild/none”.
+       - all other values (2, 3, 5) are treated as “moderate‑to‑severe”.
+
+    2. If pain is mild/none → look at *nasogastric_reflux*  
+       - value 0 = “> 1 L reflux” (significant) → **Surgical**
+       - any other value (1,2,3) → **Non‑surgical**
+
+       If pain is moderate/severe → look at *abdominal_distension*  
+       - values 1 (moderate) or 3 (severe) → **Surgical**
+       - values 2 (none) or 4 (slight) → **Non‑surgical**
+
+    The function returns:
+        prediction : int  (0 = no surgery, 1 = surgery)
+        nodes      : list[int]  (truth value of each inner node, 1 = condition true)
+    """
+    # ------------------------------------------------------------------ #
+    # inner node 0 : root – is the pain “mild / none” ?
+    # ------------------------------------------------------------------ #
+    mild_pain_vals = {1, 4}                     # 1 = alert, 4 = intermittent mild pain
+    node0 = int(X["pain"] in mild_pain_vals)    # 1 if mild, 0 otherwise
+    # ------------------------------------------------------------------ #
+    # inner node 1 : second level – depends on the outcome of node0
+    # ------------------------------------------------------------------ #
+    if node0:                                   # pain is mild/none → use reflux
+        # nasogastric_reflux : 0 = >1 L (significant), 1 = <1 L, 2 = missing, 3 = none
+        node1 = int(X["nasogastric_reflux"] == 0)
+    else:                                       # pain is moderate/severe → use distension
+        # abdominal_distension : 1 = moderate, 3 = severe, 2 = none, 4 = slight
+        node1 = int(X["abdominal_distension"] in {1, 3})
+
+    # ------------------------------------------------------------------ #
+    # decision logic (leaf nodes)
+    # ------------------------------------------------------------------ #
+    if node0:                                   # mild/none pain branch
+        if node1:                               # significant reflux
+            prediction = 1                     # Surgical
+        else:
+            prediction = 0                     # Non‑surgical
+    else:                                       # moderate/severe pain branch
+        if node1:                               # moderate/severe distension
+            prediction = 1                     # Surgical
+        else:
+            prediction = 0                     # Non‑surgical
+
+    # return prediction and the list of inner‑node truth values (as 0/1 ints)
+    return prediction, [node0, node1]
+```
+
+### How to use
+
+```python
+sample = {
+    "pain": 2,                     # continuous severe pain
+    "nasogastric_reflux": 3,       # none
+    "abdominal_distension": 1,    # moderate
+    # … all other keys can be present but are ignored by the tree …
+}
+
+pred, nodes = predict(sample)
+print(pred)   # 1  → surgery recommended
+print(nodes)  # [0, 1]   (pain not mild, but distension is moderate/severe)
+```
+
+The function follows exactly the tree described earlier, respects the
+provided encoding of each categorical variable, and reports the Boolean
+outcome of every internal split as requested.

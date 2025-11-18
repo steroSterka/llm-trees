@@ -1,0 +1,90 @@
+**Decision Tree (max depth = 2, most informative binary votes)**  
+
+```
+|--- Vote on allowing religious groups in schools (yes) <= 0
+||--- class: Republican
+|--- Vote on allowing religious groups in schools (yes) > 0
+||--- Vote on the issue of handicapped infants (yes) <= 0
+|||--- class: Republican
+||--- Vote on the issue of handicapped infants (yes) > 0
+|||--- class: Democrat
+```
+
+*Explanation of the splits*  
+
+1. **Root node – “Vote on allowing religious groups in schools”**  
+   * Republicans overwhelmingly voted **yes** (supporting the allowance), while Democrats voted **no** (opposing it).  
+
+2. **Second‑level split – “Vote on the issue of handicapped infants”** (applied only to the “yes” branch of the root)  
+   * Among those who voted **yes** on religious‑group access, those who also voted **yes** on the handicapped‑infants bill are almost exclusively **Democrats**.  
+   * Those who voted **yes** on religious‑group access **but** voted **no** on the handicapped‑infants bill remain **Republicans**.  
+
+Thus, with just two binary features the tree separates the two parties with high purity while respecting the maximum depth of 2.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (0 = Democrat, 1 = Republican) from the
+    voting record supplied in ``X`` and return the truth values of the
+    inner nodes.
+
+    Expected keys in ``X`` (exact spelling, case‑sensitive):
+        - 'religious groups in schools'   # 2 = yes, 1 = no
+        - 'handicapped infants'           # 2 = yes, 1 = no
+
+    The tree (max depth = 2) is:
+
+        if religious groups in schools == 2:          # node 0
+            if handicapped infants == 2:              # node 1
+                -> Democrat (0)
+            else:
+                -> Republican (1)
+        else:
+            -> Republican (1)
+
+    Returns
+    -------
+    prediction : int
+        0 for Democrat, 1 for Republican
+    nodes : list[int]
+        List of 0/1 values for the inner nodes in the order they appear
+        in the tree (node 0, then node 1).  ``1`` means the condition is
+        satisfied, ``0`` otherwise.
+    """
+    # ---- inner node evaluations ------------------------------------------------
+    # node 0 : “religious groups in schools” voted *yes* ?
+    node0 = 1 if X["religious groups in schools"] == 2 else 0
+
+    # node 1 : “handicapped infants” voted *yes* ?
+    # (evaluated regardless of node0 so that the length of the list is fixed)
+    node1 = 1 if X["handicapped infants"] == 2 else 0
+
+    # ---- prediction ------------------------------------------------------------
+    if node0:                         # religious groups in schools == yes
+        if node1:                     # handicapped infants == yes
+            prediction = 0           # Democrat
+        else:
+            prediction = 1           # Republican
+    else:                             # religious groups in schools == no
+        prediction = 1               # Republican
+
+    # return prediction and the list of node truth values (as integers 0/1)
+    return prediction, [node0, node1]
+```
+
+### How it works
+| Node | Condition (Python)                               | Meaning (when true) |
+|------|---------------------------------------------------|---------------------|
+| 0    | `X["religious groups in schools"] == 2`          | The member voted **yes** on allowing religious groups in schools |
+| 1    | `X["handicapped infants"] == 2`                  | The member voted **yes** on the handicapped‑infants bill |
+
+* If Node 0 is **false** (the member voted *no* on religious groups), the model predicts **Republican** (1) immediately.  
+* If Node 0 is **true**, we look at Node 1: a **yes** vote on handicapped infants leads to **Democrat** (0); otherwise the prediction is **Republican** (1).
+
+The returned `nodes` list contains the binary outcomes of the two inner tests, enabling you to trace the path taken by any input record.

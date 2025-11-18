@@ -1,0 +1,116 @@
+To build the decision tree with the given features and a maximum depth of 2 for classifying whether an application for credit is accepted or not, we need to follow these steps:
+
+1. **Selecting the Most Important Features**: For simplicity and based on general knowledge about credit scoring, let's assume that `income per dependent`, `monthly credit card expenses`, and `number of derogatory reports` are highly influential in determining credit worthiness. `Owning a home` and being `self-employed` can also be important but might be less directly correlated with the ability to repay debt compared to income and expenses.
+
+2. **Building the Decision Tree**:
+    - At the first level (root), we choose a feature that has the most significant impact on creditworthiness. Let's assume `number of derogatory reports` is our top feature because having any derogatory reports significantly affects one's credit score.
+    - For the second level, we need two more features to further distinguish between applications. Let's choose `income per dependent` and `monthly credit card expenses` as they directly relate to the ability to repay debts.
+
+Given these considerations, a possible decision tree could look like this:
+
+- **Root Node**: number of derogatory reports
+    - If number of derogatory reports > 0:
+        - This indicates poor past repayment behavior, which is a significant risk factor.
+        - Go to next level for further evaluation.
+    - If number of derogatory reports = 0:
+        - Proceed to evaluate financial stability.
+
+- **First Level (Left Branch)**: For those with derogatory reports, let's use `income per dependent` as the deciding feature because it reflects the applicant's ability to cover expenses despite past issues.
+    - If income per dependent > 5 (assuming this is a moderate to high income that can support repayment):
+        - **Class**: Accept (Credit application accepted)
+    - If income per dependent <= 5:
+        - **Class**: Reject (Credit application rejected due to low income and existing derogatory reports)
+
+- **First Level (Right Branch)**: For those without derogatory reports, let's use `monthly credit card expenses` as the deciding feature because it reflects current financial management.
+    - If monthly credit card expenses < $500 (assuming this is a manageable level of debt):
+        - **Class**: Accept (Credit application accepted)
+    - If monthly credit card expenses >= $500:
+        - **Class**: Reject (Credit application rejected due to high expenses indicating potential overextension)
+
+**Decision Tree Summary**:
+
+|--- number of derogatory reports > 0
+||--- income per dependent > 5: Accept
+||--- income per dependent <= 5: Reject
+|--- number of derogatory reports = 0
+||--- monthly credit card expenses < $500: Accept
+||--- monthly credit card expenses >= $500: Reject
+
+This decision tree is simplified and based on hypothetical assumptions about the importance and thresholds of features. Real-world applications would require actual data analysis, potentially including techniques like feature selection, cross-validation, and tuning of hyperparameters to optimize the model's performance.
+
+
+#########################
+
+
+Here's how you could implement the decision tree as a Python function. The thresholds used are based on general assumptions and may need to be adjusted according to actual data analysis.
+
+```python
+def predict_credit(X: dict):
+    """
+    Predicts whether an application for credit is accepted or not.
+    
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - Age (years)
+        - Income.per.dependent (income per dependent, 1.5 to 10)
+        - Monthly.credit.card.exp (monthly credit card expenses, $)
+        - Own.home (owning a home, 1 = yes, 0 = no)
+        - Self.employed (self employed, 1 = yes, 0 = no)
+        - Derogatory.reports (number of derogatory reports, 0, 1, 2, 3, 4, 7)
+    
+    Returns:
+    prediction (int): Whether the application for credit is accepted or not (0 = no, 1 = yes).
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+    
+    # Initialize nodes
+    nodes = 2 * [None]
+    
+    # Root node: number of derogatory reports > 0
+    nodes[0] = X["Derogatory.reports"] > 0
+    
+    # If there are derogatory reports, check income per dependent; otherwise, check monthly credit card expenses
+    if nodes[0]:
+        nodes[1] = X["Income.per.dependent"] > 5  # Assuming higher income can offset past issues
+    else:
+        nodes[1] = X["Monthly.credit.card.exp"] < 500  # Assuming lower expenses indicate better financial health
+    
+    # Make prediction based on the decision tree
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Accept credit application despite past issues due to good income
+        else:
+            prediction = 0  # Reject credit application due to low income and past issues
+    else:
+        if nodes[1]:
+            prediction = 1  # Accept credit application due to low expenses
+        else:
+            prediction = 0  # Reject credit application due to high expenses
+    
+    # Convert boolean node values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+X = {
+    "Age": 30,
+    "Income.per.dependent": 6,
+    "Monthly.credit.card.exp": 300,
+    "Own.home": 1,
+    "Self.employed": 0,
+    "Derogatory.reports": 1
+}
+
+prediction, nodes = predict_credit(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+
+```
+
+In this code:
+
+- The function `predict_credit` takes a dictionary `X` containing the features.
+- It initializes two nodes based on the decision tree logic.
+- The first node checks if there are any derogatory reports. If true, it then checks the income per dependent; otherwise, it checks the monthly credit card expenses for the second node.
+- Based on these conditions, it predicts whether the application for credit is accepted or not and returns this prediction along with the truth values of the inner nodes as a list.

@@ -1,0 +1,123 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Target: Penguin species – Adelie / Chinstrap / Gentoo*  
+
+The most discriminative variables in the Palmer‑Penguin data set are:
+
+1. **Island** – each island hosts a characteristic mix of species.  
+2. **Flipper length (mm)** – strongly correlated with body size; Gentoo have the longest flippers, Adelie the shortest.  
+3. **Body mass (g)** – another size proxy that helps separate Adelie from the larger species when island alone is not enough.  
+
+Using these three features we can build a tree that never goes deeper than two splits (root → first split → leaf).  
+The textual layout follows the style of the iris‑example you gave.
+
+```
+|--- island = Biscoe
+||--- flipper length (mm) <= 210
+|||--- class: Chinstrap
+||--- flipper length (mm) > 210
+|||--- class: Gentoo
+
+|--- island = Dream
+||--- flipper length (mm) <= 190
+|||--- class: Adelie
+||--- flipper length (mm) > 190
+|||--- class: Chinstrap
+
+|--- island = Torgersen
+||--- body mass (g) <= 3700
+|||--- class: Adelie
+||--- body mass (g) > 3700
+|||--- class: Gentoo
+```
+
+### How the tree works  
+
+| **Path**                               | **Interpretation**                                                                    |
+|----------------------------------------|---------------------------------------------------------------------------------------|
+| `island = Biscoe` → `flipper ≤ 210`    | On Biscoe, birds with relatively short flippers are almost always **Chinstrap**.     |
+| `island = Biscoe` → `flipper > 210`    | Longer flippers on Biscoe indicate the larger **Gentoo**.                           |
+| `island = Dream` → `flipper ≤ 190`    | Dream island’s smallest‑flipper birds are **Adelie**.                                |
+| `island = Dream` → `flipper > 190`    | The remaining Dream birds are predominantly **Chinstrap**.                         |
+| `island = Torgersen` → `mass ≤ 3700`  | On Torgersen, lighter birds are **Adelie**.                                         |
+| `island = Torgersen` → `mass > 3700`  | Heavier birds on Torgersen are generally **Gentoo** (though rare).                 |
+
+This tree respects the maximum depth of 2, uses the most informative predictors, and provides a clear, interpretable rule set for classifying the three penguin species.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict_penguin_species(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo).
+
+    The tree was built with a maximum depth of 2 and uses the most
+    discriminative features from the Palmer‑Penguin data set
+    (island, flipper length, body mass).
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the six input features with the exact
+        keys shown below:
+
+        - "island"            : 0 = Biscoe, 1 = Dream, 2 = Torgersen
+        - "culmen_length_mm"  : (not used by this tree)
+        - "culmen_depth_mm"   : (not used by this tree)
+        - "flipper_length_mm": length of the flipper in millimetres
+        - "body_mass_g"       : body mass in grams
+        - "sex"               : 0 = nan, 1 = female, 2 = male
+
+    Returns
+    -------
+    prediction : int
+        0 → Adelie, 1 → Chinstrap, 2 → Gentoo
+    nodes : list[int]
+        Truth values of the two inner‑node tests (1 = True, 0 = False)
+        in the order they are evaluated.
+    """
+
+    # ------------------------------------------------------------------
+    # Inner‑node evaluations (the two conditions that constitute the tree)
+    # ------------------------------------------------------------------
+    # node 0 : is the bird observed on Torgersen island?
+    # node 1 : is the flipper length ≤ 210 mm ?  (used when the bird is NOT
+    #          on Torgersen)
+    nodes = [None, None]
+    nodes[0] = int(X["island"] == 2)                # 1 if Torgersen, else 0
+    nodes[1] = int(X["flipper_length_mm"] <= 210)  # 1 if short flipper, else 0
+
+    # ------------------------------------------------------------------
+    # Decision logic
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # island == Torgersen
+        # second split for Torgersen: body‑mass separates Adelie from Gentoo
+        if X["body_mass_g"] <= 3700:
+            prediction = 0           # Adelie
+        else:
+            prediction = 2           # Gentoo
+    else:                            # island is Biscoe (0) or Dream (1)
+        if nodes[1]:                 # short flipper (≤ 210 mm)
+            prediction = 1           # Chinstrap (dominant for short flippers)
+        else:                        # long flipper (> 210 mm)
+            # With long flippers we must still decide between Adelie and Gentoo.
+            # On Biscoe the long‑flipper birds are Gentoo; on Dream they are Adelie.
+            if X["island"] == 0:     # Biscoe
+                prediction = 2       # Gentoo
+            else:                    # Dream
+                prediction = 0       # Adelie
+
+    return prediction, nodes
+```
+
+### How the returned `nodes` list should be interpreted
+
+| Index | Condition evaluated                                   | Meaning (`1` = true, `0` = false) |
+|-------|-------------------------------------------------------|-----------------------------------|
+| `0`   | `X["island"] == 2` (bird is on **Torgersen**)        | `1` → Torgersen, `0` → Biscoe or Dream |
+| `1`   | `X["flipper_length_mm"] <= 210` (short flipper)      | `1` → short flipper, `0` → long flipper   |
+
+The function follows the exact format of the example you provided: it returns a single integer prediction together with a list of binary truth values for the inner nodes.

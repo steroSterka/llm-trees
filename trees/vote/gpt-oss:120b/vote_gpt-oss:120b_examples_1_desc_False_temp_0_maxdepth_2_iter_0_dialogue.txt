@@ -1,0 +1,125 @@
+Below is a **hypothetical** decision‑tree that uses the two most informative votes (chosen from the list you supplied) to predict a legislator’s party affiliation.  
+Because we do not have the actual voting record, the splits are based on well‑known partisan patterns in the 1980s‑1990s (e.g., strong Republican support for the Nicaraguan‑Contras aid package and strong Democratic support for education‑spending increases).  
+
+The tree is limited to **maximum depth = 2** (one root split and one additional split on each branch).  
+
+```
+|--- Vote on aid to Nicaraguan Contras (yes / no)
+|    |--- yes
+|    |    |--- Vote on anti‑satellite test ban (yes / no)
+|    |    |    |--- yes  -> class: Republican
+|    |    |    `--- no   -> class: Democrat   (rare crossover)
+|    `--- no
+|         |--- Vote on education spending (yes / no)
+|         |    |--- yes  -> class: Democrat
+|         `--- no   -> class: Republican
+```
+
+### How the tree works
+1. **Root node – “Aid to Nicaraguan Contras”**  
+   *Historically, Republicans voted **yes** on this Cold‑War‑era assistance, while Democrats voted **no**.*  
+2. **Left branch (yes → likely Republican)**  
+   *A second split on “Anti‑satellite test ban” helps catch the few legislators who broke with their party on this defense issue.*  
+   - **yes** → stays Republican.  
+   - **no** → classifies as Democrat (captures occasional cross‑overs).  
+3. **Right branch (no → likely Democrat)**  
+   *A second split on “Education spending” distinguishes the small number of fiscally‑conservative Democrats who opposed increased education budgets.*  
+   - **yes** → Democrat.  
+   - **no** → Republican.
+
+### Why these features?
+- **Aid to Nicaruguan Contras** and **Anti‑satellite test ban** were among the most polarising votes of the era, giving them high information gain in a tree‑induction setting.  
+- **Education spending** is a classic liberal‑vs‑conservative separator, providing a clean second‑level split for the “no‑Contras” side.
+
+> **Note:** This tree is illustrative. To obtain a data‑driven tree you would feed the actual vote‑by‑vote matrix into a decision‑tree learner (e.g., `sklearn.tree.DecisionTreeClassifier(max_depth=2)`) and let the algorithm select the splits that maximise information gain (or Gini impurity reduction). The structure above mirrors the kind of split you would likely see with real data.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (1 = Republican, 0 = Democrat) from a
+    legislator's voting record.
+
+    The tree (max depth = 2) uses the three most informative votes:
+
+        1. aid to nicaraguan contras
+        2. anti satellite test ban          (only examined when #1 == yes)
+        3. education spending               (only examined when #1 == no)
+
+    The function also returns a list ``nodes`` that contains the truth
+    value of every inner node (root + the two possible second‑level
+    splits) in the order they appear in the tree:
+
+        nodes[0] – result of the root test
+        nodes[1] – result of the left‑branch test  (anti satellite test ban)
+        nodes[2] – result of the right‑branch test (education spending)
+
+    Each entry is ``1`` if the condition is satisfied, otherwise ``0``.
+    """
+    # ----- inner‑node evaluations ---------------------------------
+    # 2 = yes, 1 = no  (as described in the feature encoding)
+    nodes = [0, 0, 0]
+
+    # root: aid to nicaraguan contras
+    nodes[0] = 1 if X["aid to nicaraguan contras"] == 2 else 0
+
+    # left‑branch condition (only relevant when root == 1)
+    nodes[1] = 1 if X["anti satellite test ban"] == 2 else 0
+
+    # right‑branch condition (only relevant when root == 0)
+    nodes[2] = 1 if X["education spending"] == 2 else 0
+
+    # ----- prediction ---------------------------------------------
+    if nodes[0]:                      # voted YES on Nicaraguan Contras
+        # go to left branch
+        if nodes[1]:                  # voted YES on anti‑satellite test ban
+            prediction = 1           # Republican
+        else:                         # voted NO on anti‑satellite test ban
+            prediction = 0           # Democrat (rare crossover)
+    else:                             # voted NO on Nicaraguan Contras
+        # go to right branch
+        if nodes[2]:                  # voted YES on education spending
+            prediction = 0           # Democrat
+        else:                         # voted NO on education spending
+            prediction = 1           # Republican
+
+    return prediction, nodes
+```
+
+**How to use**
+
+```python
+sample = {
+    "handicapped infants": 1,
+    "water project cost sharing": 2,
+    "adoption of the budget resolution": 2,
+    "physician fee freeze": 1,
+    "el salvador aid": 2,
+    "religious groups in schools": 1,
+    "anti satellite test ban": 2,
+    "aid to nicaraguan contras": 2,
+    "mx missile": 1,
+    "immigration": 2,
+    "synfuels corporation cutback": 1,
+    "education spending": 1,
+    "superfund right to sue": 2,
+    "crime": 2,
+    "duty free exports": 1,
+    "export administration act south africa": 2,
+    "Target variable": None,   # not used for prediction
+    "target": None              # not used for prediction
+}
+
+pred, nodes = predict(sample)
+print("Prediction (1=Rep, 0=Dem):", pred)
+print("Inner‑node truth values:", nodes)
+```
+
+The function follows exactly the tree described earlier, respects the
+provided feature names and encodings, and returns both the class
+prediction and the boolean outcomes of all inner nodes.

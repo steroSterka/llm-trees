@@ -1,0 +1,142 @@
+Below is a **sample decision‑tree classifier** that uses the five financial ratios you listed.  
+Because we do not have a concrete dataset, the split thresholds are **illustrative** – they are chosen to reflect the patterns that are most commonly observed in bankruptcy‑prediction studies (e.g., Altman‑type models).  
+
+The tree is limited to a **maximum depth of 2** (i.e., one root split and one additional split on each branch).  
+
+---  
+
+### Decision Tree (max‑depth = 2)
+
+```
+|--- Working Capital / Total Assets <= 0.15
+|    |--- class: NOT Bankrupt
+|--- Working Capital / Total Assets > 0.15
+|    |--- Retained Earnings / Total Assets <= -0.05
+|    |    |--- class: BANKRUPT
+|    |--- Retained Earnings / Total Assets > -0.05
+|    |    |--- class: NOT Bankrupt
+```
+
+---
+
+### How the tree was built  
+
+| Rank | Feature (ratio)                              | Why it is most important (common in the literature) |
+|------|----------------------------------------------|------------------------------------------------------|
+| **1**| **Working Capital / Total Assets**           | Directly measures short‑term liquidity. Low values indicate that the firm cannot cover its current liabilities with its current assets – a strong predictor of distress. |
+| **2**| **Retained Earnings / Total Assets**         | Captures accumulated profitability. Negative retained‑earnings ratios (i.e., accumulated losses) are a classic red flag for bankruptcy. |
+| **3**| Earnings Before Interest & Tax / Total Assets| Reflects operating efficiency, but usually adds less discriminative power once the two top ratios are considered. |
+| **4**| Sales / Total Assets                         | A proxy for asset turnover; useful but less decisive for the binary outcome. |
+| **5**| Book Value of Equity / Book Value of Liabilities| Provides a balance‑sheet “solvency” perspective, but it often correlates with the first two ratios. |
+
+Only the top two features are used because the tree depth is limited to 2. If you later wish to expand the model (e.g., depth = 3 or more), the next most informative splits would typically involve **EBIT/Total Assets** and **Sales/Total Assets**.
+
+---
+
+### Interpreting the tree  
+
+| Path (conditions)                                           | Predicted outcome |
+|--------------------------------------------------------------|-------------------|
+| **Working Capital/Total Assets ≤ 0.15**                      | **Not Bankrupt** – the firm has at least 15 % of its assets in liquid working capital, a comfortable cushion. |
+| **Working Capital/Total Assets > 0.15** **and**<br>**Retained Earnings/Total Assets ≤ ‑0.05** | **Bankrupt** – despite having a relatively high working‑capital cushion, the firm has accumulated losses exceeding 5 % of its asset base, a strong distress signal. |
+| **Working Capital/Total Assets > 0.15** **and**<br>**Retained Earnings/Total Assets > ‑0.05** | **Not Bankrupt** – the firm is both liquid and not deeply loss‑making. |
+
+---
+
+### How to use this tree in practice  
+
+1. **Compute the two ratios** for each company you wish to evaluate:  
+   - `WC_TA = Working Capital / Total Assets`  
+   - `RE_TA = Retained Earnings / Total Assets`  
+
+2. **Apply the decision rules** exactly as shown above.  
+
+3. **Assign the class** (`Bankrupt` or `Not Bankrupt`) based on the leaf node reached.  
+
+If you have a real dataset and would like the thresholds to be *data‑driven* (e.g., derived from Gini impurity or entropy minimisation), just provide the data and I can fit an actual scikit‑learn `DecisionTreeClassifier` with `max_depth=2` and output the exact splits.  
+
+---  
+
+**Note:** The thresholds (0.15 for WC/TA and –0.05 for RE/TA) are placeholders. In a production model you would determine them by training on historical bankruptcy data and selecting the splits that maximise classification accuracy (or a chosen metric such as the F1‑score).
+
+
+#########################
+
+
+**Python implementation of the depth‑2 bankruptcy decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company went bankrupt (target = 1) or not (target = 0)
+    using a very small decision tree (max depth = 2).
+
+    Expected keys in ``X`` (exact spelling, case‑sensitive):
+        - 'WC/TA'   : Working Capital / Total Assets
+        - 'RE/TA'   : Retained Earnings / Total Assets
+        - 'EBIT/TA' : Earnings Before Interest and Tax / Total Assets
+        - 'S/TA'    : Sales / Total Assets
+        - 'BVE/BVL' : Book Value of Equity / Book Value of Liabilities
+
+    The function returns a tuple ``(prediction, nodes)`` where
+        * ``prediction`` is 0 (not bankrupt) or 1 (bankrupt)
+        * ``nodes`` is a list of the truth values of the inner nodes
+          (1 = condition satisfied, 0 = condition not satisfied)
+
+    Tree structure (filled with sensible thresholds taken from classic
+    bankruptcy‑prediction literature):
+
+        |--- WC/TA <= 0.15
+        |        --> NOT bankrupt (0)
+        |--- WC/TA > 0.15
+                 |--- RE/TA <= -0.05
+                 |        --> BANKRUPT (1)
+                 |--- RE/TA > -0.05
+                          --> NOT bankrupt (0)
+
+    The thresholds:
+        * 0.15  – a firm whose working‑capital ratio is ≤ 15 % of assets
+                 is usually considered to have a comfortable liquidity cushion.
+        * –0.05 – a retained‑earnings ratio ≤ ‑5 % of assets signals
+                 accumulated losses and is a strong distress indicator.
+    """
+    # ------------------------------------------------------------------
+    # 1️⃣  Evaluate the two inner‑node conditions (store as 0/1 integers)
+    # ------------------------------------------------------------------
+    nodes = [0, 0]                                 # placeholder for two nodes
+    nodes[0] = int(X["WC/TA"] <= 0.15)              # root node
+    nodes[1] = int(X["RE/TA"] <= -0.05)             # second‑level node
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the tree logic to obtain the final class label
+    # ------------------------------------------------------------------
+    if nodes[0]:               # WC/TA <= 0.15  → automatically safe
+        prediction = 0         # NOT bankrupt
+    else:                      # WC/TA > 0.15  → need the second test
+        if nodes[1]:           # RE/TA <= -0.05
+            prediction = 1     # BANKRUPT
+        else:
+            prediction = 0     # NOT bankrupt
+
+    # ------------------------------------------------------------------
+    # 3️⃣  Return result
+    # ------------------------------------------------------------------
+    return prediction, nodes
+```
+
+### How to use the function
+```python
+sample_company = {
+    "WC/TA": 0.12,      # 12 % of assets are working capital
+    "RE/TA": -0.02,     # small loss but not deep enough to trigger bankruptcy
+    "EBIT/TA": 0.05,
+    "S/TA": 1.2,
+    "BVE/BVL": 0.8
+}
+
+pred, node_vals = predict(sample_company)
+print("Bankruptcy prediction :", pred)          # 0 → not bankrupt
+print("Inner‑node truth list:", node_vals)     # [1, 0]
+```
+
+The function respects the exact feature names you supplied, uses meaningful threshold values, and returns both the classification and the binary outcomes of the internal decision nodes as required.

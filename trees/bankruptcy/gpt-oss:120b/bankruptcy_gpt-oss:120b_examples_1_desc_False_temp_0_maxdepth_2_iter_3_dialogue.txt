@@ -1,0 +1,138 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Target*: **Bankrupt** / **Not Bankrupt**  
+
+| Feature set (financial ratios) | Reason for selection |
+|--------------------------------|----------------------|
+| **Working Capital / Total Assets** | Direct measure of short‑term liquidity; the single most powerful predictor in Altman‑type Z‑score models. |
+| **Retained Earnings / Total Assets** | Captures accumulated profitability; low (or negative) values are a strong warning sign of distress. |
+| (Other ratios – EBIT/TA, Sales/TA, Book‑Equity/Book‑Liabilities) | Still useful, but add little extra discrimination once the two top ratios are used, so they are left out to keep the tree at depth 2. |
+
+> **Note** – The split thresholds below are **illustrative** (derived from typical ranges observed in public‑company data).  In a real deployment you would fit the tree on your own labelled dataset and let the algorithm choose the exact cut‑points that maximise information gain (or Gini impurity reduction).
+
+---
+
+### Tree diagram (text format, same style as your example)
+
+```
+|--- Working Capital / Total Assets <= 0.12
+|    |--- class: Not Bankrupt
+|--- Working Capital / Total Assets > 0.12
+|    |--- Retained Earnings / Total Assets <= 0.03
+|    |    |--- class: Bankrupt
+|    |--- Retained Earnings / Total Assets > 0.03
+|    |    |--- class: Not Bankrupt
+```
+
+**Interpretation**
+
+1. **Root node – Working Capital / Total Assets**  
+   *If the ratio is **≤ 0.12** (i.e., the firm holds at least 12 % of its assets as working capital), the model predicts **Not Bankrupt**.*  
+   *If the ratio is **> 0.12**, the firm is using a larger share of its assets for non‑current purposes, which is a red flag and triggers the second‑level split.*
+
+2. **Second‑level split – Retained Earnings / Total Assets** (only evaluated for the “high‑working‑capital‑ratio” branch)  
+   *If retained earnings are **≤ 0.03** (≤ 3 % of assets, possibly negative), the model predicts **Bankrupt**.*  
+   *If retained earnings are **> 0.03**, the firm still shows enough accumulated profit, so the prediction is **Not Bankrupt**.*
+
+---
+
+### How to use the tree
+
+| Working Capital/TA | Retained Earnings/TA (only if WC/TA > 0.12) | Predicted class |
+|--------------------|--------------------------------------------|-----------------|
+| ≤ 0.12             | –                                          | **Not Bankrupt** |
+| > 0.12             | ≤ 0.03                                      | **Bankrupt**    |
+| > 0.12             | > 0.03                                      | **Not Bankrupt** |
+
+---
+
+### Quick “hand‑calc” checklist
+
+1. **Compute** `WC_TA = Working Capital ÷ Total Assets`.  
+2. **If** `WC_TA ≤ 0.12` → **Not Bankrupt**.  
+3. **Else** compute `RE_TA = Retained Earnings ÷ Total Assets`.  
+   - **If** `RE_TA ≤ 0.03` → **Bankrupt**.  
+   - **If** `RE_TA > 0.03` → **Not Bankrupt**.
+
+---
+
+#### Why this depth‑2 tree is sensible
+
+* **Parsimony** – Only two splits are needed to capture the bulk of the signal; deeper trees risk over‑fitting, especially when the training set is modest.  
+* **Interpretability** – Stakeholders can instantly see the two key ratios and the thresholds that separate healthy from distressed firms.  
+* **Performance** – Empirical studies on bankruptcy prediction (Altman Z‑score, Ohlson O‑score, etc.) consistently rank liquidity (WC/TA) and profitability/accumulated earnings (RE/TA) among the top predictors; using them first maximises information gain at each split.
+
+Feel free to adjust the numeric cut‑points once you have a labeled dataset; the structure (root → WC/TA, then → RE/TA) will likely remain the most effective under the depth‑2 constraint.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 bankruptcy decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company went bankrupt (target = 1) or not (target = 0)
+    using a max‑depth‑2 decision tree built on financial ratios.
+
+    Expected keys in ``X`` (exact spelling, case‑sensitive):
+        'WC/TA'   – Working Capital / Total Assets
+        'RE/TA'   – Retained Earnings / Total Assets
+        'EBIT/TA' – Earnings Before Interest and Tax / Total Assets   (unused)
+        'S/TA'    – Sales / Total Assets                               (unused)
+        'BVE/BVL' – Book Value of Equity / Book Value of Liabilities   (unused)
+
+    Returns
+    -------
+    prediction : int
+        0 → company did **not** go bankrupt  
+        1 → company **did** go bankrupt
+    nodes : list[int]
+        Truth values of the inner (decision) nodes in the order they are
+        evaluated.  ``1`` means the condition is satisfied, ``0`` otherwise.
+        Length = 2 (root node + second‑level node).
+    """
+
+    # ---------- inner node evaluations ----------
+    # Node 0 : root – is the firm liquid enough?
+    node0 = X["WC/TA"] <= 0.12          # threshold chosen from typical Z‑score analysis
+    # Node 1 : second level – profitability/accumulated earnings
+    node1 = X["RE/TA"] <= 0.03          # threshold that separates distressed from healthy firms
+
+    # store as 0/1 integers (as requested)
+    nodes = [int(node0), int(node1)]
+
+    # ---------- prediction logic ----------
+    if node0:                # WC/TA <= 0.12  → likely healthy
+        prediction = 0       # NOT bankrupt
+    else:                    # WC/TA > 0.12  → need further check
+        if node1:            # RE/TA <= 0.03  → weak accumulated earnings
+            prediction = 1   # BANKRUPT
+        else:
+            prediction = 0   # NOT bankrupt
+
+    return prediction, nodes
+```
+
+### How it works
+| Step | Condition (inner node)                              | Truth value (`nodes[i]`) | Resulting prediction |
+|------|-----------------------------------------------------|--------------------------|----------------------|
+| 0    | `X["WC/TA"] <= 0.12`                                 | 1 → “yes”, 0 → “no”      | If **yes** → `0` (not bankrupt) |
+| 1    | `X["RE/TA"] <= 0.03` (evaluated only when node 0 is 0) | 1 → “yes”, 0 → “no”      | If **yes** → `1` (bankrupt) else `0` |
+
+The function returns both the binary bankruptcy prediction and the list of node‑truth values, e.g.:
+
+```python
+sample = {
+    "WC/TA": 0.18,
+    "RE/TA": 0.01,
+    "EBIT/TA": 0.05,
+    "S/TA": 0.30,
+    "BVE/BVL": 0.90
+}
+pred, nodes = predict(sample)
+print(pred)   # 1  (bankrupt)
+print(nodes)  # [0, 1]
+```
+
+Feel free to adjust the thresholds (`0.12` and `0.03`) if you have a specific training dataset; the tree structure (root → WC/TA, then → RE/TA) will remain optimal under the depth‑2 constraint.

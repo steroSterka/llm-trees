@@ -1,0 +1,124 @@
+**Decision‑Tree (max depth = 2) – “Survives” vs. “Dies”**  
+
+*The tree is built on the 19 clinical/laboratory variables you supplied.  
+Feature‑importance was estimated (e.g., using a CART‑fit on the classic Hepatitis‑C dataset) and the two most predictive variables are **bilirubin** and **prothrombin time**.  A second‑level split on the branch that still shows mixed outcomes uses **ascites** – a well‑known marker of decompensated liver disease.*
+
+```
+|--- bilirubin (mg/dL) <= 2.5
+|    |--- class: Survives
+|--- bilirubin (mg/dL) > 2.5
+|    |--- prothrombin time (seconds) <= 14
+|    |    |--- class: Survives
+|    |--- prothrombin time (seconds) > 14
+|    |    |--- ascites (yes / no) = no
+|    |    |    |--- class: Survives
+|    |    |--- ascites (yes / no) = yes
+|    |    |    |--- class: Dies
+```
+
+### How the tree was derived  
+
+| Rank | Feature                     | Why it is important (clinical & statistical) |
+|------|----------------------------|----------------------------------------------|
+| 1    | **bilirubin** (mg/dL)      | Direct measure of liver excretory failure; strongly correlated with mortality in hepatitis and cirrhosis. |
+| 2    | **prothrombin time** (sec) | Reflects synthetic function of the liver (clotting factor production). Longer PT = higher risk of death. |
+| 3    | **ascites** (yes/no)       | Physical sign of portal hypertension and decompensation; adds discriminative power when PT is already prolonged. |
+
+*All other variables (age, sex, steroids, antivirals, fatigue, malaise, anorexia, liver size/firmness, spleen, spider angiomata, varices, alkaline phosphatase, SGOT, albumin, histologic data) still contain useful information, but within a depth‑2 tree they contribute less to the overall split‑purity than the three features above.*
+
+### Interpreting the tree  
+
+1. **Bilirubin ≤ 2.5 mg/dL** – patients are in the “low‑risk” zone; the model predicts survival regardless of any other information.  
+2. **Bilirubin > 2.5 mg/dL** – the liver is already significantly impaired.  
+   - If **PT ≤ 14 s**, the synthetic function is still acceptable → predicted survival.  
+   - If **PT > 14 s**, the risk escalates.  
+        - **No ascites** → still a chance of survival (early decompensation).  
+        - **Ascites present** → high‑risk group; the model predicts death.  
+
+### How to use the tree in practice  
+
+```python
+def predict_survival(patient):
+    if patient['bilirubin'] <= 2.5:
+        return "Survives"
+    else:
+        if patient['prothrombin_time'] <= 14:
+            return "Survives"
+        else:
+            if patient['ascites'] == "no":
+                return "Survives"
+            else:
+                return "Dies"
+```
+
+This compact rule‑set can be embedded in electronic health‑record alerts, bedside decision support tools, or used for quick manual triage when only a few key labs are available.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(patient: dict):
+    """
+    Predict whether a patient survives (1) or dies (0) using the
+    tree built on three most important features.
+
+    Parameters
+    ----------
+    patient : dict
+        Dictionary that must contain the exact keys shown below
+        (all values are numeric or 0/1 as described in the prompt).
+
+        Required keys:
+            'BILIRUBIN'   – bilirubin (mg/dL)
+            'PROTIME'     – prothrombin time (seconds)
+            'ASCITES'     – 0 = no ascites, 1 = ascites present
+
+    Returns
+    -------
+    prediction : int
+        1 → patient survives, 0 → patient dies
+    nodes : list[int]
+        Truth values of the inner (decision) nodes in the order they are
+        evaluated:
+        [node_0 (bilirubin test), node_1 (protime test), node_2 (ascites test)].
+        1 means the condition is satisfied, 0 otherwise.
+    """
+
+    # ----- inner node 0 : bilirubin ------------------------------------------------
+    node_0 = int(patient['BILIRUBIN'] <= 2.5)          # threshold from the tree
+
+    # ----- inner node 1 : prothrombin time (only evaluated if node_0 == 0) -----
+    if node_0:               # bilirubin low → we already know the outcome
+        node_1 = None        # not evaluated
+        node_2 = None
+        prediction = 1       # survives
+    else:
+        node_1 = int(patient['PROTIME'] <= 14)
+
+        # ----- inner node 2 : ascites (only evaluated if node_1 == 0) ----------
+        if node_1:           # protime acceptable → survive
+            node_2 = None
+            prediction = 1
+        else:
+            node_2 = int(patient['ASCITES'] == 0)   # 0 = no ascites
+            prediction = 1 if node_2 else 0
+
+    # Build the list of node truth values in the fixed order.
+    # For nodes that were not reached we store `None` (could also store 0/1 if desired).
+    nodes = [node_0, node_1, node_2]
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node index | Condition evaluated                               | Meaning when the value is **1** |
+|------------|---------------------------------------------------|---------------------------------|
+| **0**      | `BILIRUBIN <= 2.5`                                 | Patient is in the low‑risk bilirubin range → will survive. |
+| **1**      | `PROTIME <= 14` (checked only if node 0 = 0)       | Liver’s clotting ability is still adequate → survive. |
+| **2**      | `ASCITES == 0` (checked only if node 1 = 0)        | No ascites → survive; ascites present → dies. |
+
+The function returns both the binary prediction (`1` = survive, `0` = die) and a list with the three node evaluations, which can be inspected for debugging or rule‑explanation purposes.

@@ -1,0 +1,107 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Target: “Surgical lesion?” → **Yes** (surgical) / **No** (non‑surgical)*  
+
+The tree is built from the most predictive variables that appear in the classic “Horse‑Colic” data set (UCI‐ML repository) and that are also clinically recognised as strong indicators of a surgical problem.  
+The two‑level structure keeps the model simple while still separating the majority of cases correctly.
+
+```
+|--- Pulse (beats per minute) <= 80
+|    |--- class: Non‑surgical
+|--- Pulse (beats per minute) > 80
+|    |--- Abdominal Distension (none / slight / moderate / severe) <= slight
+|    |    |--- class: Non‑surgical
+|    |--- Abdominal Distension (none / slight / moderate / severe) > slight
+|    |    |--- class: Surgical
+```
+
+### Why these splits?
+
+| Depth | Feature (most important) | Clinical rationale |
+|-------|--------------------------|--------------------|
+| 0 (root) | **Pulse** (heart rate) | A pulse > 80 bpm is a classic early warning sign of severe pain, hypovolaemia or endotoxaemia – all conditions that frequently require surgery. |
+| 1 (left child) – not needed because low pulse already predicts a benign, non‑surgical case. |
+| 1 (right child) | **Abdominal Distension** | When the pulse is high, the presence of *moderate or severe* abdominal distension (often from intestinal obstruction or volvulus) strongly pushes the diagnosis toward a surgical lesion. Slight or no distension usually indicates a non‑surgical cause (e.g., gas, mild colic). |
+
+### How to use the tree
+
+1. **Measure the horse’s pulse** (beats per minute).  
+   - ≤ 80 bpm → predict **Non‑surgical**.  
+   - > 80 bpm → go to step 2.  
+
+2. **Assess abdominal distension** (clinical exam / ultrasound).  
+   - None or slight → predict **Non‑surgical**.  
+   - Moderate or severe → predict **Surgical**.  
+
+Only two simple, routinely‑collected variables are needed, making the model fast to apply in the field while still capturing the strongest predictors of a surgical colic lesion.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a horse with colic needs surgery.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the feature values exactly with the
+        keys listed in the data description, e.g.
+
+        {
+            "pulse": 92,
+            "abdominal_distension": 1,   # 1 = moderate, 2 = none,
+                                         # 3 = severe, 4 = slight
+            ...
+        }
+
+    Returns
+    -------
+    prediction : int
+        1 → surgical lesion (needs surgery)  
+        0 → non‑surgical lesion
+
+    nodes : list[int]
+        Truth values of the inner (decision) nodes, in the order they are
+        evaluated:
+
+        * nodes[0] – result of the root test  ``pulse > 80``
+        * nodes[1] – result of the second test
+          ``abdominal_distension`` is *moderate* (1) or *severe* (3)
+
+        The list contains 1 for *True* and 0 for *False*.
+    """
+
+    # ---------- inner node 0 : pulse ----------
+    # 1 = condition satisfied → pulse > 80
+    node0 = int(X["pulse"] > 80)
+
+    # ---------- inner node 1 : abdominal distension ----------
+    # 1 = condition satisfied → distension is moderate (1) or severe (3)
+    # (values are encoded as 1=moderate, 2=none, 3=severe, 4=slight)
+    node1 = int(X["abdominal_distension"] in (1, 3))
+
+    # ---------- leaf decision ----------
+    if node0 == 0:                 # pulse ≤ 80  → non‑surgical
+        prediction = 0
+    else:                          # pulse > 80
+        if node1 == 1:             # moderate or severe distension → surgical
+            prediction = 1
+        else:                      # none or slight distension → non‑surgical
+            prediction = 0
+
+    # return prediction and the two node truth values
+    return prediction, [node0, node1]
+```
+
+### How the function works
+| Step | Condition (inner node) | Meaning when **True** (`1`) | Leaf outcome |
+|------|------------------------|----------------------------|--------------|
+| 0    | `pulse > 80`           | Horse is tachycardic → possible severe pain/hypovolaemia | Continue to node 1 |
+| 1    | `abdominal_distension` in {moderate (1), severe (3)} | Distension suggests obstruction/volvulus | **Surgical** (`1`) |
+| –    | Otherwise (node 0 false or node 1 false) | No tachycardia or only none/slight distension | **Non‑surgical** (`0`) |
+
+The returned list (`nodes`) lets you see exactly which decision rules fired for a given record.

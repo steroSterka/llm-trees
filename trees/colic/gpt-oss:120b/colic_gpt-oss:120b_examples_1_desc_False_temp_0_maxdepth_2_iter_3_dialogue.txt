@@ -1,0 +1,95 @@
+**Decision‑Tree Classifier (max depth = 2) – Surgical vs Non‑surgical colic lesion**
+
+```
+|--- Abdominal Distension (none / slight / moderate / severe) <= slight
+||--- class: non‑surgical
+|--- Abdominal Distension (none / slight / moderate / severe) > slight
+||--- Peristalsis (absent / hypomotile / normal / hypermotile) <= hypomotile
+|||--- class: surgical
+||--- Peristalsis (absent / hypomotile / normal / hypermotile) > hypomotile
+|||--- class: non‑surgical
+```
+
+### Why these features?
+* **Abdominal Distension** – one of the strongest early‑warning signs in the horse‑colic data set; mild or no distension is usually associated with non‑surgical lesions.  
+* **Peristalsis** – the quality of intestinal motility is a key determinant of the need for surgery; absent or markedly reduced (hypomotile) peristalsis strongly points to a surgical problem.
+
+With only two splits (depth = 2) the tree captures the most predictive information while remaining simple enough for rapid clinical decision‑making. The leaf nodes give the predicted class:
+
+* **Surgical** – the horse likely needs operative intervention.  
+* **Non‑surgical** – the lesion can usually be managed medically.  
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a horse‑colic lesion requires surgery (target = 1)
+    or not (target = 0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the *exact* feature keys used in the
+        horse‑colic data set (see the list in the prompt).  All values must
+        already be encoded as described in the prompt.
+
+    Returns
+    -------
+    prediction : int
+        0 – non‑surgical lesion  
+        1 – surgical lesion
+    nodes : list of int
+        Truth values of the two internal nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they are evaluated.
+    """
+
+    # --------------------------------------------------------------
+    # Internal node 0 : Abdominal Distension
+    # --------------------------------------------------------------
+    #   abdominal_distension encoding:
+    #       1 = moderate, 2 = none, 3 = severe, 4 = slight
+    #   The tree treats “none” (2) and “slight” (4) as the low‑risk group.
+    #   Condition → True (1) when the value is 2 or 4.
+    # --------------------------------------------------------------
+    node0 = X["abdominal_distension"] in (2, 4)
+
+    # --------------------------------------------------------------
+    # Internal node 1 : Peristalsis (evaluated only when node0 is False)
+    # --------------------------------------------------------------
+    #   peristalsis encoding:
+    #       1 = absent, 2 = hypermotile, 3 = hypomotile, 4 = normal
+    #   Surgical risk is high when peristalsis is *absent* (1) or
+    #   *hypomotile* (3).  Condition → True (1) when the value is 1 or 3.
+    # --------------------------------------------------------------
+    node1 = X["peristalsis"] in (1, 3)
+
+    # --------------------------------------------------------------
+    # Decision logic (depth = 2)
+    # --------------------------------------------------------------
+    if node0:                         # low distension → non‑surgical
+        prediction = 0
+    else:                             # moderate / severe distension
+        if node1:                     # absent / hypomotile peristalsis
+            prediction = 1           # → surgical
+        else:
+            prediction = 0           # → non‑surgical
+
+    # Convert booleans to the required integer truth values
+    nodes = [int(node0), int(node1)]
+
+    return prediction, nodes
+```
+
+### How the function works
+| Internal node | Condition (True = 1) | Meaning when **True** | Resulting leaf |
+|---------------|----------------------|-----------------------|----------------|
+| **0** – `abdominal_distension` | value is **2 (none)** *or* **4 (slight)** | Low‑risk abdominal distension | **non‑surgical** (prediction = 0) |
+| **1** – `peristalsis` (reached only if node 0 is False) | value is **1 (absent)** *or* **3 (hypomotile)** | Markedly reduced intestinal motility | **surgical** (prediction = 1) |
+| otherwise (node 0 = False, node 1 = False) | – | Moderate/Severe distension **but** peristalsis is normal or hypermotile | **non‑surgical** (prediction = 0) |
+
+The returned list `nodes` contains the two truth values in the order they are evaluated, exactly as required.

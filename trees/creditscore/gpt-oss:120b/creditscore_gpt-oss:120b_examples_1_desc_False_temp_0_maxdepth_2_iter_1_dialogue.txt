@@ -1,0 +1,114 @@
+**Features:** age (years), income per dependent (1.5 – 10 k $), monthly credit‑card expenses ($), owning a home (yes / no), self‑employed (yes / no), number of derogatory reports  
+
+**Decision‑tree (max depth = 2, using the most predictive variables):**  
+
+```
+|--- number of derogatory reports <= 0
+|    |--- income per dependent <= 3.5
+|    |    |--- class: Accepted
+|    |--- income per dependent > 3.5
+|    |    |--- class: Rejected
+|--- number of derogatory reports > 0
+|    |--- monthly credit‑card expenses <= 500
+|    |    |--- class: Rejected
+|    |--- monthly credit‑card expenses > 500
+|    |    |--- class: Accepted
+```
+
+### How the tree was chosen
+1. **Root split – “number of derogatory reports”**  
+   *Derogatory reports* (e.g., missed payments, collections) are the single strongest predictor of credit risk. Applicants with **zero** reports are far more likely to be approved than those with one or more.
+
+2. **First‑level left child (zero reports) – “income per dependent”**  
+   When the applicant has a clean record, the **ability to generate income relative to household size** becomes the next most important factor.  
+   *Threshold ≈ $3.5 k per dependent*:  
+   * ≤ 3.5 k → sufficient disposable income → **Accepted**  
+   * > 3.5 k → lower income relative to obligations → **Rejected**
+
+3. **First‑level right child (≥ 1 report) – “monthly credit‑card expenses”**  
+   For applicants with a derogatory record, **current credit‑card usage** is a good proxy for ongoing financial stress.  
+   *Threshold ≈ $500*:  
+   * ≤ 500 $ → modest usage → **Rejected** (risk still high despite low spending)  
+   * > 500 $ → higher spending often accompanies higher credit limits and a willingness to meet obligations → **Accepted** (in practice this branch would be refined with more data, but it satisfies the depth‑2 constraint).
+
+### Notes & Assumptions
+- The numeric thresholds (3.5 k $ per dependent, $500 credit‑card spend) are illustrative, chosen from typical industry cut‑offs; a real model would determine them from the actual training data.
+- Categorical variables (*owning a home*, *self‑employed*) are not used in this shallow tree because, in most credit‑scoring datasets, they have lower information gain than the three continuous variables shown above.
+- With a depth of only 2 the tree is deliberately simple, offering a quick “rule‑of‑thumb” decision that can be easily explained to applicants or compliance officers.  
+
+Feel free to adjust the thresholds once you have the real distribution of your credit‑application data, or to expand the tree depth for finer granularity.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict credit‑application outcome (0 = reject, 1 = accept).
+
+    Expected keys in X (exact spelling):
+        'Age',
+        'Income.per.dependent',
+        'Monthly.credit.card.exp',
+        'Own.home',
+        'Self.employed',
+        'Derogatory.reports',
+        'Target variable',   # (ignored – only for reference)
+        'target'             # (ignored – only for reference)
+
+    Returns
+    -------
+    prediction : int
+        1 if the application is predicted to be accepted, 0 otherwise.
+    nodes : list[int]
+        Truth values of the three inner‑node conditions in the order:
+        0 – “Derogatory.reports <= 0”
+        1 – “Income.per.dependent <= 3.5”
+        2 – “Monthly.credit.card.exp <= 500”
+        (1 = condition satisfied, 0 = not satisfied)
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Root split – Derogatory reports
+    # ------------------------------------------------------------------
+    nodes = [0, 0, 0]                               # placeholder for the three booleans
+    nodes[0] = int(X["Derogatory.reports"] <= 0)   # 1 if no derogatory reports, else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Left‑branch split (when no derogatory reports)
+    # ------------------------------------------------------------------
+    nodes[1] = int(X["Income.per.dependent"] <= 3.5)
+
+    # ------------------------------------------------------------------
+    # 3️⃣  Right‑branch split (when at least one derogatory report)
+    # ------------------------------------------------------------------
+    nodes[2] = int(X["Monthly.credit.card.exp"] <= 500)
+
+    # ------------------------------------------------------------------
+    # Decision logic following the tree
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # Derogatory.reports <= 0  → go left
+        if nodes[1]:                 # Income.per.dependent <= 3.5
+            prediction = 1           # Accepted
+        else:
+            prediction = 0           # Rejected
+    else:                            # Derogatory.reports > 0   → go right
+        if nodes[2]:                 # Monthly.credit.card.exp <= 500
+            prediction = 0           # Rejected
+        else:
+            prediction = 1           # Accepted
+
+    return prediction, nodes
+```
+
+### How the function works
+| Inner node | Condition (Python)                     | Meaning when `True` (value = 1) |
+|------------|----------------------------------------|---------------------------------|
+| **0**      | `X["Derogatory.reports"] <= 0`         | Applicant has **no** derogatory reports. |
+| **1**      | `X["Income.per.dependent"] <= 3.5`      | Income per dependent is **low** (≤ $3.5 k). |
+| **2**      | `X["Monthly.credit.card.exp"] <= 500`  | Monthly credit‑card spend is **modest** (≤ $500). |
+
+The list `nodes` therefore contains three integers (1 or 0) that tell you exactly which branch of each inner node was taken, and `prediction` gives the final credit‑approval decision.

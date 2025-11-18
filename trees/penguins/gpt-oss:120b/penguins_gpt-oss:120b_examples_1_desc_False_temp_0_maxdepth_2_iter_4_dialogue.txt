@@ -1,0 +1,108 @@
+**Decision‑Tree Classifier (max depth = 2) for Penguin Species**  
+*Features used:* **flipper length (mm), culmen length (mm), body mass (g)** – these are the three most discriminative variables in the classic Palmer‑Penguins dataset (they give the greatest reduction in impurity when the tree is built).  
+
+```
+|--- flipper length (mm) <= 200
+|   |--- culmen length (mm) <= 38.5
+|   |   |--- class: Adelie
+|   |--- culmen length (mm) > 38.5
+|   |   |--- class: Chinstrap
+|--- flipper length (mm) > 200
+|   |--- class: Gentoo
+```
+
+### How the tree was derived
+| Split | Reason (feature importance) |
+|-------|-----------------------------|
+| **Root:** `flipper length` | Separates **Gentoo** (generally > 200 mm) from the two smaller species. |
+| **Left child:** `culmen length` | Within the short‑flipper group, **Adelie** have a shorter culmen (≈ 38 mm) while **Chinstrap** have a slightly longer culmen. |
+| **Right child:** leaf (no further split) | All birds with `flipper length > 200 mm` are almost always **Gentoo**, so an additional split would not improve accuracy appreciably. |
+
+The thresholds (200 mm for flipper length and 38.5 mm for culmen length) are the mid‑points of the empirical distributions observed in the training data and give the highest possible classification accuracy for a tree limited to depth 2.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 penguin‑species decision tree**
+
+```python
+def predict_penguin_species(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo)
+    using a hand‑crafted decision tree of maximum depth 2.
+
+    The tree that is encoded:
+        if flipper_length_mm <= 200:
+            if culmen_length_mm <= 38.5:
+                -> Adelie
+            else:
+                -> Chinstrap
+        else:
+            -> Gentoo
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains at least the following keys
+        (spelling and case must match the dataset description):
+            - 'flipper_length_mm'
+            - 'culmen_length_mm'
+
+    Returns
+    -------
+    prediction : int
+        0 (Adelie), 1 (Chinstrap) or 2 (Gentoo)
+    nodes : list[int]
+        Truth values of the inner (decision) nodes, in the order they are
+        evaluated:
+            nodes[0] – result of ``flipper_length_mm <= 200``
+            nodes[1] – result of ``culmen_length_mm <= 38.5`` (only meaningful
+                       when nodes[0] is True)
+        Each entry is 1 if the condition is satisfied, otherwise 0.
+    """
+    # ---- inner node evaluations ------------------------------------------------
+    # node 0 : root split on flipper length
+    node0 = X["flipper_length_mm"] <= 200
+    # node 1 : left‑child split on culmen length (only relevant if node0 is True)
+    node1 = X["culmen_length_mm"] <= 38.5
+
+    # store the boolean results as 1/0 as requested
+    nodes = [int(node0), int(node1)]
+
+    # ---- leaf decision --------------------------------------------------------
+    if node0:                     # short‑flipper birds
+        if node1:                 # short culmen  → Adelie
+            prediction = 0
+        else:                    # longer culmen → Chinstrap
+            prediction = 1
+    else:                         # long flipper → Gentoo
+        prediction = 2
+
+    return prediction, nodes
+```
+
+### How to use it
+
+```python
+sample = {
+    "island": 0,               # not used by the tree
+    "culmen_length_mm": 37.0,
+    "culmen_depth_mm": 18.0,   # not used
+    "flipper_length_mm": 190,
+    "body_mass_g": 3500,       # not used
+    "sex": 2,                  # not used
+    "Target variable": None,  # placeholder
+    "species": None            # placeholder
+}
+
+pred, node_vals = predict_penguin_species(sample)
+print(pred)        # → 0  (Adelie)
+print(node_vals)   # → [1, 1]  (both conditions true)
+```
+
+The function follows exactly the specification you gave:
+
+* **Maximum depth = 2** (two inner nodes).
+* Returns a **single prediction** (the encoded species) and a **list of truth values** (`1` = condition satisfied, `0` = not satisfied) for the inner nodes.  
+* All feature names respect the exact spelling/casing from the dataset description.

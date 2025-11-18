@@ -1,0 +1,141 @@
+**Decision‑Tree Classifier (max depth = 2) for “Bankruptcy ? ”**  
+*(Built on the five financial‑ratio features you supplied.  
+Because no actual data were provided, the splits and thresholds are chosen
+based on the classic Altman Z‑score model and typical industry‑wide
+behaviour. In a real‑world setting you would let a CART algorithm
+fit the tree on your labelled dataset and then extract the exact
+thresholds that maximise information‑gain.)*  
+
+```
+|--- Working Capital / Total Assets <= 0.20
+|    |--- class: NOT BANKRUPT
+|--- Working Capital / Total Assets > 0.20
+|    |--- Earnings Before Interest & Tax / Total Assets <= 0.05
+|    |    |--- class: BANKRUPT
+|    |--- Earnings Before Interest & Tax / Total Assets > 0.05
+|    |    |--- class: NOT BANKRUPT
+```
+
+### How the tree was derived  
+
+| Rank | Feature (ratio)                              | Why it is “most important” (Altman Z‑score intuition) |
+|------|----------------------------------------------|--------------------------------------------------------|
+| **1**| **Working Capital / Total Assets** (WC/TA)   | Direct measure of short‑term liquidity; low values are a strong early warning of cash‑flow distress. |
+| **2**| **EBIT / Total Assets** (EBIT/TA)            | Captures operating profitability after covering operating expenses; a very low EBIT relative to assets signals an inability to generate earnings to service debt. |
+| **3**| Retained Earnings / Total Assets (RE/TA)    | Reflects accumulated profitability; useful but generally less discriminative once liquidity and current profitability are accounted for. |
+| **4**| Sales / Total Assets (Sales/TA)              | Shows asset‑turnover efficiency; often correlated with the above ratios and therefore less “pure” as a split at depth 2. |
+| **5**| Book Value of Equity / Book Value of Liabilities (BE/BL) | Important for solvency but typically redundant after WC/TA and EBIT/TA have been examined. |
+
+### Interpretation of the splits  
+
+* **Root split – Working Capital / Total Assets**  
+  * **≤ 0.20** – The company retains at least 20 % of its assets as working capital, indicating a comfortable liquidity cushion; we predict **no bankruptcy**.  
+  * **> 0.20** – The firm is using a larger share of its assets for working capital (or has a very low asset base). This situation alone does **not** guarantee distress, so we look deeper.
+
+* **Second‑level split – EBIT / Total Assets** (only for the “WC/TA > 0.20” branch)  
+  * **≤ 0.05** – Operating profit is ≤ 5 % of total assets, a classic red flag of poor profitability; we predict **BANKRUPTCY**.  
+  * **> 0.05** – The firm still generates a modest operating profit relative to its asset base, enough to offset the higher working‑capital burden; we predict **NO BANKRUPTCY**.
+
+### Quick‑look “pseudo‑code” for prediction  
+
+```python
+def predict_bankruptcy(row):
+    if row['WC_TA'] <= 0.20:
+        return 'Not Bankrupt'
+    else:
+        if row['EBIT_TA'] <= 0.05:
+            return 'Bankrupt'
+        else:
+            return 'Not Bankrupt'
+```
+
+### What to do next  
+
+1. **Gather labelled data** (bankruptcy = 1 / non‑bankruptcy = 0) for a representative set of firms.  
+2. **Fit a CART model** (e.g., `sklearn.tree.DecisionTreeClassifier(max_depth=2)`) using the five ratios.  
+3. **Extract the exact thresholds** the algorithm discovers – they may differ from the illustrative values above but will follow the same logical structure (root split on the most informative ratio, then a second split on the next‑most informative).  
+4. **Validate** the tree on a hold‑out set (confusion matrix, ROC‑AUC) to ensure the depth‑2 model still offers acceptable predictive power for your business use‑case.  
+
+---  
+
+*The tree shown above satisfies the requested maximum depth of 2, uses the two most influential financial‑ratio features, and provides a clear, easy‑to‑interpret decision rule for classifying a company’s bankruptcy risk.*
+
+
+#########################
+
+
+**Python implementation of the depth‑2 bankruptcy decision tree**
+
+```python
+def predict_bankruptcy(X: dict):
+    """
+    Predict whether a company will go bankrupt (1) or not (0).
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the five financial‑ratio features.
+        Required keys (exact spelling):
+            'WC/TA'   – Working Capital / Total Assets
+            'EBIT/TA' – Earnings Before Interest & Tax / Total Assets
+        (the other three ratios are not needed for this depth‑2 tree,
+         but they may be present in the dict.)
+
+    Returns
+    -------
+    prediction : int
+        0 → company did NOT go bankrupt
+        1 → company went bankrupt
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they are evaluated:
+        [root_node, second_level_node]
+    """
+
+    # ---- inner node evaluations ------------------------------------------------
+    # Node 0 : root – is the liquidity ratio low enough?
+    node0 = 1 if X['WC/TA'] <= 0.20 else 0          # 1 → WC/TA ≤ 0.20
+
+    # Node 1 : second level – profitability ratio (evaluated only when we are
+    #          on the “WC/TA > 0.20” branch, but we compute it anyway).
+    node1 = 1 if X['EBIT/TA'] <= 0.05 else 0        # 1 → EBIT/TA ≤ 0.05
+
+    # ---- decision logic --------------------------------------------------------
+    if node0:                       # WC/TA ≤ 0.20  → safe side
+        prediction = 0              # NOT bankrupt
+    else:                           # WC/TA  > 0.20  → need deeper test
+        if node1:                   # EBIT/TA ≤ 0.05
+            prediction = 1          # BANKRUPT
+        else:                       # EBIT/TA  > 0.05
+            prediction = 0          # NOT bankrupt
+
+    # Return both the class label and the list of node truth values
+    return prediction, [node0, node1]
+```
+
+### How to use it
+
+```python
+sample = {
+    'WC/TA'   : 0.18,   # ≤ 0.20  → first node True
+    'RE/TA'   : 0.12,   # not used in this tree
+    'EBIT/TA' : 0.03,   # ≤ 0.05  (will be ignored because root already True)
+    'S/TA'    : 1.10,
+    'BVE/BVL' : 0.90
+}
+
+pred, nodes = predict_bankruptcy(sample)
+print(pred)   # 0  → not bankrupt
+print(nodes)  # [1, 1] (both inner‑node conditions evaluated as True)
+```
+
+The function follows exactly the tree described earlier:
+
+```
+|--- WC/TA <= 0.20          → NOT bankrupt
+|--- WC/TA > 0.20
+|    |--- EBIT/TA <= 0.05   → BANKRUPT
+|    |--- EBIT/TA > 0.05    → NOT bankrupt
+```
+
+The returned `nodes` list lets you see which split conditions were met (`1`) or not (`0`).

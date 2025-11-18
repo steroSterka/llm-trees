@@ -1,0 +1,106 @@
+To build a decision tree that classifies whether a company went bankrupt or not based on the given financial features with a maximum depth of 2, we need to identify the most important features first. The importance of features can be determined by their impact on the classification problem at hand, such as how well they distinguish between bankrupt and non-bankrupt companies.
+
+Given the features:
+1. Working Capital/Total Assets
+2. Retained Earnings/Total Assets
+3. Earnings Before Interest and Tax (EBIT)/Total Assets
+4. Sales/Total Assets
+5. Book Value of Equity/Book Value of Liabilities
+
+Let's assume, based on general financial analysis principles, that:
+- **Working Capital/Total Assets** is a crucial indicator because it reflects the company's liquidity position relative to its size.
+- **EBIT/Total Assets** is also very important as it measures the profitability of a company in relation to its assets.
+
+For simplicity and without actual data to calculate feature importance (like using mutual information, Gini importance, or permutation importance from random forests), we'll proceed with an educated guess that these two features are among the most discriminative for bankruptcy prediction.
+
+### Decision Tree Construction
+
+1. **Root Node**: We choose **Working Capital/Total Assets** as our first split because liquidity is fundamental to a company's ability to meet its obligations and avoid bankruptcy.
+   
+2. **First Split (Depth 1)**:
+   - If **Working Capital/Total Assets <= Threshold**, the company is likely under financial stress and might be heading towards bankruptcy.
+   - If **Working Capital/Total Assets > Threshold**, the company seems to have a healthier liquidity position.
+
+3. **Second Split (Depth 2)**: For both branches from the first split, we'll use **EBIT/Total Assets** as our second feature because profitability is crucial for long-term sustainability and debt repayment.
+   
+   - Under the branch where **Working Capital/Total Assets <= Threshold**, if **EBIT/Total Assets <= Profitability Threshold**, the company might be classified as likely to go bankrupt due to both liquidity issues and poor profitability.
+   - Under the same branch, if **EBIT/Total Assets > Profitability Threshold**, it could indicate a potential for recovery or less likelihood of bankruptcy despite current liquidity challenges.
+   
+   - Under the branch where **Working Capital/Total Assets > Threshold**, further splits based on **EBIT/Total Assets** would differentiate between companies that are not only liquid but also profitable (**EBIT/Total Assets > Profitability Threshold**) and those that, while having good liquidity, might be struggling with profitability (**EBIT/Total Assets <= Profitability Threshold**).
+
+### Example Decision Tree
+
+|--- Working Capital/Total Assets <= 0.20
+||--- EBIT/Total Assets <= 0.05
+|||--- class: Bankrupt
+||--- EBIT/Total Assets > 0.05
+|||--- class: Not Bankrupt (But needs improvement)
+|--- Working Capital/Total Assets > 0.20
+||--- EBIT/Total Assets <= 0.10
+|||--- class: Not Bankrupt (But underperforming)
+||--- EBIT/Total Assets > 0.10
+|||--- class: Not Bankrupt
+
+**Note**: The thresholds used here are arbitrary and for demonstration purposes only. In a real-world scenario, you would use training data to determine the optimal split points that maximize the information gain or minimize the impurity of the child nodes.
+
+This example illustrates how one might construct a simple decision tree based on financial ratios to predict bankruptcy. Real applications require careful analysis of actual company data and potentially more complex models to achieve accurate predictions.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree for predicting company bankruptcy based on financial ratios. This function takes in a dictionary `X` with the feature values and returns a tuple containing the prediction (0 for no bankruptcy, 1 for bankruptcy) and a list of truth values for the inner nodes.
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a company will go bankrupt based on its financial ratios.
+    
+    Parameters:
+    X (dict): A dictionary containing the feature values. The keys are 'WC/TA', 'RE/TA', 'EBIT/TA', 'S/TA', and 'BVE/BVL'.
+    
+    Returns:
+    tuple: A tuple containing the prediction (0 for no bankruptcy, 1 for bankruptcy) and a list of truth values for the inner nodes.
+    """
+    
+    # Initialize the nodes list with None values
+    nodes = 2 * [None]
+    
+    # Define the conditions for each node
+    nodes[0] = X['WC/TA'] <= 0.20  # Working Capital/Total Assets ratio
+    nodes[1] = X['EBIT/TA'] <= 0.05  # Earnings Before Interest and Tax/Total Assets ratio
+    
+    # Make the prediction based on the node conditions
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Bankrupt
+        else:
+            prediction = 0  # Not bankrupt (but needs improvement)
+    else:
+        if nodes[1]:
+            prediction = 0  # Not bankrupt (but underperforming)
+        else:
+            prediction = 0  # Not bankrupt
+    
+    # Convert the node conditions to integers (1 for True, 0 for False) and return them along with the prediction
+    return prediction, [int(node) for node in nodes]
+```
+
+This function uses a simple decision tree with two levels. The first level checks the Working Capital/Total Assets ratio (`WC/TA`), and the second level checks the Earnings Before Interest and Tax/Total Assets ratio (`EBIT/TA`). The thresholds used are 0.20 for `WC/TA` and 0.05 for `EBIT/TA`, which are arbitrary values for demonstration purposes. In a real-world application, you would need to determine these thresholds based on your specific data and requirements.
+
+Example usage:
+```python
+X = {
+    'WC/TA': 0.15,
+    'RE/TA': 0.30,
+    'EBIT/TA': 0.03,
+    'S/TA': 0.50,
+    'BVE/BVL': 1.20
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This example creates a dictionary `X` with some sample feature values and passes it to the `predict` function. The function returns a prediction (0 or 1) and a list of truth values for the inner nodes, which are then printed to the console.

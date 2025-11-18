@@ -1,0 +1,127 @@
+To build a decision tree with the given features for classifying which of the two boxing fighters (Trinidad / de la Hoya) won each round, we first need to understand that without actual data, we can't induce a decision tree. However, I'll guide you through how one might approach this problem using the provided feature set as an example.
+
+Given Features:
+1. Judge
+2. Official judge (yes/no)
+3. Round (1 to 12)
+
+### Approach:
+
+1. **Data Collection**: Gather data on past fights between Trinidad and de la Hoya, including the judges' scores for each round.
+2. **Feature Engineering**: Since "Judge" is categorical and might not directly influence a simple decision tree without additional context (like the judge's bias or scoring history), we could consider aggregating or transforming this feature. For example, calculating the average score given by each judge to Trinidad vs. de la Hoya across all rounds.
+3. **Decision Tree Construction**: With a maximum depth of 2, our tree will have one root node and up to four leaf nodes.
+
+### Hypothetical Decision Tree:
+
+Given we don't have actual data, let's propose a hypothetical scenario based on the assumption that certain judges might favor Trinidad over de la Hoya or vice versa, and official judges might score differently than non-official ones.
+
+- **Root Node**: Official judge (yes/no)
+  - **Left Child (Official Judge = yes)**: Since official judges are expected to be unbiased and follow strict scoring criteria, the decision here might heavily depend on the round. 
+    - **Leaf Node 1 (Round <= 6)**: Trinidad
+    - **Leaf Node 2 (Round > 6)**: de la Hoya
+  - **Right Child (Official Judge = no)**: For non-official judges, we consider the influence of the judge.
+    - **Leaf Node 3 (Judge = HBO-Lederman or USA Today)**: Trinidad (assuming these judges might slightly favor Trinidad based on their past scoring)
+    - **Leaf Node 4 (Judge != HBO-Lederman and Judge != USA Today)**: de la Hoya
+
+This hypothetical tree is highly speculative without actual data. The real decision tree would depend on the patterns found in the historical fight data between Trinidad and de la Hoya, including how different judges scored each round.
+
+### Python Example:
+
+To create a simple decision tree like this with real data, you could use scikit-learn in Python. Here's a simplified example assuming you have a DataFrame `df` with columns for features and target (who won the round):
+
+```python
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+
+# Assuming df is your dataframe with 'Target' being who won the round
+X = df[['Official judge', 'Round', 'Judge']]
+y = df['Target']
+
+# One-hot encoding for categorical features like 'Judge'
+X = pd.get_dummies(X, columns=['Judge'])
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+clf = DecisionTreeClassifier(max_depth=2)
+clf.fit(X_train, y_train)
+
+# You can visualize the tree using
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10,6))
+plot_tree(clf, feature_names=X.columns, class_names=['Trinidad', 'de la Hoya'], filled=True)
+plt.show()
+```
+
+This example assumes you've prepared your data and are ready to train a model. Remember, the performance of the decision tree classifier depends heavily on the quality and relevance of the features used.
+
+
+#########################
+
+
+Here's a Python function that implements the decision tree for predicting which of the two boxing fighters won each round:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which of the two boxing fighters won each round based on the given features.
+
+    Args:
+        X (dict): A dictionary containing the features.
+            - 'Judge': The judge scoring the round (0 = G. Hamada, 1 = B. Logist, 2 = J. Roth, 3 = HBO-Lederman, 4 = Sportsticker, 5 = Los Angeles Times-Kawakami, 6 = USA Today, 7 = Associated Press, 8 = Las Vegas Review-Journal, 9 = Los Angeles Times-Springer, 10 = van de Wiele)
+            - 'Official': Whether the judge is an official judge (1 = Yes, 0 = No)
+            - 'Round': The round number (1 to 12)
+
+    Returns:
+        tuple: A tuple containing the predicted winner (0 = Trinidad, 1 = de la Hoya) and a list of truth values for the inner nodes.
+    """
+
+    # Initialize the list to store the truth values of the inner nodes
+    nodes = 2 * [None]
+
+    # Root node: Check if the judge is official
+    nodes[0] = X['Official'] == 1
+
+    # If the judge is official, check the round number
+    if nodes[0]:
+        nodes[1] = X['Round'] <= 6
+    else:
+        # If the judge is not official, check the judge's identity
+        nodes[1] = X['Judge'] in [3, 6]  # HBO-Lederman or USA Today
+
+    # Make a prediction based on the inner nodes
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 0  # Trinidad wins if it's an early round and the judge is official
+        else:
+            prediction = 1  # de la Hoya wins if it's a late round and the judge is official
+    else:
+        if nodes[1]:
+            prediction = 0  # Trinidad wins if the judge is HBO-Lederman or USA Today
+        else:
+            prediction = 1  # de la Hoya wins otherwise
+
+    return prediction, [int(node) for node in nodes]
+```
+
+Example usage:
+
+```python
+X = {
+    'Judge': 3,
+    'Official': 1,
+    'Round': 5
+}
+
+prediction, nodes = predict(X)
+print(f"Predicted winner: {['Trinidad', 'de la Hoya'][prediction]}")
+print(f"Inner nodes: {nodes}")
+```
+
+This decision tree uses the following logic:
+
+* If the judge is official (i.e., `Official` is 1), the outcome depends on the round number. If it's an early round (i.e., `Round` is less than or equal to 6), Trinidad wins; otherwise, de la Hoya wins.
+* If the judge is not official (i.e., `Official` is 0), the outcome depends on the judge's identity. If the judge is HBO-Lederman or USA Today (i.e., `Judge` is 3 or 6), Trinidad wins; otherwise, de la Hoya wins.
+
+Note that this decision tree is highly speculative and may not accurately reflect the actual outcomes of boxing matches between Trinidad and de la Hoya. The thresholds used in the decision tree are arbitrary and may need to be adjusted based on real data.

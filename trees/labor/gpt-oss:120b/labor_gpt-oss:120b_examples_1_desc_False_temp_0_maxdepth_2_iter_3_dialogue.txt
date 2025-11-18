@@ -1,0 +1,146 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Goal: Predict whether the outcome of the labour‑negotiations will be **Good** or **Bad**.*
+
+The tree is built using the two features that, in most historical negotiation datasets, show the strongest association with the final outcome:
+
+1. **Wage increase in the first year of the contract** – a numeric score from 2 (to 7).  
+2. **Cost‑of‑living adjustment (COLA)** – categorical (none / temporary formula / total‑compensation adjustment).
+
+> **Why these features?**  
+> • The first‑year wage increase is usually the single most decisive lever for employee satisfaction.  
+> • Even when the first‑year increase is generous, the presence (or absence) of a COLA strongly modifies the perceived fairness of the total package.  
+
+---
+
+### Tree Structure (text‑format, same style as the example)
+
+```
+|--- wage increase in first year of contract <= 4
+||--- class: Bad
+|--- wage increase in first year of contract > 4
+||--- cost of living adjustment = none
+|||--- class: Bad
+||--- cost of living adjustment != none
+|||--- class: Good
+```
+
+**Explanation of the splits**
+
+| Node | Split condition | Interpretation |
+|------|-----------------|----------------|
+| Root | `wage increase in first year ≤ 4` | A modest (≤ 4) first‑year raise usually signals a **Bad** outcome, regardless of other terms. |
+| Right‑child (first‑year > 4) | `cost of living adjustment = none` | When the raise is strong (> 4) **but** there is **no** COLA, employees often still view the deal as **Bad** (inflation erodes the gain). |
+| Right‑child (first‑year > 4) | `cost of living adjustment ≠ none` | A strong raise **and** any COLA (temporary or full) is enough for employees to deem the negotiation **Good**. |
+
+---
+
+### How to use the tree
+
+1. **Check the first‑year wage‑increase score** (2 – 7).  
+   * If it is **4 or lower** → predict **Bad**.  
+   * If it is **5 – 7** → go to step 2.  
+
+2. **Look at the COLA provision**.  
+   * **None** → predict **Bad**.  
+   * **Temporary formula** or **Total‑compensation adjustment** → predict **Good**.  
+
+---
+
+> **Note:** Because only two levels are allowed, the tree sacrifices some nuance (e.g., the effect of the second‑year raise, pension contributions, etc.). In a real‑world model you would typically let the algorithm explore deeper splits or incorporate additional important variables. Nevertheless, this shallow tree captures the dominant pattern observed in most negotiation outcomes.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the outcome of a labour‑negotiation (0 = bad, 1 = good).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **exactly** the feature names listed below
+        (case‑sensitive, including spaces).
+
+        Required keys for the model:
+        - "wage increase first year"  : float  (2.0 … 7.0)
+        - "cost of living adjustment" : str    ("none", "tcf", "tc")
+
+    Returns
+    -------
+    prediction : int
+        0 → Bad settlement, 1 → Good settlement
+    nodes : list[int]
+        Truth values of the inner (decision) nodes, in the order they are
+        evaluated.
+        * 1  → condition satisfied
+        * 0  → condition not satisfied
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Root node :  wage increase in the first year ≤ 4 ?
+    # ------------------------------------------------------------------
+    #   1 → the condition *is* satisfied (i.e., the increase is small)
+    #   0 → the condition is not satisfied (i.e., the increase is > 4)
+    # ------------------------------------------------------------------
+    nodes = [None, None]                     # placeholder for two inner nodes
+    nodes[0] = 1 if X["wage increase first year"] <= 4 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Second node (only matters when the first‑year increase > 4):
+    #      cost of living adjustment ≠ "none" ?
+    # ------------------------------------------------------------------
+    #   1 → there **is** a COLA (temporary or total‑compensation)
+    #   0 → no COLA at all
+    # ------------------------------------------------------------------
+    nodes[1] = 1 if X["cost of living adjustment"] != "none" else 0
+
+    # ------------------------------------------------------------------
+    # Decision logic (mirrors the tree shown in the description)
+    # ------------------------------------------------------------------
+    if nodes[0] == 1:                # wage increase ≤ 4  → Bad
+        prediction = 0
+    else:                            # wage increase > 4
+        if nodes[1] == 1:            # COLA present      → Good
+            prediction = 1
+        else:                        # COLA absent       → Bad
+            prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Node index | Condition (as coded)                                 | Meaning when the entry equals **1** |
+|------------|------------------------------------------------------|--------------------------------------|
+| `nodes[0]` | `X["wage increase first year"] <= 4`                | First‑year raise is modest (≤ 4) → the tree predicts **Bad**. |
+| `nodes[1]` | `X["cost of living adjustment"] != "none"`           | A cost‑of‑living adjustment **exists** (either `"tcf"` or `"tc"`). |
+
+The prediction follows exactly the tree:
+
+```
+if wage_increase_first_year <= 4:
+        → Bad (0)
+else:
+        if cost_of_living_adjustment == "none":
+                → Bad (0)
+        else:
+                → Good (1)
+```
+
+You can call the function with a dictionary that contains the required keys, e.g.:
+
+```python
+sample = {
+    "wage increase first year": 5.2,
+    "cost of living adjustment": "tc"
+}
+pred, node_vals = predict(sample)
+print(pred)        # 1  (Good)
+print(node_vals)   # [0, 1]
+```
+
+The returned `node_vals` list lets you see which internal decisions were taken (1 = condition true, 0 = condition false).

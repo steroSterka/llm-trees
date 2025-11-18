@@ -1,0 +1,102 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+
+*Goal:* predict whether a credit‑card application will be **Accepted** or **Rejected**.  
+*Features considered:*  
+
+1. **Number of derogatory reports** – strong indicator of past credit risk.  
+2. **Income per dependent** – reflects repayment capacity after accounting for household size.  
+3. (Other variables – age, monthly credit‑card expenses, home ownership, self‑employment – are less predictive in the first two splits and therefore are not used at this shallow depth.)
+
+```
+|--- number of derogatory reports <= 0
+|    |--- class: Accepted
+|--- number of derogatory reports > 0
+|    |--- income per dependent <= 3.5
+|    |    |--- class: Rejected
+|    |--- income per dependent > 3.5
+|    |    |--- class: Accepted
+```
+
+### How to read the tree  
+
+* **Root split** – If the applicant has **no derogatory reports**, the model directly predicts **Accepted** (leaf node at depth 1).  
+* If the applicant **has at least one derogatory report**, we look at the second feature:  
+
+  * **Income per dependent ≤ 3.5** (low adjusted income) → **Rejected**.  
+  * **Income per dependent > 3.5** (moderate‑to‑high adjusted income) → **Accepted**.
+
+### Why these features?  
+
+| Feature | Reason for high importance (at depth ≤ 2) |
+|---------|-------------------------------------------|
+| **Number of derogatory reports** | Directly quantifies past credit problems; the single strongest predictor of future default. |
+| **Income per dependent** | Normalizes income by household size, giving a clearer picture of disposable cash flow for debt repayment. |
+| **Age**, **monthly credit‑card expenses**, **home ownership**, **self‑employment** | Useful in deeper trees, but they do not provide a split that improves purity as much as the two selected features when we limit the tree to two levels. |
+
+The above tree satisfies the **maximum depth of 2** (root → first split → leaf) and uses the two most informative variables to make a quick, interpretable credit‑approval decision.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 credit‑approval decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a credit‑card application is accepted (1) or rejected (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the *exact* feature keys used in the model:
+        - 'Derogatory.reports'      : int  (0, 1, 2, 3, 4, 7)
+        - 'Income.per.dependent'    : float (1.5 … 10)
+
+        Any additional keys are ignored by this function.
+
+    Returns
+    -------
+    prediction : int
+        1 = application accepted, 0 = application rejected
+    nodes      : list[int]
+        Truth values of the inner‑node conditions (1 = condition true,
+        0 = condition false) in the order they appear in the tree:
+        [root_condition, second_level_condition]
+    """
+    # ----- inner‑node evaluations (store 1 / 0) -----------------
+    # Node 0 : Derogatory.reports <= 0 ?
+    node0 = int(X["Derogatory.reports"] <= 0)
+
+    # Node 1 : Income.per.dependent <= 3.5 ?
+    # (evaluated regardless of the path, just like in the example)
+    node1 = int(X["Income.per.dependent"] <= 3.5)
+
+    nodes = [node0, node1]
+
+    # ----- leaf decision ---------------------------------------
+    if node0:                     # Derogatory.reports <= 0  → Accepted
+        prediction = 1
+    else:                         # Derogatory.reports > 0
+        if node1:                 # Income.per.dependent <= 3.5 → Rejected
+            prediction = 0
+        else:                     # Income.per.dependent > 3.5 → Accepted
+            prediction = 1
+
+    return prediction, nodes
+```
+
+### How it works
+| Inner node | Condition (used for `nodes[i]`)                     | Meaning when the condition is **True** |
+|------------|------------------------------------------------------|----------------------------------------|
+| `node0`    | `Derogatory.reports <= 0`                           | Applicant has **no** derogatory reports. |
+| `node1`    | `Income.per.dependent <= 3.5`                        | Adjusted income is **low** (≤ 3.5). |
+
+The tree logic:
+
+1. **If** `Derogatory.reports` ≤ 0 → **Accept** (leaf reached, depth 1).  
+2. **Else** (at least one derogatory report) → look at income per dependent:  
+   * ≤ 3.5 → **Reject**  
+   * > 3.5 → **Accept**
+
+The function returns both the binary prediction and the list `nodes` that records which inner‑node conditions were satisfied (`1`) or not (`0`).

@@ -1,0 +1,142 @@
+Below is a **synthetic** decision‑tree that respects the constraints you gave:
+
+* **Maximum depth = 2** (root node → one split → leaf nodes)  
+* **Most important features** (chosen on the basis of typical impact on labour‑agreement outcomes):  
+
+| Rank | Feature | Why it’s often decisive |
+|------|----------|--------------------------|
+| 1 | **Wage increase in the first year** (2‑7 %) | Sets the tone of the whole contract; a strong first‑year raise usually signals a “good” deal. |
+| 2 | **Cost‑of‑living adjustment (COLA)** (none / temporary / total) | Guarantees that pay keeps pace with inflation – a key driver of perceived fairness. |
+| 3 | **Duration of agreement** (1‑7 years) | Short‑term deals are often “bad” because they leave workers exposed to future renegotiations. |
+| 4 | **Stand‑by pay** (2‑25 %) | Provides additional income for on‑call work; higher values correlate with better outcomes. |
+
+Using only the top two features we can build a compact tree that still captures the dominant patterns.  
+(The thresholds/branches are illustrative – they would be derived from actual data with a CART algorithm.)
+
+---
+
+## Decision‑Tree (depth = 2)
+
+```
+|--- wage increase in first year of contract <= 4%
+||--- class: Bad
+|--- wage increase in first year of contract > 4%
+||--- cost of living adjustment = none
+|||--- class: Bad
+||--- cost of living adjustment != none
+|||--- class: Good
+```
+
+### How to read the tree  
+
+1. **Root split** – *Wage increase in the first year*  
+   * If the agreed raise is **4 % or less**, the negotiation outcome is classified **Bad** (no further splits needed).  
+
+2. **Right branch** – *Wage increase > 4 %*  
+   * Now look at the **Cost‑of‑living adjustment (COLA)**  
+     * **COLA = none** → still **Bad** (the raise may be eroded by inflation).  
+     * **COLA = temporary or total** → **Good** (workers are protected against cost‑of‑living spikes).
+
+---
+
+### Why this tree satisfies the request  
+
+* **Maximum depth of 2** – only the root node and one additional split per branch.  
+* **Uses the most important features** – the root uses the strongest predictor (first‑year wage increase); the second‑level split uses the next‑most influential predictor (COLA).  
+* **Produces a binary classification** – every leaf is labeled either **Good** or **Bad**, matching the desired outcome variable.  
+
+If you later obtain a real dataset, you can feed it to any CART implementation (e.g., `sklearn.tree.DecisionTreeClassifier(max_depth=2)`) and the algorithm will automatically select the optimal thresholds and possibly different features. The structure above shows the kind of rule‑set you can expect when the two features above dominate the split‑criterion.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the outcome of the labour‑negotiation (0 = bad, 1 = good).
+
+    The tree (max depth = 2) is:
+
+        wage increase first year  > 4.0 %
+        ├─ False → 0 (bad)
+        └─ True
+            ├─ cost of living adjustment != "none" → 1 (good)
+            └─ otherwise                           → 0 (bad)
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the exact keys (spelling & case) listed
+        in the problem statement, e.g.:
+            X["wage increase first year"]   -> float  (2.0 … 7.0)
+            X["cost of living adjustment"]  -> str    ("none", "tcf", "tc")
+        All other keys are ignored by this function.
+
+    Returns
+    -------
+    prediction : int
+        0 = bad settlement, 1 = good settlement
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they appear in the tree:
+            nodes[0] → root condition (wage increase > 4%)
+            nodes[1] → second‑level condition (COLA not "none")
+    """
+
+    # ----- inner node 0 : root split ---------------------------------
+    #   “> 4.0 %” is the threshold that separates a clearly weak first‑year
+    #   raise (bad) from a stronger one (potentially good).
+    node0 = X["wage increase first year"] > 4.0
+
+    # ----- inner node 1 : second level (evaluated regardless of path) -
+    #   Any cost‑of‑living adjustment protects the raise from inflation.
+    node1 = X["cost of living adjustment"] != "none"
+
+    # ----- leaf decision ---------------------------------------------
+    if node0:                     # first‑year increase > 4 %
+        if node1:                 # COLA provided
+            prediction = 1        # good
+        else:
+            prediction = 0        # bad
+    else:
+        prediction = 0            # bad (first‑year increase ≤ 4 %)
+
+    # Convert booleans to 0/1 as required
+    nodes = [int(node0), int(node1)]
+
+    return prediction, nodes
+```
+
+### How to use it
+
+```python
+sample = {
+    "duration": 5,
+    "wage increase first year": 5.2,
+    "wage increase second year": 3.0,
+    "wage increase third year": 3.5,
+    "cost of living adjustment": "tcf",   # temporary COLA
+    "working hours": 38,
+    "pension": "ret_allw",
+    "standby pay": 10,
+    "shift differential": 5,
+    "education allowance": True,
+    "statutory holidays": 10,
+    "vacation": "avg",
+    "longterm disability assistance": False,
+    "contribution to dental plan": "half",
+    "bereavement assistance": True,
+    "contribution to health plan": "full",
+    "Target variable": None,   # not needed for prediction
+    "target": None
+}
+
+pred, node_vals = predict(sample)
+print("Prediction (0=bad,1=good):", pred)
+print("Node truth values:", node_vals)
+```
+
+The function returns both the class prediction (`0` = bad, `1` = good) and a list of the two inner‑node truth values, exactly as requested.

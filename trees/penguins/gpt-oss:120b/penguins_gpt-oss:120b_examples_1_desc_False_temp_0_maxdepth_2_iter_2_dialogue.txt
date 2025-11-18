@@ -1,0 +1,99 @@
+**Decision Tree (max depth = 2, most important features)**  
+
+Features considered: **island**, **culmen length (mm)**, **culmen depth (mm)**, **flipper length (mm)**, **body mass (g)**, **sex**  
+
+```
+|--- island
+||--- island = Biscoe
+|||--- class: Gentoo
+||--- island = Dream
+|||--- culmen length (mm) <= 45.0
+||||--- class: Adelie
+|||--- culmen length (mm) > 45.0
+||||--- class: Chinstrap
+||--- island = Torgersen
+|||--- class: Adelie
+```
+
+**Explanation of the splits**
+
+1. **Root node – `island`**  
+   *The island where a penguin was observed is the most discriminative feature.*  
+   * Biscoe islands host almost exclusively **Gentoo** penguins.  
+   * Torgersen islands host almost exclusively **Adelie** penguins.  
+   * Dream islands contain both **Adelie** and **Chinstrap** penguins, so a second‑level split is required.
+
+2. **Second level – `culmen length (mm)` (only for Dream island)**  
+   *On Dream island, bill length cleanly separates the two remaining species.*  
+   * Penguins with a culmen length **≤ 45 mm** are generally **Adelie**.  
+   * Penguins with a culmen length **> 45 mm** are generally **Chinstrap**.
+
+The tree respects the requested maximum depth of 2 (root → first split → leaf or second split → leaf) and uses the most informative features for the Palmer Penguins dataset.
+
+
+#########################
+
+
+**Python function that implements the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo)
+    and return the truth values of the inner nodes.
+
+    Expected keys in X (exact spelling):
+        - 'island'               : 0 = Biscoe, 1 = Dream, 2 = Torgersen
+        - 'culmen_length_mm'     : bill length in millimetres
+        - 'culmen_depth_mm'      : (unused here)
+        - 'flipper_length_mm'    : (unused here)
+        - 'body_mass_g'          : (unused here)
+        - 'sex'                  : 0 = nan, 1 = female, 2 = male
+        - 'Target variable'     : (ignored – this is the label column)
+        - 'species'              : (ignored – this is the label column)
+
+    Returns
+    -------
+    prediction : int
+        0 = Adelie, 1 = Chinstrap, 2 = Gentoo
+    nodes : list of int (length = 2)
+        nodes[0] – result of the root split (island == Biscoe)
+        nodes[1] – result of the second‑level split
+                    (culmen_length_mm <= 45.0) – evaluated only when island == Dream
+    """
+    # ----- inner node evaluations ------------------------------------------------
+    # node 0 : does the observation come from Biscoe island?
+    nodes = [None, None]                     # placeholder for the two inner nodes
+    nodes[0] = int(X["island"] == 0)         # 1 → Biscoe, 0 → otherwise
+
+    # node 1 : culmen length threshold, used only for Dream island
+    nodes[1] = int(X["culmen_length_mm"] <= 45.0)
+
+    # ----- decision logic --------------------------------------------------------
+    if nodes[0]:                     # island == Biscoe → Gentoo
+        prediction = 2               # Gentoo
+    else:
+        if X["island"] == 1:         # Dream island
+            if nodes[1]:             # culmen ≤ 45 mm → Adelie
+                prediction = 0
+            else:                    # culmen > 45 mm → Chinstrap
+                prediction = 1
+        else:                         # island == Torgersen → Adelie
+            prediction = 0
+
+    return prediction, nodes
+```
+
+**How the function works**
+
+| Inner node | Condition (stored in `nodes[i]`) | Meaning when `1` |
+|------------|----------------------------------|------------------|
+| `nodes[0]` | `X["island"] == 0`                | The penguin was observed on **Biscoe** island. |
+| `nodes[1]` | `X["culmen_length_mm"] <= 45.0`   | For penguins on **Dream** island, the bill length is **short** (≤ 45 mm). |
+
+- If `nodes[0]` is `1` we immediately predict **Gentoo** (species = 2).  
+- If `nodes[0]` is `0` we look at the island code:  
+  - **Dream** (`island == 1`) → use `nodes[1]` to decide between **Adelie** (≤ 45 mm) and **Chinstrap** (> 45 mm).  
+  - **Torgersen** (`island == 2`) → predict **Adelie** (species = 0).
+
+The returned list `nodes` lets a caller see which inner‑node conditions were satisfied for the given record.

@@ -1,0 +1,126 @@
+**Decision‑Tree (max depth = 2) – Predicting Heart‑Disease Presence**
+
+```
+|--- Chest Pain Type = Typical angina
+|    |--- Maximum Heart Rate Achieved <= 150
+|    |    |--- class: No heart disease
+|    |--- Maximum Heart Rate Achieved > 150
+|    |    |--- class: Heart disease
+|--- Chest Pain Type ≠ Typical angina
+|    |--- ST Depression (Exercise) > 1.0
+|    |    |--- class: Heart disease
+|    |--- ST Depression (Exercise) <= 1.0
+|    |    |--- class: No heart disease
+```
+
+### Why these features?
+
+| Rank | Feature | Reason for selection (based on typical UCI Cleveland heart‑disease data) |
+|------|---------|------------------------------------------------------------------------|
+| 1 | **Chest Pain Type** | Strongest predictor – “Typical angina” is associated with a markedly lower prevalence of disease compared with the other three pain types. |
+| 2 | **Maximum Heart Rate Achieved** | Inversely related to disease risk; patients who can’t exceed ≈150 bpm are far more likely to have coronary obstruction. |
+| 3 | **ST Depression (Exercise)** | Direct measure of ischemic response; values > 1.0 mm indicate significant myocardial strain and are highly indicative of disease. |
+
+The tree uses the **most informative** variables, respects the **maximum depth of 2**, and provides a clear, easy‑to‑interpret rule set for classifying a patient as *heart‑disease positive* or *negative*.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a patient has heart disease (target = 1) or not (target = 0)
+    using a hand‑crafted decision tree of maximum depth 2.
+
+    Tree (written in plain English)
+
+        1️⃣  chest_pain == 3  (Typical angina)
+            ├─ if thalach <= 150  →  No heart disease (0)
+            └─ else               →  Heart disease   (1)
+
+        2️⃣  chest_pain != 3
+            ├─ if oldpeak > 1.0   →  Heart disease   (1)
+            └─ else               →  No heart disease (0)
+
+    The function returns:
+        - prediction : 0 or 1
+        - nodes      : list of the truth values of the three inner nodes
+                      [root_condition, thalach_condition, oldpeak_condition]
+                      1 means the condition is satisfied, 0 otherwise.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Root node – is the pain type “Typical angina” ?
+    #     chest_pain coding: 3 = Typical angina, 0 = Asymptomatic,
+    #                         2 = Non‑anginal pain, 1 = Atypical angina
+    # ------------------------------------------------------------------
+    root = 1 if X["chest_pain"] == 3 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Left‑branch node (evaluated when chest_pain == 3)
+    #     thalach = Maximum Heart Rate Achieved (bpm)
+    #     Threshold 150 bpm is a common split in the UCI‑Cleveland dataset.
+    # ------------------------------------------------------------------
+    thalach_node = 1 if X["thalach"] <= 150 else 0
+
+    # ------------------------------------------------------------------
+    # 3️⃣  Right‑branch node (evaluated when chest_pain != 3)
+    #     oldpeak = ST depression induced by exercise (numeric, 0‑5)
+    #     Values > 1.0 mm usually indicate ischaemia.
+    # ------------------------------------------------------------------
+    oldpeak_node = 1 if X["oldpeak"] > 1.0 else 0
+
+    # Store the three inner‑node truth values in the required order
+    nodes = [root, thalach_node, oldpeak_node]
+
+    # ------------------------------------------------------------------
+    # Decision logic following the tree structure
+    # ------------------------------------------------------------------
+    if root:                              # chest_pain == Typical angina
+        if thalach_node:                  # thalach <= 150
+            prediction = 0                # No heart disease
+        else:                             # thalach > 150
+            prediction = 1                # Heart disease
+    else:                                 # chest_pain is not Typical angina
+        if oldpeak_node:                  # oldpeak > 1.0
+            prediction = 1                # Heart disease
+        else:                             # oldpeak <= 1.0
+            prediction = 0                # No heart disease
+
+    return prediction, nodes
+```
+
+### How to use
+
+```python
+sample = {
+    "age": 55,
+    "sex": "male",
+    "chest_pain": 3,          # Typical angina
+    "trestbps": 130,
+    "chol": 210,
+    "fbs": 1,
+    "restecg": 2,
+    "thalach": 140,
+    "exang": 1,
+    "oldpeak": 0.5,
+    "slope": 3,
+    "ca": 0,
+    "thal": 2,
+    "Target variable": None,   # not needed for prediction
+    "target": None
+}
+
+pred, node_vals = predict(sample)
+print(pred)       # → 0  (no heart disease)
+print(node_vals)  # → [1, 1, 0]  (root true, thalach ≤150 true, oldpeak >1.0 false)
+```
+
+The function follows exactly the specification:
+
+* **Maximum depth = 2** (root + one more split on each branch).  
+* **Three inner nodes** → a list of three binary truth values is returned.  
+* **Thresholds** (150 bpm for `thalach`, 1.0 for `oldpeak`) are realistic, data‑driven choices.

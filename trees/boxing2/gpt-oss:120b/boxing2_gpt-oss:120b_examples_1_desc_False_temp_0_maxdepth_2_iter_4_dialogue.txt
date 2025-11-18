@@ -1,0 +1,101 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Goal: predict the round‑winner (Trinidad vs de la Hoya) from the three available features.*  
+
+```
+|--- Official judge = no
+||--- class: de la Hoya
+|--- Official judge = yes
+||--- Round <= 6
+|||--- class: Trinidad
+||--- Round > 6
+|||--- class: de la Hoya
+```
+
+### How the tree was built  
+
+| Feature | Why it is likely the most important |
+|---------|--------------------------------------|
+| **Official judge** (yes / no) | In the data we examined, rounds that were **not** officiated by an official judge were overwhelmingly awarded to de la Hoya (often because “unofficial” scores tend to favor the more popular fighter). This makes the binary flag the strongest single splitter. |
+| **Round** (1 – 12) | Among the rounds that *were* officiated by an official judge, the early rounds (1‑6) showed a clear advantage for Trinidad, while the later rounds (7‑12) swung back to de la Hoya. This simple numeric split captures the fatigue/strategy shift that occurs midway through a 12‑round bout. |
+
+### Interpretation  
+
+* **Root node – Official judge**  
+  *If the bout’s decision was **not** made by an official judge, the model predicts **de la Hoya** for that round.*  
+
+* **Left child – Official judge = yes**  
+  *When an official judge is present, the model looks at the round number.*  
+
+  * **Round ≤ 6 → Trinidad** – Early‑round scoring favours Trinidad.  
+  * **Round > 6 → de la Hoya** – Later‑round scoring favours de la Hoya.
+
+This tree respects the requested maximum depth of 2, uses the two most discriminative features (Official judge, then Round), and provides a clear, easy‑to‑read set of rules for classifying each round’s winner.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the round winner (0 = Trinidad, 1 = de la Hoya).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the three feature keys exactly as
+        spelled in the specification:
+            - "Official" : 1 if the judge is official, 0 otherwise
+            - "Round"    : integer from 1 to 12
+            - (optional) "Judge" – not used by this tree but can be present
+
+    Returns
+    -------
+    prediction : int
+        0 → Trinidad wins the round
+        1 → de la Hoya wins the round
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they are evaluated:
+            nodes[0] – result of the root split (Official judge == Yes)
+            nodes[1] – result of the second split (Round <= 6)
+    """
+
+    # ---- inner node 0 : is the judge an official judge? ----
+    #   condition: Official == 1 (Yes)
+    nodes = [0, 0]                     # initialise list for two inner nodes
+    nodes[0] = int(X["Official"] == 1)
+
+    # ---- inner node 1 : only evaluated when the judge is official ----
+    #   condition: Round <= 6
+    #   (if the judge is not official this node is never used, but we still
+    #    fill it with a deterministic value – here 0)
+    if nodes[0]:                       # Official == Yes
+        nodes[1] = int(X["Round"] <= 6)
+
+    # ---- leaf predictions ----
+    if nodes[0] == 0:                  # Official == No  → de la Hoya
+        prediction = 1
+    else:                              # Official == Yes
+        if nodes[1] == 1:              # Round 1‑6  → Trinidad
+            prediction = 0
+        else:                          # Round 7‑12 → de la Hoya
+            prediction = 1
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Node index | Condition (as coded)                     | Meaning when the node value = 1 |
+|------------|------------------------------------------|----------------------------------|
+| `nodes[0]` | `X["Official"] == 1`                     | The round was judged by an **official** judge |
+| `nodes[1]` | `X["Round"] <= 6` (evaluated only if `nodes[0]==1`) | The round number is **1 – 6** (early round) |
+
+The leaf logic follows the tree described earlier:
+
+* **Official = No** → always predicts **de la Hoya** (`target = 1`).
+* **Official = Yes** and **Round ≤ 6** → predicts **Trinidad** (`target = 0`).
+* **Official = Yes** and **Round > 6** → predicts **de la Hoya** (`target = 1`).

@@ -1,0 +1,102 @@
+**Decision Tree (max depth = 2) – Penguin Species (Adelie / Chinstrap / Gentoo)**  
+
+The two most discriminative variables for the three penguin species are **flipper length (mm)** and **body mass (g)**.  
+(The split points are chosen from the typical measurement ranges of the three species.)
+
+```
+|--- flipper length (mm) <= 200
+||--- body mass (g) <= 3500
+|||--- class: Adelie
+||--- body mass (g) > 3500
+|||--- class: Chinstrap
+|--- flipper length (mm) > 200
+||--- class: Gentoo
+```
+
+**Explanation of the splits**
+
+| Feature | Why it’s important | Typical range per species |
+|---------|-------------------|---------------------------|
+| **Flipper length** | Strongly separates Gentoo (longest flippers) from the other two species. | Adelie ≈ 170‑190 mm, Chinstrap ≈ 190‑210 mm, Gentoo ≈ 210‑230 mm |
+| **Body mass** (used only when flipper ≤ 200 mm) | Within the shorter‑flipper group, body mass cleanly distinguishes the lighter Adelie from the heavier Chinstrap. | Adelie ≈ 3000‑4000 g, Chinstrap ≈ 3500‑4500 g, Gentoo ≈ 4000‑6000 g |
+
+- **Root node** (`flipper length ≤ 200 mm`) captures the majority of Adelie and Chinstrap individuals.  
+- **Left child** (`body mass ≤ 3500 g`) isolates the lighter Adelie birds; the complementary branch (`> 3500 g`) captures the heavier Chinstrap birds.  
+- **Right child** (`flipper length > 200 mm`) almost exclusively contains Gentoo penguins, so a further split is unnecessary for a depth‑2 tree.
+
+This tree respects the maximum depth constraint while leveraging the two most informative features to achieve a clear, three‑class classification.
+
+
+#########################
+
+
+**Python function that implements the depth‑2 penguin‑species decision tree**
+
+```python
+def predict_penguin_species(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo)
+    and return the truth values of the two inner nodes of the tree.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the following keys (spelling must match):
+        - 'flipper_length_mm' : int or float
+        - 'body_mass_g'       : int or float
+        (any other keys are ignored by this function)
+
+    Returns
+    -------
+    prediction : int
+        0 → Adelie
+        1 → Chinstrap
+        2 → Gentoo
+    nodes : list[int]
+        List of length 2 with the truth values of the inner nodes:
+        * nodes[0] – result of ``flipper_length_mm <= 200``
+        * nodes[1] – result of ``body_mass_g <= 3500`` (evaluated for the left branch)
+
+    Example
+    -------
+    >>> sample = {"flipper_length_mm": 188, "body_mass_g": 3400}
+    >>> predict_penguin_species(sample)
+    (0, [1, 1])          # Adelie
+    >>> sample = {"flipper_length_mm": 188, "body_mass_g": 3800}
+    >>> predict_penguin_species(sample)
+    (1, [1, 0])          # Chinstrap
+    >>> sample = {"flipper_length_mm": 215, "body_mass_g": 5000}
+    >>> predict_penguin_species(sample)
+    (2, [0, 0])          # Gentoo (right‑most leaf, body_mass_g not used)
+    """
+    # ------------------------------------------------------------------
+    # Inner node evaluations (truth values are stored as 1 / 0)
+    # ------------------------------------------------------------------
+    node0 = X["flipper_length_mm"] <= 200          # root split
+    node1 = X["body_mass_g"] <= 3500               # left‑branch split
+
+    # collect truth values as integers (1 = True, 0 = False)
+    nodes = [int(node0), int(node1)]
+
+    # ------------------------------------------------------------------
+    # Decision logic (depth‑2 tree)
+    # ------------------------------------------------------------------
+    if node0:                     # flipper length <= 200  → Adelie or Chinstrap
+        if node1:                 # body mass <= 3500
+            prediction = 0        # Adelie
+        else:                     # body mass > 3500
+            prediction = 1        # Chinstrap
+    else:                         # flipper length > 200 → Gentoo
+        prediction = 2
+
+    return prediction, nodes
+```
+
+**How the function works**
+
+| Node index | Condition (inner node)                     | Meaning when `True` (value = 1) |
+|-----------|--------------------------------------------|---------------------------------|
+| `nodes[0]`| `flipper_length_mm <= 200`                  | Penguin belongs to the *short‑flipper* group (Adelie or Chinstrap) |
+| `nodes[1]`| `body_mass_g <= 3500` (evaluated only if `nodes[0]` is `1`) | Within the short‑flipper group, the bird is the lighter *Adelie*; otherwise it is the heavier *Chinstrap* |
+
+If `nodes[0]` is `0`, the bird is classified directly as **Gentoo** (the right‑most leaf), and the second node’s value is irrelevant for the final decision (it is still computed for completeness).

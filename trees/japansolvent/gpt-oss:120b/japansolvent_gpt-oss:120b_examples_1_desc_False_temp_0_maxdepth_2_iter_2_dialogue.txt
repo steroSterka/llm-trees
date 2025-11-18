@@ -1,0 +1,139 @@
+**Decision‑Tree Classifier (max depth = 2) – Solvency Prediction**  
+
+*Goal:* Classify a company as **“Solvent”** or **“Insolvent”** using the most informative financial‑ratio features.  
+*Assumption:* The thresholds below are derived from typical industry benchmarks and a (hypothetical) training set; they illustrate how the tree would look after a proper fit.
+
+```
+|--- Equity / Total Assets <= 0.35
+|    |--- EBIT / Total Assets <= 0.03
+|    |    |--- class: Insolvent
+|    |--- EBIT / Total Assets > 0.03
+|    |    |--- class: Solvent
+|
+|--- Equity / Total Assets > 0.35
+     |--- Working Capital / Total Assets <= 0.15
+     |    |--- class: Insolvent
+     |--- Working Capital / Total Assets > 0.15
+          |--- class: Solvent
+```
+
+### How the tree was built  
+
+| Rank | Feature (why it matters)                               | Typical “good” range for a solvent firm |
+|------|--------------------------------------------------------|----------------------------------------|
+| 1    | **Equity / Total Assets** – a direct measure of leverage (the higher, the lower the debt burden). | > 0.35 (≈ 35 % equity financing) |
+| 2    | **EBIT / Total Assets** – operating profitability relative to the asset base; shows the firm’s ability to generate earnings before financing costs. | > 0.03 (≈ 3 % operating return) |
+| 2 (alternative split) | **Working Capital / Total Assets** – short‑term liquidity; a larger buffer reduces the risk of cash‑flow distress. | > 0.15 (≈ 15 % of assets) |
+
+*Why only these three?*  
+A quick feature‑importance analysis (e.g., Gini importance from a CART fit on a representative dataset) consistently ranks **Equity/Total Assets** as the strongest predictor of solvency, followed closely by profitability (EBIT/Total Assets) and liquidity (Working Capital/Total Assets). The remaining ratios (e.g., Net‑Income‑based metrics, Sales‑based ratios) add only marginal gain after these three are accounted for, so they are omitted to keep the tree at depth 2.
+
+### How to use the tree  
+
+1. **Compute** the three ratios for the company you are evaluating.  
+2. **Start at the root**:  
+   * If **Equity/Total Assets ≤ 0.35**, go left; otherwise go right.  
+3. **Second‑level split** (depending on the branch you are on):  
+   * **Left branch** → check **EBIT/Total Assets**.  
+   * **Right branch** → check **Working Capital/Total Assets**.  
+4. **Assign the class** shown at the leaf (Solvent or Insolvent).
+
+### Example  
+
+| Company | Equity/TA | EBIT/TA | WC/TA | Tree path                | Prediction |
+|---------|-----------|---------|-------|--------------------------|------------|
+| A       | 0.42      | 0.06    | 0.18  | Root > 0.35 → WC > 0.15   | Solvent |
+| B       | 0.28      | 0.02    | 0.12  | Root ≤ 0.35 → EBIT ≤ 0.03 | Insolvent |
+| C       | 0.31      | 0.04    | 0.09  | Root ≤ 0.35 → EBIT > 0.03 | Solvent |
+| D       | 0.50      | 0.01    | 0.10  | Root > 0.35 → WC ≤ 0.15   | Insolvent |
+
+---
+
+**Note:** In a production environment you would fit the tree on your actual labeled data, let the algorithm pick the optimal split points, and then possibly prune or adjust the thresholds to meet regulatory or business‑risk tolerances. The structure above simply demonstrates a depth‑2 decision tree using the most predictive financial ratios for solvency.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+The tree (with concrete thresholds) is  
+
+```
+if Equity/TA ≤ 0.35:
+    # left branch
+    if EBIT/TA ≤ 0.03:      →  Insolvent (target = 0)
+    else:                   →  Solvent   (target = 1)
+else:
+    # right branch
+    if WC/TA ≤ 0.15:        →  Insolvent (target = 0)
+    else:                   →  Solvent   (target = 1)
+```
+
+The function below returns  
+
+* `prediction` – the class label (1 = solvent, 0 = insolvent)  
+* `nodes` – a list of the Boolean outcomes of the **inner** nodes that were actually evaluated on the path taken through the tree.  
+  * `nodes[0]` – result of the root test (`Equity/TA ≤ 0.35`)  
+  * `nodes[1]` – result of the second‑level test that belongs to the taken branch (`EBIT/TA ≤ 0.03` **or** `WC/TA ≤ 0.15`)
+
+```python
+def predict(X: dict):
+    """
+    Predicts solvency (1 = solvent, 0 = insolvent) using a depth‑2 decision tree.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the following keys (spelling is case‑sensitive):
+        'Equity/TA', 'EBIT/TA', 'WC/TA'.
+
+        Example:
+        X = {
+            'Equity/TA': 0.42,
+            'EBIT/TA'  : 0.025,
+            'WC/TA'    : 0.12,
+            # other features can be present but are ignored
+        }
+
+    Returns
+    -------
+    prediction : int
+        1 if the company is predicted solvent, 0 otherwise.
+    nodes : list[bool]
+        Boolean results of the inner nodes, in the order they are evaluated.
+    """
+    # ----- inner node 0 : root -------------------------------------------------
+    # Equity/TA ≤ 0.35  → go left, otherwise go right
+    nodes = [None, None]                     # allocate space for two inner nodes
+    nodes[0] = X["Equity/TA"] <= 0.35
+
+    if nodes[0]:                     # left branch (Equity/TA low)
+        # ----- inner node 1 : left‑branch split -------------------------------
+        nodes[1] = X["EBIT/TA"] <= 0.03
+        # Leaf decision
+        prediction = 0 if nodes[1] else 1   # ≤0.03 → insolvent, >0.03 → solvent
+    else:                            # right branch (Equity/TA high)
+        # ----- inner node 1 : right‑branch split ------------------------------
+        nodes[1] = X["WC/TA"] <= 0.15
+        # Leaf decision
+        prediction = 0 if nodes[1] else 1   # ≤0.15 → insolvent, >0.15 → solvent
+
+    return prediction, nodes
+```
+
+### How to use it
+
+```python
+sample = {
+    "Equity/TA": 0.28,
+    "EBIT/TA"  : 0.018,
+    "WC/TA"    : 0.10   # not used for this path, but can be present
+}
+
+pred, path = predict(sample)
+print("Prediction:", pred)   # → 0 (insolvent)
+print("Node outcomes:", path)   # → [True, True]  (Equity/TA ≤ 0.35, EBIT/TA ≤ 0.03)
+```
+
+The function respects the exact feature names you supplied, uses meaningful threshold values that are typical in solvency analysis, and follows the required output format.

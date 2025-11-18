@@ -1,0 +1,114 @@
+Below is a **sample decision‑tree (max depth = 2)** that could be used to predict which fighter – **Lewis** or **Holyfield** – won a given round, based only on the three features you supplied:
+
+```
+|--- Official judge = yes
+|    |--- Round <= 6
+|    |    |--- class: Holyfield
+|    |--- Round > 6
+|    |    |--- class: Lewis
+|--- Official judge = no
+|    |--- Judge in {E. Williams, L. O'Connell, S. Christodoulu}
+|    |    |--- class: Lewis
+|    |--- Judge in {HBO‑Lederman, Sportsticker, Boxing Times,
+|    |                Sportsline, Associated Press,
+|    |                ESPN, Boxing Monthly‑Leach}
+|    |    |--- class: Holyfield
+```
+
+### How this tree was constructed (conceptually)
+
+| Step | Action | Rationale |
+|------|--------|-----------|
+| 1️⃣   | **Encode categorical variables** (e.g., one‑hot‑encode `Judge`, binary‑encode `Official judge`) | Required for any ML algorithm that works with numbers. |
+| 2️⃣   | **Fit a CART decision‑tree** (e.g., `sklearn.tree.DecisionTreeClassifier`) using the labelled data “winner of the round (Lewis / Holyfield)”. | CART automatically computes *feature importance* (Gini impurity reduction). |
+| 3️⃣   | **Select the two most important features** (here we assume `Official judge` is the strongest splitter, followed by `Round` for the “yes” branch and `Judge` for the “no” branch). | Limiting depth forces the tree to pick the highest‑gain splits. |
+| 4️⃣   **Prune to depth = 2** | Set `max_depth=2` (or manually cut after the second level). | Guarantees the tree stays shallow and easy to interpret. |
+| 5️⃣   **Export** | Use `sklearn.tree.export_text` (or manual formatting) to get the ASCII representation above. | Matches the style you showed for the iris example. |
+
+### Why these splits make sense (based on typical boxing‑round patterns)
+
+| Feature | Expected influence on the outcome |
+|---------|-----------------------------------|
+| **Official judge = yes** | When an *official* judge is on the panel, the scoring tends to be more consistent and may favour the fighter who dominates the later rounds (Lewis, who was known for finishing strong). |
+| **Round ≤ 6 vs. > 6** | Early rounds (1‑6) are often closer and may be awarded to the more technical boxer (Holyfield). Later rounds (7‑12) see the power‑puncher (Lewis) pulling ahead. |
+| **Judge identity** | Certain media judges (e.g., ESPN, Associated Press) historically gave slightly higher scores to Holyfield, whereas the “core” judges (Williams, O’Connell, Christodoulu) were a bit more favorable to Lewis. |
+
+> **Important note** – This tree is **illustrative**.  
+> To obtain a *real* model you would need the actual round‑by‑round outcome data (which fighter won each round) together with the judge assignments for every round. With that dataset you could run the exact steps above, let the algorithm discover the true feature importances, and then output the resulting depth‑2 tree.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the three feature keys
+        exactly as they appear in the data set:
+
+        - "Judge"    : integer 0‑9 (see encoding below)
+        - "Official" : 1 = judge is an official judge, 0 = otherwise
+        - "Round"    : integer from 1 to 12
+
+    Returns
+    -------
+    prediction : int
+        1 → Lewis won the round
+        0 → Holyfield won the round
+    nodes : list[int]
+        Truth values of the two inner nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they appear in the tree.
+
+    Tree structure (max depth = 2)
+
+    |--- Official == 1
+    |    |--- Round <= 6        → Holyfield (0)
+    |    |--- Round > 6         → Lewis     (1)
+    |--- Official == 0
+    |    |--- Judge <= 2        → Lewis     (1)   # Judges 0,1,2  → E. Williams, L. O'Connell, S. Christodoulu
+    |    |--- Judge > 2         → Holyfield (0)   # All other judges
+    """
+    # ------------------------------------------------------------------
+    # 0️⃣  First inner node : is the judge an official judge?
+    # ------------------------------------------------------------------
+    node0 = X["Official"] == 1          # True → go to the “official” branch
+    # store as 1 / 0
+    nodes = [int(node0), None]
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Second inner node : depends on the outcome of node0
+    # ------------------------------------------------------------------
+    if node0:                                   # official judge branch
+        node1 = X["Round"] <= 6                 # early rounds favour Holyfield
+    else:                                       # non‑official judge branch
+        node1 = X["Judge"] <= 2                 # judges 0‑2 tend to favour Lewis
+
+    nodes[1] = int(node1)
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Leaf / prediction
+    # ------------------------------------------------------------------
+    if node0:                       # official judge
+        prediction = 0 if node1 else 1
+    else:                           # non‑official judge
+        prediction = 1 if node1 else 0
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Step | Condition evaluated (`node`) | Meaning in the tree | Truth value stored |
+|------|------------------------------|---------------------|--------------------|
+| 0️⃣ | `X["Official"] == 1` | “Is the judge an official judge?” (root) | `1` if *yes*, `0` if *no* |
+| 1️⃣ | *depends on node 0*:<br>• if node 0 = 1 → `X["Round"] <= 6`<br>• if node 0 = 0 → `X["Judge"] <= 2` | Second‑level split (either round number or judge identity) | `1` if the chosen condition is satisfied, otherwise `0` |
+| 2️⃣ | Leaf decision (prediction) | Returns **1** for *Lewis* or **0** for *Holyfield* according to the tree logic. |
+
+The function returns both the predicted winner (`prediction`) and the list `nodes` that records the boolean outcomes of the two inner decision nodes, exactly as requested.

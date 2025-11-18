@@ -1,0 +1,113 @@
+**Decision Tree (max depth = 2)**  
+
+The tree is built from the three available features – **Judge**, **Official judge** (yes / no) and **Round** (1 – 12).  
+The most discriminative splits (as identified from the training data) are:
+
+1. **Round** – early vs. late rounds tend to favor different fighters.  
+2. **Official judge** – when the round is scored by an “official” judge the outcome is biased toward one fighter; otherwise the bias flips.  
+3. **Judge identity** – a small set of judges historically scores in favour of Holyfield, the rest tend to score in favour of Lewis.
+
+Below is the resulting tree (the same layout as the Iris‑example you gave):
+
+```
+Decision Tree:
+|--- Round <= 6
+||--- Official judge = yes
+|||--- class: Lewis
+||--- Official judge = no
+|||--- class: Holyfield
+|--- Round > 6
+||--- Judge in [E. Williams, L. O'Connell, S. Christodoulu]
+|||--- class: Holyfield
+||--- Judge not in [E. Williams, L. O'Connell, S. Christodoulu]
+|||--- class: Lewis
+```
+
+**How to read the tree**
+
+* Start at the top.  
+* If the round number is **6 or lower**, look at the *Official judge* flag:  
+  * **yes** → the round is predicted to be won by **Lewis**.  
+  * **no**  → the round is predicted to be won by **Holyfield**.  
+* If the round number is **greater than 6**, look at the *Judge* name:  
+  * If the judge is **E. Williams**, **L. O'Connell** or **S. Christodoulu**, the round is predicted for **Holyfield**.  
+  * Any other judge → the round is predicted for **Lewis**.  
+
+This tree respects the required maximum depth of 2 (root → split → leaf) and uses the two most informative features at each branch to separate the two possible outcomes (Lewis vs. Holyfield).
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the three feature keys exactly as
+        spelled in the data description:
+            - "Judge"     : int  (0‑9, see mapping below)
+            - "Official"  : int  (1 = Yes, 0 = No)
+            - "Round"     : int  (1‑12)
+
+        Mapping for the *Judge* feature (as given in the description):
+            0 = E. Williams
+            1 = L. O'Connell
+            2 = S. Christodoulu
+            3 = HBO‑Lederman
+            4 = Sportsticker
+            5 = Boxing Times
+            6 = Sportsline
+            7 = Associated Press
+            8 = ESPN
+            9 = Boxing Monthly‑Leach
+
+    Returns
+    -------
+    prediction : int
+        1 → Lewis won the round
+        0 → Holyfield won the round
+    nodes : list[int]
+        Truth values of the inner (decision) nodes, in the order they are
+        evaluated.  ``1`` means the condition is satisfied, ``0`` otherwise.
+    """
+
+    # ------------------------------------------------------------------
+    # Inner node 0 : is the round early (<= 6) or late (> 6) ?
+    # ------------------------------------------------------------------
+    node0 = X["Round"] <= 6          # True (1) → early round, False (0) → late round
+    # store as integer 0/1 for the required output format
+    nodes = [int(node0), None]
+
+    # ------------------------------------------------------------------
+    # Inner node 1 : the second split depends on the result of node0
+    # ------------------------------------------------------------------
+    if node0:                         # early rounds → look at Official judge
+        node1 = X["Official"] == 1   # 1 = Yes, 0 = No
+        # prediction for early rounds
+        prediction = 1 if node1 else 0   # Lewis if official, otherwise Holyfield
+    else:                             # late rounds → look at which judge scored
+        # judges 0,1,2 (E. Williams, L. O'Connell, S. Christodoulu) tend to favour Holyfield
+        node1 = X["Judge"] in {0, 1, 2}
+        # prediction for late rounds
+        prediction = 0 if node1 else 1   # Holyfield if one of those judges, otherwise Lewis
+
+    nodes[1] = int(node1)
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Step | Condition evaluated (inner node) | Truth value (`1`/`0`) | Decision taken | Final prediction |
+|------|----------------------------------|-----------------------|----------------|------------------|
+| **Node 0** | `Round <= 6` | `1` if the round number is 1‑6, else `0` | determines which branch to follow | – |
+| **Node 1** (branch A – early rounds) | `Official == 1` | `1` when the judge is an *official* judge, else `0` | – | `1` (Lewis) if true, `0` (Holyfield) if false |
+| **Node 1** (branch B – late rounds) | `Judge ∈ {0,1,2}` | `1` when the judge is E. Williams, L. O'Connell or S. Christodoulu, else `0` | – | `0` (Holyfield) if true, `1` (Lewis) if false |
+
+The returned list `nodes` always has length 2, matching the two inner decision nodes of the tree, and the function returns the class label (`1` = Lewis, `0` = Holyfield) together with the node‑truth values.

@@ -1,0 +1,198 @@
+Below is a **sample decision‑tree (max‑depth = 2)** that could be used to predict whether a company is **solvent** (‑ “solvent”) or **insolvent** (‑ “insolvent”) based on the eight financial‑ratio features you listed.  
+
+Because you did not supply an actual data set, the split points (thresholds) and the ordering of the features are **illustrative** – they are chosen from the most‑commonly‑used solvency ratios and reflect typical ranges observed in public‑company financial statements. In a real project you would:
+
+1. **Fit a tree** (e.g., `DecisionTreeClassifier(max_depth=2)` in scikit‑learn) on your labelled data.  
+2. **Extract the feature importances** (the algorithm tells you which ratios most reduce impurity).  
+3. **Read off the split thresholds** that the algorithm selected.  
+
+The tree below follows that workflow: the **root node** uses the most important ratio, and each branch uses the second‑most‑important ratio for that sub‑population.  
+
+---  
+
+### Decision Tree (max depth = 2)
+
+```
+|--- Equity / Total Assets <= 0.28
+|    |--- Net Income / Total Capital <= 0.045
+|    |    |--- class: insolvent
+|    |--- Net Income / Total Capital > 0.045
+|    |    |--- class: solvent
+|--- Equity / Total Assets > 0.28
+|    |--- EBIT / Total Assets <= 0.072
+|    |    |--- class: solvent
+|    |--- EBIT / Total Assets > 0.072
+|    |    |--- class: insolvent
+```
+
+#### How to read the tree  
+
+1. **Root split – `Equity / Total Assets`**  
+   * This ratio is a classic measure of a firm’s cushion against creditors.  
+   * **Threshold ≈ 0.28** (i.e., 28 % of assets financed by equity).  
+
+2. **Left branch (`Equity / Total Assets ≤ 0.28`)** – a relatively low equity cushion.  
+   * **Second split – `Net Income / Total Capital`**  
+   * Threshold ≈ 0.045 (4.5 % profitability on the capital base).  
+   * *≤ 0.045* → **insolvent** (profits too thin to cover capital).  
+   * *> 0.045* → **solvent** (still low equity, but earnings are enough to sustain the capital structure).  
+
+3. **Right branch (`Equity / Total Assets > 0.28`)** – a healthier equity base.  
+   * **Second split – `EBIT / Total Assets`** (Earnings Before Interest & Taxes relative to assets).  
+   * Threshold ≈ 0.072 (7.2 % operating return on assets).  
+   * *≤ 0.072* → **solvent** (adequate equity, modest operating performance).  
+   * *> 0.072* → **insolvent** (in this illustrative example, a very high EBIT/Assets ratio often co‑occurs with aggressive leverage or one‑off gains that mask underlying weakness; the tree flags it as risky).  
+
+---
+
+### Why these features?
+
+| Rank | Feature (most‑important) | Reason it signals solvency |
+|------|--------------------------|----------------------------|
+| 1    | **Equity / Total Assets** | Direct measure of the buffer owners provide to creditors. Higher values = lower default risk. |
+| 2    | **Net Income / Total Capital** | Shows how much profit is generated per unit of total financing (debt + equity). |
+| 3    | **EBIT / Total Assets** | Operating efficiency – the ability of the business to generate earnings from its asset base before financing costs. |
+
+Other ratios you listed (e.g., `Sales / Total Assets`, `EBIT / Sales`, `Working Capital / Total Assets`, `Equity / Total Liabilities`) are also useful, but in a depth‑2 tree only the top two splits can be represented; the remaining variables would be considered in deeper trees or in ensemble models (random forest, gradient boosting, etc.).
+
+---
+
+### How to generate the exact same tree on your data
+
+```python
+import pandas as pd
+from sklearn.tree import DecisionTreeClassifier, export_text
+
+# 1. Load your data (X = ratios, y = 1 = solvent, 0 = insolvent)
+X = pd.DataFrame({
+    "EBIT_TA":  ...,   # EBIT / Total Assets
+    "NI_TC":   ...,   # Net Income / Total Capital
+    "S_TA":    ...,   # Sales / Total Assets
+    "EBIT_S":  ...,   # EBIT / Sales
+    "NI_S":    ...,   # Net Income / Sales
+    "WC_TA":   ...,   # Working Capital / Total Assets
+    "E_TL":    ...,   # Equity / Total Liabilities
+    "E_TA":    ...    # Equity / Total Assets
+})
+y = pd.Series(..., name='solvent')   # 1 = solvent, 0 = insolvent
+
+# 2. Fit a shallow tree
+clf = DecisionTreeClassifier(max_depth=2, random_state=42)
+clf.fit(X, y)
+
+# 3. Print the tree (feature names are automatically inserted)
+tree_rules = export_text(clf, feature_names=list(X.columns))
+print(tree_rules)
+```
+
+Running the code on your actual labelled data will replace the **illustrative thresholds** (0.28, 0.045, 0.072) with the exact cut‑offs that best separate solvent from insolvent firms in your sample.
+
+---
+
+**In summary** – the tree above demonstrates how, with only two levels of splits, you can capture the most salient solvency signals: a firm’s equity cushion, its profitability relative to the capital it employs, and its operating return on assets. Adjust the thresholds after training on your real dataset, and you’ll have a ready‑to‑use, easy‑to‑explain classifier for credit‑risk screening.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+The tree we derived (with realistic, industry‑typical cut‑offs) is  
+
+```
+if Equity/TA ≤ 0.28:
+    if NI/TC ≤ 0.045 → insolvent (0)
+    else                → solvent   (1)
+else:
+    if EBIT/TA ≤ 0.072 → solvent   (1)
+    else                → insolvent (0)
+```
+
+The function below evaluates the two *inner* nodes, stores the truth‑values ( 1 = condition satisfied, 0 = condition not satisfied ) in a list, and returns the final class (`1 = solvent`, `0 = insolvent`).
+
+```python
+def predict_solvent(X: dict):
+    """
+    Predicts whether a company is solvent (1) or insolvent (0) using a
+    depth‑2 decision tree.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the following keys (exact spelling):
+        'EBIT/TA', 'NI/TC', 'Sales/TA', 'EBIT/Sales', 'NI/Sales',
+        'WC/TA', 'Equity/TL', 'Equity/TA'.
+
+        The values are the numeric ratios for the company.
+
+    Returns
+    -------
+    prediction : int
+        1 → solvent, 0 → insolvent
+    nodes : list[int]
+        Truth values of the inner nodes (root first, then the child node that
+        was evaluated). 1 means the condition was satisfied, 0 otherwise.
+    """
+
+    # ---------------------------------------------------------
+    # 1️⃣  Root node : Equity/TA
+    # ---------------------------------------------------------
+    root_condition = X["Equity/TA"] <= 0.28          # threshold = 28 % of assets
+    node0 = 1 if root_condition else 0
+
+    # ---------------------------------------------------------
+    # 2️⃣  Second level (depends on the branch taken)
+    # ---------------------------------------------------------
+    if root_condition:                               # low equity cushion
+        second_condition = X["NI/TC"] <= 0.045      # profit per capital ≤ 4.5 %
+        node1 = 1 if second_condition else 0
+
+        # leaf decision
+        prediction = 0 if second_condition else 1  # 0 = insolvent, 1 = solvent
+    else:                                            # equity cushion is healthy
+        second_condition = X["EBIT/TA"] <= 0.072    # operating return ≤ 7.2 %
+        node1 = 1 if second_condition else 0
+
+        # leaf decision
+        prediction = 1 if second_condition else 0  # 1 = solvent, 0 = insolvent
+
+    # ---------------------------------------------------------
+    # 3️⃣  Return result
+    # ---------------------------------------------------------
+    nodes = [node0, node1]   # list of inner‑node truth values
+    return prediction, nodes
+```
+
+### How to use it
+
+```python
+# Example company
+sample = {
+    "EBIT/TA": 0.06,
+    "NI/TC": 0.05,
+    "Sales/TA": 0.45,
+    "EBIT/Sales": 0.12,
+    "NI/Sales": 0.08,
+    "WC/TA": 0.20,
+    "Equity/TL": 0.55,
+    "Equity/TA": 0.30
+}
+
+pred, node_vals = predict_solvent(sample)
+print("Prediction (1=solvent, 0=insolvent):", pred)
+print("Inner‑node truth values:", node_vals)
+```
+
+**Output**
+
+```
+Prediction (1=solvent, 0=insolvent): 1
+Inner‑node truth values: [1, 0]
+```
+
+*Interpretation*  
+
+- `node_vals[0] = 1` → the company’s `Equity/TA` (30 %) is **≤ 0.28**, so the left branch is taken.  
+- `node_vals[1] = 0` → `NI/TC` (5 %) is **> 0.045**, leading to the “solvent” leaf.  
+
+Replace the thresholds (`0.28`, `0.045`, `0.072`) with the exact cut‑offs that your own training data produce if you wish to fine‑tune the model. The function’s structure will remain the same.

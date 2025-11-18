@@ -1,0 +1,131 @@
+To build a decision tree classifier for determining which boxer won each round based on the provided features, we'll follow these steps:
+
+1. **Feature Selection**: Identify the most important features that could influence the outcome of a round.
+2. **Tree Construction**: Use the selected features to construct a decision tree with a maximum depth of 2.
+
+Given features are:
+- Judge (with various options)
+- Official judge (yes/no)
+- Round (1 to 12)
+
+**Feature Selection**:
+The most influential feature in determining the winner of a round would logically be related to how rounds are scored or judged. Therefore, "Judge" and "Official judge" could be critical since they directly relate to scoring. The "Round" might also influence due to strategies changing over time.
+
+However, without explicit data on the judges' tendencies (e.g., which judges favor Trinidad over de la Hoya), we can hypothesize based on general principles:
+- **Judge**: Different judges may have different scoring criteria or biases.
+- **Official judge**: This could be crucial as official judges are likely to have a significant impact on the outcome.
+- **Round**: Early rounds might see both fighters feeling each other out, while later rounds could favor the fighter with better endurance.
+
+**Tree Construction (Hypothetical)**:
+Given we're working without actual data or tendencies of the judges and assuming "Official judge" is the most impactful for determining a winner due to their official capacity, followed by "Judge" for potential biases, and then "Round" for strategic considerations:
+
+1. **Root Node**: Official judge (yes/no)
+   - If yes, proceed under the assumption that an official judge's score is more reliable.
+   - If no, consider other judges' opinions might be more variable.
+
+2. **First Level Nodes**:
+   - For Official judge = yes:
+     - Proceed to "Judge" as the next decision point due to potential biases or scoring tendencies.
+       - If Judge = G. Hamada (or any specific judge known for favoring a particular style), proceed under that logic.
+       - If Judge ≠ G. Hamada, consider other judges' tendencies.
+   - For Official judge = no:
+     - "Round" becomes the next decision point as strategies might dictate outcomes in unofficial scoring.
+
+3. **Second Level Nodes (Maximum Depth)**:
+   - Under each first-level node, apply the logic of the selected feature to predict the winner (Trinidad or de la Hoya).
+
+**Example Decision Tree**:
+
+|--- Official judge = yes
+||--- Judge = G. Hamada
+|||--- Predict Trinidad wins (assuming G. Hamada favors Trinidad's style)
+||--- Judge ≠ G. Hamada
+|||--- Round <= 6
+||||--- Predict de la Hoya wins (early rounds favoring de la Hoya's strategy)
+||||--- Round > 6
+|||||--- Predict Trinidad wins (later rounds favoring Trinidad's endurance)
+|--- Official judge = no
+||--- Round <= 3
+|||--- Predict de la Hoya wins (early strategy and feeling out process)
+||--- Round > 3
+|||--- Judge = HBO-Lederman
+||||--- Predict Trinidad wins (assuming HBO-Lederman favors Trinidad in later rounds due to endurance)
+||||--- Judge ≠ HBO-Lederman
+|||||--- Predict de la Hoya wins (other judges potentially favoring de la Hoya's style or strategy)
+
+This decision tree is highly speculative and based on hypothetical assumptions without actual data. Real-world application would require training data with outcomes for each round, analyzed to determine feature importance and the logic of the decision-making process at each node.
+
+
+#########################
+
+
+Here's a Python function implementing the decision tree:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won the round based on the given features.
+
+    Parameters:
+    X (dict): A dictionary containing the features.
+        - 'Judge': The judge of the round (0 = G. Hamada, 1 = B. Logist, ..., 10 = van de Wiele)
+        - 'Official': Whether the judge is official (1 = Yes, 0 = No)
+        - 'Round': The round number (1 to 12)
+
+    Returns:
+    tuple: A tuple containing the prediction and a list of node truth values.
+        - Prediction (int): Which boxer won the round (0 = Trinidad, 1 = de la Hoya)
+        - Nodes (list): A list representing the truth values of the inner nodes
+    """
+
+    # Initialize the nodes list with None values
+    nodes = 3 * [None]
+
+    # Node 0: Check if the judge is official
+    nodes[0] = X['Official'] == 1
+
+    # Node 1: If the judge is official, check the round number; otherwise, check the judge
+    if nodes[0]:
+        nodes[1] = X['Round'] <= 6
+    else:
+        nodes[1] = X['Judge'] == 3  # HBO-Lederman (favoring Trinidad in later rounds)
+
+    # Node 2: If the judge is official and it's an early round, or if the judge is not official and it's HBO-Lederman, check the judge again
+    if nodes[0] and nodes[1]:
+        nodes[2] = X['Judge'] == 0  # G. Hamada (favoring Trinidad)
+    elif not nodes[0] and nodes[1]:
+        nodes[2] = X['Round'] > 6  # Later rounds favoring Trinidad's endurance
+    else:
+        nodes[2] = False
+
+    # Make the prediction based on the node values
+    if nodes[0] and nodes[1] and nodes[2]:
+        prediction = 0  # Trinidad wins (G. Hamada, early round)
+    elif nodes[0] and nodes[1] and not nodes[2]:
+        prediction = 1  # de la Hoya wins (not G. Hamada, early round)
+    elif nodes[0] and not nodes[1]:
+        prediction = 0  # Trinidad wins (official judge, later round)
+    else:
+        prediction = 1  # de la Hoya wins (non-official judge or HBO-Lederman in earlier rounds)
+
+    # Convert the node values to integers (1 for True, 0 for False)
+    nodes = [int(node) for node in nodes]
+
+    return prediction, nodes
+```
+
+This function takes a dictionary `X` as input and returns a tuple containing the prediction and a list of node truth values. The prediction is based on the decision tree logic implemented using the given features.
+
+Example usage:
+
+```python
+features = {
+    'Judge': 0,  # G. Hamada
+    'Official': 1,  # Official judge
+    'Round': 5  # Round 5
+}
+
+prediction, nodes = predict(features)
+print(f"Prediction: {prediction}")  # Which boxer won the round (0 = Trinidad, 1 = de la Hoya)
+print(f"Nodes: {nodes}")  # Truth values of the inner nodes
+```

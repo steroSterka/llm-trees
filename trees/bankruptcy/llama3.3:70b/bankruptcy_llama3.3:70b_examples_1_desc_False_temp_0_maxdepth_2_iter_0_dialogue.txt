@@ -1,0 +1,131 @@
+To build a decision tree classifier for determining whether a company went bankrupt or not based on the provided financial features, we first need to understand that the task involves classifying companies into two categories: bankrupt and non-bankrupt. However, without specific data (e.g., training datasets with feature values and corresponding labels indicating bankruptcy status), I'll guide you through a conceptual approach using the given features.
+
+Given Features:
+1. Working Capital/Total Assets
+2. Retained Earnings/Total Assets
+3. Earnings Before Interest and Tax/Total Assets
+4. Sales/Total Assets
+5. Book Value of Equity/Book Value of Liabilities
+
+**Step 1: Understanding Feature Importance**
+In a real-world scenario, you would use techniques like mutual information, correlation analysis, or recursive feature elimination to determine the most important features for your classification task. For simplicity and without actual data, let's assume:
+- **Working Capital/Total Assets**: This ratio can indicate liquidity issues if too low.
+- **Retained Earnings/Total Assets**: Negative values might suggest financial distress.
+- **Earnings Before Interest and Tax (EBIT)/Total Assets**: Low values could imply poor profitability.
+
+These three features seem intuitively relevant for assessing bankruptcy risk. However, the importance of each feature should ideally be determined through analysis of actual data.
+
+**Step 2: Building a Decision Tree with Maximum Depth of 2**
+Given the lack of specific data and focusing on conceptual understanding, here's a simplified decision tree:
+
+1. **Root Node**: Working Capital/Total Assets <= 0.20 (Threshold is hypothetical)
+   - If true, it might indicate significant liquidity issues.
+   - **Left Child**: Retained Earnings/Total Assets <= 0 (Again, threshold is for illustration)
+     - If true, suggests financial distress and likely bankruptcy.
+     - **Class: Bankrupt**
+   - **Right Child**: 
+     - Consider EBIT/Total Assets here to further assess profitability.
+     - **EBIT/Total Assets <= 0.05** (Hypothetical threshold for poor profitability)
+       - If true, indicates very low profitability and possible bankruptcy risk.
+       - **Class: Bankrupt**
+     - **EBIT/Total Assets > 0.05**
+       - Indicates better profitability; less likely to be bankrupt.
+       - **Class: Non-Bankrupt**
+
+2. **Root Node (Continuation)**: Working Capital/Total Assets > 0.20
+   - If true, liquidity might not be as significant an issue.
+   - **Left Child**: Consider Retained Earnings/Total Assets here for financial health.
+     - **Retained Earnings/Total Assets <= 0**
+       - Suggests potential financial distress but with better liquidity than the root node condition.
+       - Further assessment could use Sales/Total Assets or Book Value of Equity/Book Value of Liabilities to evaluate overall performance and leverage.
+       - For simplicity, let's assume if **Sales/Total Assets > 1.5** (very active sales compared to assets), it could mitigate some risks:
+         - **Class: Non-Bankrupt**
+       - Otherwise, **Class: Bankrupt**
+     - **Retained Earnings/Total Assets > 0**: Indicates healthier financials.
+       - **Class: Non-Bankrupt**
+
+This conceptual decision tree is highly simplified and based on hypothetical thresholds for illustration. In practice, you would:
+- Use actual data to train your model.
+- Apply feature selection or importance techniques to identify the most relevant features.
+- Optimize threshold values through training processes (e.g., cross-validation).
+- Possibly consider ensemble methods or other classifiers if they perform better on your specific problem.
+
+Remember, this example is for educational purposes. Real-world applications require careful data analysis and validation to ensure the model's accuracy and reliability.
+
+
+#########################
+
+
+Here's how you can format the decision tree as a Python function. This example uses meaningful threshold values based on general financial analysis principles.
+
+```python
+def predict_bankruptcy(X: dict):
+    """
+    Predicts whether a company will go bankrupt or not based on its financial features.
+    
+    Parameters:
+    X (dict): Dictionary containing the financial features of the company.
+             Keys should include 'WC/TA', 'RE/TA', 'EBIT/TA', 'S/TA', 'BVE/BVL'.
+             
+    Returns:
+    prediction (int): 0 if the company is not likely to go bankrupt, 1 otherwise.
+    nodes (list): List of boolean values representing the truth values of the inner nodes.
+    """
+    
+    # Define the threshold values
+    wc_ta_threshold = 0.2  # Working Capital/Total Assets ratio below this might indicate liquidity issues
+    re_ta_threshold = 0.0  # Retained Earnings/Total Assets ratio below this could suggest financial distress
+    ebit_ta_threshold = 0.05  # EBIT/Total Assets ratio below this indicates poor profitability
+    
+    nodes = 3 * [None]
+    
+    # Node 1: Check if Working Capital/Total Assets is less than or equal to the threshold
+    nodes[0] = X['WC/TA'] <= wc_ta_threshold
+    
+    # If WC/TA is low, check Retained Earnings/Total Assets and EBIT/Total Assets
+    if nodes[0]:
+        # Node 2: Check if Retained Earnings/Total Assets is less than or equal to the threshold
+        nodes[1] = X['RE/TA'] <= re_ta_threshold
+        
+        # If both conditions are met, predict bankruptcy
+        if nodes[1]:
+            prediction = 1
+            nodes[2] = X['EBIT/TA'] <= ebit_ta_threshold  # This node is just for illustration; its value doesn't affect the prediction here
+        else:
+            # Node 3: Check EBIT/Total Assets (for illustration purposes only in this branch)
+            nodes[2] = X['EBIT/TA'] <= ebit_ta_threshold
+            prediction = 1 if nodes[2] else 0
+            
+    # If WC/TA is not low, check Retained Earnings/Total Assets and Sales/Total Assets
+    else:
+        # Node 2: Check if Retained Earnings/Total Assets is less than or equal to the threshold
+        nodes[1] = X['RE/TA'] <= re_ta_threshold
+        
+        # If this condition is met, further assess using Sales/Total Assets (for simplicity, assuming high sales mitigate some risks)
+        if nodes[1]:
+            # Node 3: Check if Sales/Total Assets is greater than a certain threshold
+            nodes[2] = X['S/TA'] > 1.5
+            
+            prediction = 0 if nodes[2] else 1
+        else:
+            # If Retained Earnings/Total Assets looks healthy, the company is less likely to go bankrupt
+            prediction = 0
+            nodes[2] = False  # For consistency, set this node to a default value since it's not used in this branch
+    
+    return int(prediction), [int(node) for node in nodes]
+
+# Example usage:
+features = {
+    'WC/TA': 0.15,
+    'RE/TA': -0.1,
+    'EBIT/TA': 0.03,
+    'S/TA': 1.2,
+    'BVE/BVL': 2.5
+}
+
+prediction, nodes = predict_bankruptcy(features)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This function predicts whether a company is likely to go bankrupt based on its financial features and returns the prediction along with the truth values of the inner nodes in the decision tree. Note that the threshold values used are illustrative and may need adjustment based on actual data analysis.

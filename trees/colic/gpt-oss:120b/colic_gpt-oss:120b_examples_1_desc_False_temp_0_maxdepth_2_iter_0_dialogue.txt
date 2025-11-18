@@ -1,0 +1,113 @@
+Below is a **hypothetical** decision‑tree that could be obtained if we trained a CART classifier on the classic Horse‑Colic data set and then limited the tree to a **maximum depth of 2** (i.e., one root split and one additional split for each branch).  
+The tree is written in the same “ASCII‑tree” style you used for the Iris example.  
+
+---
+
+### Decision‑Tree (max‑depth = 2) – predicts **Surgery (yes / no)**  
+
+```
+|--- Abdominal Distension (none / slight) <= slight
+||--- class: No‑Surgery
+|--- Abdominal Distension (none / slight) > slight
+||--- Nasogastric Reflux (none) <= none
+|||--- class: Surgery
+||--- Nasogastric Reflux (none) > none
+|||--- class: No‑Surgery
+```
+
+#### How the splits were chosen  
+
+| Rank | Feature (most important) | Reason it often ranks highest in the literature / in CART‑based studies |
+|------|--------------------------|-------------------------------------------------------------------------|
+| 1    | **Abdominal Distension** | Horses with moderate‑to‑severe distension are far more likely to have a lesion that requires operative correction (e.g., volvulus, strangulating obstruction). |
+| 2    | **Nasogastric Reflux**   | Presence of any reflux (especially > 0 L) is a strong indicator of a mechanical blockage that usually needs surgery. When reflux is absent, many cases are medical. |
+
+*Both variables are categorical, so the CART algorithm simply groups the categories as shown (≤ slight means “none or slight”, > slight means “moderate or severe”; “none” for reflux means 0 L, “> none” means any measurable reflux).*
+
+---
+
+### What the tree says in plain language  
+
+1. **If the horse shows only none or slight abdominal distension** → it is classified as **non‑surgical** (the lesion is likely medical/colic that can be managed conservatively).  
+
+2. **If the distension is moderate or severe** → look at the nasogastric tube output.  
+   * **No reflux** (0 L) → still classified as **surgical** (distension alone is enough to suspect a mechanical problem).  
+   * **Any reflux** (even a small amount) → classified as **non‑surgical** in this simplified tree (the presence of reflux without severe distension often points to a less severe obstruction that can be managed medically).  
+
+> **Note:** This tree is illustrative. In a real analysis you would train the model on the actual dataset, let the CART algorithm determine the optimal splits (including possible thresholds for continuous variables such as temperature, pulse, PCV, etc.), and then prune the tree to depth 2. The resulting splits may differ slightly, but *abdominal distension* and *nasogastric reflux* are consistently among the top‑ranked predictors for the “surgery” outcome in the classic Horse‑Colic data set.
+
+
+#########################
+
+
+**Python function – depth‑2 decision tree for the “target” (surgical = 1 / non‑surgical = 0)**  
+
+```python
+def predict_horse_colic(X: dict):
+    """
+    Predict whether a horse‑colic lesion requires surgery (target = 1) or not (target = 0).
+
+    The tree (max depth = 2) uses the two most important variables that
+    consistently rank highest in the classic Horse‑Colic data set:
+
+        1. abdominal_distension
+        2. nasogastric_reflux
+
+    Feature encoding (as given in the description):
+        abdominal_distension :
+            1 = moderate, 2 = none, 3 = severe, 4 = slight
+        nasogastric_reflux :
+            0 = > 1 L, 1 = < 1 L, 2 = missing, 3 = none
+
+    The inner‑node truth values are returned in a list `nodes`
+    where 1 means “condition satisfied” and 0 means “condition not satisfied”.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **all** feature keys exactly as they appear in the
+        dataset (e.g. X["abdominal_distension"], X["nasogastric_reflux"], …).
+
+    Returns
+    -------
+    prediction : int
+        1 → surgery required, 0 → no surgery.
+    nodes : list[int]
+        [root_condition, second_level_condition] (second element is only
+        meaningful when the root condition is False).
+    """
+
+    # ---- inner node 0 : root split ---------------------------------
+    # “none or slight” abdominal distension  → codes 2 (none) or 4 (slight)
+    node0 = int(X["abdominal_distension"] in (2, 4))
+
+    # ---- inner node 1 : second split (only reached when node0 == 0) ----
+    # “nasogastric reflux is none” → code 3
+    node1 = int(X["nasogastric_reflux"] == 3)
+
+    # ---- make the prediction -----------------------------------------
+    if node0:                                   # none / slight distension
+        prediction = 0                         # no surgery
+    else:                                       # moderate / severe distension
+        if node1:                               # reflux == none
+            prediction = 1                     # surgery
+        else:                                   # any reflux present
+            prediction = 0                     # no surgery
+
+    # return both the prediction and the list of node truth values
+    return prediction, [node0, node1]
+```
+
+### How the function works  
+
+| Node | Condition (human‑readable)                                    | Code implementation                              | Truth value (`1` = satisfied) |
+|------|---------------------------------------------------------------|--------------------------------------------------|-------------------------------|
+| 0    | *Abdominal distension is “none” or “slight”*                  | `X["abdominal_distension"] in (2,4)`             | `node0`                      |
+| 1    | *Nasogastric reflux is “none”* (only evaluated if node 0 = 0) | `X["nasogastric_reflux"] == 3`                   | `node1`                      |
+
+- **If node 0 = 1** → the horse shows only none/slight distension → **no surgery** (`prediction = 0`).  
+- **If node 0 = 0** (distension moderate or severe) we look at node 1:  
+  - node 1 = 1 (reflux = none) → **surgery** (`prediction = 1`).  
+  - node 1 = 0 (any reflux present) → **no surgery** (`prediction = 0`).
+
+The returned list `[node0, node1]` gives a complete record of which branch decisions were taken, exactly as requested.

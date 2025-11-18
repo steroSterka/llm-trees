@@ -1,0 +1,322 @@
+Below is a **step‑by‑step guide** that shows how you can turn the list of labor‑negotiation variables into a **binary decision‑tree classifier** (good / bad outcome) that is limited to a **maximum depth of 2**.  
+
+Because a decision tree learns the exact split points from the data, the *actual* thresholds (e.g., “wage‑increase ≥ 4 %”) can only be derived once you feed the model a labelled dataset (each negotiation labelled “good” or “bad”).  
+
+If you already have that data, you can copy‑paste the **Python code** at the end of this answer into a notebook and obtain a ready‑to‑use tree.  
+If you do **not** have the data yet, the section **“A Plausible Tree without Data (Domain‑Driven Guess)”** gives you a reasonable, human‑crafted tree that respects the “max‑depth‑2” constraint and uses the most‑important features as judged by typical labour‑relations priorities.
+
+---
+
+## 1️⃣  What the model needs
+
+| Column (feature) | Type | Example values |
+|------------------|------|----------------|
+| `duration` | integer (1‑7) | 5 |
+| `wage_inc_y1` | integer (2‑7) | 4 |
+| `wage_inc_y2` | integer (2‑7) | 3 |
+| `wage_inc_y3` | integer (2‑7) | 2 |
+| `cola` | categorical (3 levels) | *temporary cost of living adjustment formula* |
+| `weekly_hours` | integer (35‑40) | 38 |
+| `pension_contrib` | categorical (3 levels) | *employee contribution* |
+| `standby_pay` | integer (2‑25) | 10 |
+| `shift_diff` | integer (1‑25) | 5 |
+| `education_allow` | binary | *yes* |
+| `stat_holidays` | integer (9‑15) | 12 |
+| `vacation_days` | categorical (3 levels) | *generous* |
+| `lld_help` | binary | *no* |
+| `dental_contrib` | categorical (3 levels) | *full* |
+| `bereavement_contrib` | binary | *yes* |
+| `health_contrib` | categorical (3 levels) | *half* |
+| `outcome` | **target** – *binary* | **good** / **bad** |
+
+> **Tip** – Convert all categorical columns to numeric codes (e.g., using `OrdinalEncoder` or `OneHotEncoder`) before fitting the tree.
+
+---
+
+## 2️⃣  A Plausible Tree *without* Data (Domain‑Driven Guess)
+
+Below is a hand‑crafted tree that follows the **maximum depth = 2** rule and uses the features that are **most frequently decisive** in real‑world collective‑bargaining outcomes:
+
+```
+|--- wage increase in first year (wage_inc_y1) <= 3
+|    |--- class: bad
+|--- wage increase in first year (wage_inc_y1) > 3
+|    |--- cost of living adjustment (cola) = none
+|    |    |--- class: bad
+|    |--- cost of living adjustment (cola) != none
+|    |    |--- class: good
+```
+
+### Why these splits?
+
+| Level | Feature | Reason it’s often decisive |
+|-------|---------|-----------------------------|
+| **Root** | **`wage_inc_y1`** (first‑year wage increase) | The first‑year raise sets the tone for the contract; a low raise (< 4 % in our 2‑7 scale) is a strong predictor of a “bad” perception. |
+| **Depth 1** | **`cola`** (type of cost‑of‑living adjustment) | Even if the first‑year raise is decent, **no COLA** frequently leads to dissatisfaction because inflation erodes real wages. Any COLA (temporary or total‑comp) usually turns the overall view “good”. |
+
+> **Alternative splits** you could consider (if the data tells you otherwise):
+> - `standby_pay` (high standby pay → good)
+> - `education_allow` (presence of an allowance → good)
+> - `pension_contrib` (full employer contribution → good)
+
+---
+
+## 3️⃣  How to Let the Data Speak – Code to Train the Real Tree
+
+If you have a CSV (or DataFrame) called `df` with the columns listed in Section 1, run the following script. It will:
+
+1. Encode categorical variables,
+2. Split into train / test,
+3. Fit a **DecisionTreeClassifier** with `max_depth=2`,
+4. Print the resulting tree in the same textual format you used for the iris example.
+
+```python
+# -------------------------------------------------
+# 1️⃣  Imports
+# -------------------------------------------------
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.tree import DecisionTreeClassifier, export_text
+
+# -------------------------------------------------
+# 2️⃣  Load your data (replace the path)
+# -------------------------------------------------
+df = pd.read_csv('labor_negotiations.csv')          # <-- your file
+# Expected columns: all features listed above + 'outcome'
+
+# -------------------------------------------------
+# 3️⃣  Separate X and y
+# -------------------------------------------------
+X = df.drop(columns=['outcome'])
+y = df['outcome'].map({'good': 1, 'bad': 0})        # binary encoding
+
+# -------------------------------------------------
+# 4️⃣  Encode categorical columns
+# -------------------------------------------------
+cat_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
+ord_enc = OrdinalEncoder()
+X[cat_cols] = ord_enc.fit_transform(X[cat_cols])
+
+# -------------------------------------------------
+# 5️⃣  Train‑test split (optional but recommended)
+# -------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# -------------------------------------------------
+# 6️⃣  Fit a depth‑2 Decision Tree
+# -------------------------------------------------
+clf = DecisionTreeClassifier(max_depth=2, random_state=42)
+clf.fit(X_train, y_train)
+
+# -------------------------------------------------
+# 7️⃣  Show the tree in text form
+# -------------------------------------------------
+feature_names = X.columns.tolist()
+tree_text = export_text(clf, feature_names=feature_names)
+print(tree_text)
+
+# -------------------------------------------------
+# 8️⃣  (Optional) Evaluate accuracy
+# -------------------------------------------------
+from sklearn.metrics import accuracy_score, classification_report
+y_pred = clf.predict(X_test)
+print('Accuracy:', accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred, target_names=['bad', 'good']))
+```
+
+### What you will see
+
+The `export_text` output will look similar to the hand‑crafted example, but the exact thresholds and the feature used at the root will be **data‑driven**. For instance, you might obtain:
+
+```
+|--- wage_inc_y1 <= 3.50
+|    |--- class: 0
+|--- wage_inc_y1 >  3.50
+|    |--- cola <= 0.50
+|    |    |--- class: 0
+|    |--- cola >  0.50
+|    |    |--- class: 1
+```
+
+*Here `0` = bad, `1` = good. The numeric thresholds (e.g., `3.50`) are the exact split points found by the algorithm.*
+
+---
+
+## 4️⃣  Interpreting the Result
+
+| Node | Meaning (after you run the code) |
+|------|---------------------------------|
+| **Root split** | The feature that most reduces impurity (Gini or entropy) across the whole training set. |
+| **Left child** | All negotiations that fall **below** the threshold → predicted class (good/bad). |
+| **Right child** | All negotiations that fall **above** the threshold → second split (depth 1) then final prediction. |
+| **Depth 2 limit** | Guarantees the tree stays simple enough for easy communication to stakeholders (e.g., union leaders, management). |
+
+If the resulting tree uses a feature you consider **hard to communicate** (e.g., `standby_pay`), you can force the algorithm to prefer another feature by:
+
+```python
+# Example: give higher weight to 'wage_inc_y1' by adding it twice to the data
+X_train['wage_inc_y1_dup'] = X_train['wage_inc_y1']
+```
+
+---
+
+## 5️⃣  Quick Summary
+
+| What you wanted | How we delivered |
+|-----------------|------------------|
+| **A depth‑2 decision tree** that classifies “good” vs. “bad” labour‑negotiation outcomes. | • Hand‑crafted example using the two most‑impactful variables (`wage_inc_y1` and `cola`). <br>• Full Python pipeline to **learn the exact tree from your data** (if you have it). |
+| **Explanation of why those features** | First‑year wage increase is the primary driver of perceived contract quality; a cost‑of‑living adjustment (or lack thereof) is the second biggest lever. |
+| **Ready‑to‑run code** | Provided in the block above; just replace the CSV path and you’re set. |
+
+---
+
+### Next Steps for You
+
+1. **Prepare the dataset** – each row = one negotiation contract, labelled “good” or “bad”.
+2. **Run the script** – you’ll get a concrete tree with real split values.
+3. **Validate** – check the accuracy on a hold‑out set; if it’s too low, consider collecting more data or allowing a deeper tree (e.g., `max_depth=3`).
+4. **Communicate** – copy the printed tree into a slide deck. Because it only has two levels, it’s easy for non‑technical audiences to understand.
+
+Feel free to drop the actual CSV (or a few sample rows) here, and I can run the code for you and give you the exact tree! 🚀
+
+
+#########################
+
+
+**Decision‑tree (max depth = 2)**  
+
+*Root node* – **wage increase first year**  
+&nbsp;&nbsp;If the first‑year raise is **≤ 3.5 %** (the scale 2‑7 represents %‑points), the contract is almost always judged **bad**.  
+
+*Second node* – **cost of living adjustment** (evaluated only when the first‑year raise is > 3.5)  
+&nbsp;&nbsp;If a COLA is **present** (`tcf` or `tc`) the outcome is **good**; if the COLA is **“none”** the outcome is **bad**.  
+
+The tree therefore has **two inner nodes** and three leaves (one leaf is reached directly from the root).
+
+---
+
+## Python implementation
+
+```python
+def predict(X: dict):
+    """
+    Predict the labour‑negotiation outcome (0 = bad, 1 = good).
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains **exactly** the keys listed in the
+        problem statement, e.g.
+        {
+            "duration": 5,
+            "wage increase first year": 4.2,
+            "cost of living adjustment": "tcf",
+            ...
+        }
+
+    Returns
+    -------
+    prediction : int
+        0 → bad outcome, 1 → good outcome
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied,
+        0 = condition not satisfied).  The list is ordered as the
+        nodes are evaluated:
+        nodes[0] → root condition
+        nodes[1] → second‑level condition (only meaningful when nodes[0]==1)
+    """
+    # -----------------------------------------------------------------
+    # 1️⃣  Initialise the list that will hold the boolean results of the
+    #     inner nodes.  We store 1/0 as the specification requires.
+    # -----------------------------------------------------------------
+    nodes = [0, 0]                     # two inner nodes for a depth‑2 tree
+
+    # -----------------------------------------------------------------
+    # 2️⃣  Root node :  wage increase in first year  > 3.5 ?
+    # -----------------------------------------------------------------
+    #   - If the condition is true we go to the *right* branch,
+    #   - otherwise we stay on the left leaf (bad outcome).
+    # -----------------------------------------------------------------
+    wage_first = X["wage increase first year"]
+    nodes[0] = 1 if wage_first > 3.5 else 0
+
+    if nodes[0] == 1:                     # we are on the right side of the root
+        # -------------------------------------------------------------
+        # 3️⃣  Second node : cost of living adjustment is NOT "none" ?
+        # -------------------------------------------------------------
+        cola = X["cost of living adjustment"]
+        nodes[1] = 1 if cola != "none" else 0
+
+        # -------------------------------------------------------------
+        # 4️⃣  Leaf decisions
+        # -------------------------------------------------------------
+        if nodes[1] == 1:                 # COLA present  → good
+            prediction = 1
+        else:                             # COLA = none   → bad
+            prediction = 0
+    else:                                 # left leaf of the root → bad
+        prediction = 0
+        # nodes[1] stays 0 (it was never evaluated, but we keep the list length)
+
+    return prediction, nodes
+```
+
+### How the function works (step‑by‑step)
+
+| Step | Condition evaluated | `nodes` entry | Branch taken | Final leaf |
+|------|----------------------|--------------|--------------|------------|
+| 1    | `wage increase first year > 3.5` | `nodes[0]` = 1 (true) or 0 (false) | **True →** go right, **False →** go left | – |
+| 2*   | *(only if `nodes[0]==1`)* `cost of living adjustment != "none"` | `nodes[1]` = 1 (true) or 0 (false) | **True →** good (1) <br> **False →** bad (0) | – |
+| 3    | *(if `nodes[0]==0`)* leaf reached directly | – | – | bad (0) |
+
+*If the root condition is false, the second node is never evaluated; we keep its entry as `0` so the returned list always has length 2.*
+
+---
+
+### Quick test
+
+```python
+# Example 1 – good contract
+x1 = {
+    "duration": 5,
+    "wage increase first year": 4.8,
+    "wage increase second year": 4.0,
+    "wage increase third year": 3.5,
+    "cost of living adjustment": "tc",          # COLA present
+    "working hours": 38,
+    "pension": "ret_allw",
+    "standby pay": 12,
+    "shift differential": 5,
+    "education allowance": "true",
+    "statutory holidays": 12,
+    "vacation": "gnr",
+    "longterm disability assistance": "true",
+    "contribution to dental plan": "full",
+    "bereavement assistance": "true",
+    "contribution to health plan": "half"
+}
+print(predict(x1))   # (1, [1, 1])
+
+# Example 2 – bad contract (low first‑year raise)
+x2 = x1.copy()
+x2["wage increase first year"] = 2.8          # ≤ 3.5
+x2["cost of living adjustment"] = "tc"       # COLA would be irrelevant
+print(predict(x2))   # (0, [0, 0])
+
+# Example 3 – bad contract (good raise but no COLA)
+x3 = x1.copy()
+x3["wage increase first year"] = 5.0
+x3["cost of living adjustment"] = "none"
+print(predict(x3))   # (0, [1, 0])
+```
+
+The function returns:
+
+* `prediction` – **0** (bad) or **1** (good)  
+* `nodes` – a two‑element list `[root_truth, second_node_truth]` with `1` meaning “condition satisfied”.
+
+Feel free to drop this function into your code base; it follows exactly the specification you provided.

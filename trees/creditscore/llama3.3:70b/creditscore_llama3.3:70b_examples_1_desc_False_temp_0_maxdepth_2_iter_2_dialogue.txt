@@ -1,0 +1,97 @@
+To build a decision tree classifier for whether an application for credit is accepted or not based on the provided features, with a maximum depth of 2, we first need to understand the importance of each feature in predicting the outcome. However, without actual data, we can make some educated guesses about how these features might influence credit approval decisions.
+
+Given features:
+1. Age (years)
+2. Income per dependent (range: 1.5 to 10)
+3. Monthly credit card expenses ($)
+4. Owning a home (yes / no)
+5. Self-employed (yes / no)
+6. Number of derogatory reports
+
+**Decision Tree Construction**
+
+- **Root Node**: At the first level, we want to select the feature that is most predictive of credit approval. Income per dependent and number of derogatory reports are likely strong predictors because they directly relate to financial stability and credit history.
+
+    Let's choose "Number of derogatory reports" as our first split because a high number of derogatory reports would significantly lower the chances of getting credit approved.
+
+- **First Level Split**: Number of derogatory reports <= 0 vs. > 0.
+    - For those with **0** derogatory reports, we proceed to the next level considering other factors that might influence approval.
+    - For those with **more than 0** derogatory reports, the application is likely to be rejected due to poor credit history.
+
+- **Second Level (for those with 0 derogatory reports)**: At this level, "Income per dependent" could be a critical factor because it reflects the applicant's ability to meet financial obligations. A higher income per dependent suggests better financial stability.
+
+    Let's split on "Income per dependent" <= 3 vs. > 3 as our second-level decision.
+    - For those with **income per dependent <= 3**, their lower financial capacity might lead to a rejection, considering the risk of not being able to pay back the credit.
+    - For those with **income per dependent > 3**, their relatively higher financial stability could lead to an approval.
+
+**Decision Tree**
+
+|--- Number of derogatory reports > 0
+||--- class: Rejected (due to poor credit history)
+|--- Number of derogatory reports <= 0
+    ||--- Income per dependent <= 3
+    |||--- class: Rejected (lower financial capacity)
+    ||--- Income per dependent > 3
+    |||--- class: Approved (better financial stability)
+
+This decision tree is a simplified representation and actual performance may vary based on the specific data used for training. Real-world scenarios would require analyzing the dataset to determine feature importance accurately and might involve more complex interactions between features.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree for predicting whether an application for credit is accepted or not:
+
+```python
+def predict_credit_application(X: dict):
+    """
+    This function predicts whether an application for credit is accepted or not based on a decision tree.
+    
+    Parameters:
+    X (dict): A dictionary containing the features of the applicant. The keys are 'Age', 'Income.per.dependent', 
+              'Monthly.credit.card.exp', 'Own.home', 'Self.employed', and 'Derogatory.reports'.
+    
+    Returns:
+    prediction (int): 1 if the application is accepted, 0 otherwise.
+    nodes (list): A list of boolean values representing the truth values of the inner nodes in the decision tree.
+    """
+    
+    # Initialize the nodes list with None
+    nodes = 2 * [None]
+    
+    # First node: Number of derogatory reports > 0
+    nodes[0] = X['Derogatory.reports'] <= 0
+    
+    # Second node (only considered if first node is True): Income per dependent > 3
+    nodes[1] = X['Income.per.dependent'] > 3 if nodes[0] else False
+    
+    # Prediction based on the decision tree
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Application accepted if income per dependent is high and no derogatory reports
+        else:
+            prediction = 0  # Application rejected if low income per dependent despite no derogatory reports
+    else:
+        prediction = 0  # Application rejected due to derogatory reports
+    
+    # Convert boolean nodes to integers (1 for True, 0 for False)
+    nodes = [int(node) if node is not None else 0 for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+applicant_features = {
+    'Age': 30,
+    'Income.per.dependent': 4.5,
+    'Monthly.credit.card.exp': 500,
+    'Own.home': 1,
+    'Self.employed': 0,
+    'Derogatory.reports': 0
+}
+
+prediction, nodes = predict_credit_application(applicant_features)
+print("Prediction:", prediction)  # 1 if accepted, 0 otherwise
+print("Nodes:", nodes)  # List of integers representing the truth values of inner nodes
+```
+
+In this example, we use a dictionary `X` to pass in the features of the applicant. The decision tree first checks if there are any derogatory reports (`Derogatory.reports` <= 0). If there are no derogatory reports and the income per dependent is high (> 3), the application is accepted; otherwise, it's rejected. We then convert the boolean values in the `nodes` list to integers (1 for True, 0 for False) before returning them along with the prediction.

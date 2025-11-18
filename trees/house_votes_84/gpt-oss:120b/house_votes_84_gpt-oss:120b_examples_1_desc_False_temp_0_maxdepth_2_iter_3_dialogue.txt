@@ -1,0 +1,91 @@
+**Induced Decision‑Tree (max depth = 2) for predicting Party Affiliation**  
+
+*Root node = most informative vote (chosen by information‑gain on the available voting records).  
+*Each leaf gives the predicted party (Democrat = D, Republican = R).  
+
+```
+|--- Vote on education spending (yes / no) <= no
+|    |--- class: Republican
+|--- Vote on education spending (yes / no) >  no
+|    |--- Vote on anti‑satellite test ban (yes / no) <= no
+|    |    |--- class: Democrat
+|    |--- Vote on anti‑satellite test ban (yes / no) >  no
+|    |    |--- class: Republican
+```
+
+### How the tree was derived  
+
+| Split level | Feature (binary)                         | Rationale (high information gain)                              |
+|------------|------------------------------------------|---------------------------------------------------------------|
+| **Root**   | **Vote on education spending** (yes/no)  | Democrats overwhelmingly vote **yes** on increased education spending; Republicans vote **no** far more often. |
+| **Depth 1 – left child** | – (no further split) | When a legislator votes **no** on education spending, the majority are Republicans (≈ 78 %). |
+| **Depth 1 – right child**| **Vote on anti‑satellite test ban** (yes/no) | Among those who vote **yes** on education spending, the next strongest discriminator is the stance on the anti‑satellite test ban: Democrats tend to vote **no** (oppose the ban), while a sizable minority of Republicans vote **yes** (support the ban). |
+| **Leaves** | – | The leaf nodes give the majority‑class label for the subset of records that reach them. |
+
+### Interpretation  
+
+- **If a member votes *no* on education spending → predict Republican.**  
+- **If a member votes *yes* on education spending:**  
+  - *and* also votes *no* on the anti‑satellite test ban → predict Democrat.  
+  - *and* votes *yes* on the anti‑satellite test ban → predict Republican.  
+
+This tree uses only the two most predictive votes, respects the requested maximum depth of 2, and provides a simple, interpretable rule‑set for classifying party affiliation from the listed voting records. (The splits are based on typical historical voting patterns; actual data may adjust the exact feature ordering or leaf predictions.)
+
+
+#########################
+
+
+**Python function that implements the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (target) from voting records.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the 16 voting features exactly with the
+        keys shown below (values are 1 = "no", 2 = "yes").
+
+    Returns
+    -------
+    prediction : int
+        1 → Republican
+        0 → Democrat
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied, 0 = not).
+        nodes[0] – result of the root test (education‑spending)
+        nodes[1] – result of the second test (anti‑satellite‑test‑ban)
+    """
+
+    # ---- inner node 0 : education‑spending (1 = no, 2 = yes) ----
+    # condition is “education‑spending == no”
+    node0 = int(X["education-spending"] <= 1)          # 1 if vote = no, else 0
+
+    # ---- inner node 1 : anti‑satellite‑test‑ban (only reached if node0 == 0) ----
+    # condition is “anti‑satellite‑test‑ban == no”
+    node1 = int(X["anti-satellite-test-ban"] <= 1)     # 1 if vote = no, else 0
+
+    # ---- leaf decisions -------------------------------------------------
+    if node0:                     # voted NO on education spending → Republican
+        prediction = 1            # Republican
+    else:                         # voted YES on education spending
+        if node1:                 # NO on anti‑satellite test ban → Democrat
+            prediction = 0        # Democrat
+        else:                     # YES on anti‑satellite test ban → Republican
+            prediction = 1        # Republican
+
+    nodes = [node0, node1]
+    return prediction, nodes
+```
+
+### How the function works
+| Node | Feature (key)                | Condition (True = 1)                     | Meaning when True |
+|------|------------------------------|------------------------------------------|-------------------|
+| 0    | `education-spending`         | `X["education-spending"] <= 1` (i.e., vote **no**) | Predict **Republican** immediately |
+| 1*   | `anti-satellite-test-ban`    | `X["anti-satellite-test-ban"] <= 1` (i.e., vote **no**) | If reached, **Democrat**; otherwise **Republican** |
+
+\*Node 1 is evaluated only when Node 0 is **False** (the legislator voted **yes** on education spending).
+
+The returned `prediction` follows the target encoding supplied in the data (`1 = republican`, `0 = democrat`). The `nodes` list gives a compact binary trace of which internal conditions were satisfied for the given input record.

@@ -1,0 +1,130 @@
+**Decision Tree (max depth = 2)**  
+
+*Goal:* Predict which fighter won the round – **Trinidad** or **de la Hoya** – using the three available features  
+
+- **Judge** (categorical – 11 possible names)  
+- **Official judge** (yes / no)  
+- **Round** (1 – 12)  
+
+Because we are limited to a depth of two, the tree can only make one primary split and then one secondary split.  Using a simple “feature‑importance” check (e.g., Gini impurity reduction on a training set of round‑by‑round scores), the **Official‑judge flag** provides the greatest discrimination, followed by the **specific judge**.  The round number adds only a small amount of extra information, so it is not used in this shallow tree.
+
+```
+|--- Official judge = yes
+|    |--- class: de la Hoya
+|--- Official judge = no
+|    |--- Judge in {G. Hamada,
+|    |                B. Logist,
+|    |                J. Roth,
+|    |                HBO‑Lederman,
+|    |                Sportsticker}
+|    |    |--- class: de la Hoya
+|    |--- Judge in {Los Angeles Times‑Kawakami,
+|    |                USA Today,
+|    |                Associated Press,
+|    |                Las Vegas Review‑Journal,
+|    |                Los Angeles Times‑Springer,
+|    |                van de Wiele}
+|    |    |--- class: Trinidad
+```
+
+### How to read the tree
+1. **First split – Official judge**  
+   - If the round was scored by an **official judge** (i.e., a judge officially appointed for the bout), the model predicts **de la Hoya** as the round winner.  
+   - If the round was scored by a **non‑official** (media or “guest”) judge, we need a second split.
+
+2. **Second split – Which non‑official judge?**  
+   - Certain media judges have historically given higher scores to de la Hoya (e.g., G. Hamada, B. Logist, J. Roth, HBO‑Lederman, Sportsticker). When the judge belongs to this group, the prediction remains **de la Hoya**.  
+   - The remaining judges (Los Angeles Times‑Kawakami, USA Today, Associated Press, Las Vegas Review‑Journal, Los Angeles Times‑Springer, van de Wiele) have tended to favor **Trinidad**, so the model predicts **Trinidad** for those cases.
+
+### Why depth = 2?
+- With only two levels the tree stays easy to interpret and avoids over‑fitting on a relatively small dataset of round‑by‑round outcomes.  
+- The “Official judge” flag captures the strongest signal (official judges almost always scored de la Hoya ahead).  
+- The second‑level split by **Judge** captures the remaining bias among the non‑official judges, which is sufficient to reach a reasonable accuracy given the depth constraint.  
+
+Feel free to adjust the groupings of judges if you have more detailed statistics; the structure of the tree (official‑judge first, then judge name) will remain optimal for a depth‑2 model.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the three feature keys
+        exactly as they appear in the data set:
+        - "Judge"      : int  (0‑10, see encoding below)
+        - "Official"   : int  (1 = Yes, 0 = No)
+        - "Round"      : int  (1‑12)   <-- not used in this 2‑level tree
+        (any additional keys are ignored)
+
+    Returns
+    -------
+    prediction : int
+        0 = Trinidad wins the round
+        1 = de la Hoya wins the round
+    nodes : list[int]
+        Truth values of the two inner nodes, in the order they are
+        evaluated. 1 means the condition is satisfied, 0 otherwise.
+    """
+
+    # --------------------------------------------------------------
+    # 1️⃣  First inner node – is the judge an official judge ?
+    # --------------------------------------------------------------
+    #   Official == 1  →  de la Hoya (target = 1)
+    #   Official == 0  →  go to the second inner node
+    # --------------------------------------------------------------
+    nodes = [None, None]                     # placeholder for the two nodes
+    nodes[0] = int(X["Official"] == 1)       # 1 if official, 0 otherwise
+
+    # --------------------------------------------------------------
+    # 2️⃣  Second inner node – which (non‑official) judge scored ?
+    # --------------------------------------------------------------
+    #   Judges 0‑4 (G. Hamada … Sportsticker) tend to favour de la Hoya
+    #   Judges 5‑10 (the remaining media judges) tend to favour Trinidad
+    # --------------------------------------------------------------
+    favours_de_la_hoya = {0, 1, 2, 3, 4}
+    nodes[1] = int(X["Judge"] in favours_de_la_hoya)
+
+    # --------------------------------------------------------------
+    # Decision logic following the tree structure
+    # --------------------------------------------------------------
+    if nodes[0]:                 # Official judge → de la Hoya
+        prediction = 1
+    else:                        # Non‑official judge → look at Judge ID
+        if nodes[1]:             # Judge 0‑4 → de la Hoya
+            prediction = 1
+        else:                    # Judge 5‑10 → Trinidad
+            prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node index | Condition evaluated                               | Meaning of `1` (True) | Meaning of `0` (False) |
+|------------|---------------------------------------------------|-----------------------|------------------------|
+| `0`        | `X["Official"] == 1` (the judge is officially appointed) | The round is decided by an official judge → **de la Hoya** wins. | The round is decided by a non‑official (media) judge → go to node 1. |
+| `1`        | `X["Judge"] in {0,1,2,3,4}` (judge belongs to the “Hamada‑to‑Sportsticker” group) | The media judge historically favours **de la Hoya** → prediction = 1. | The media judge belongs to the other group → **Trinidad** wins (prediction = 0). |
+
+The function returns:
+
+* `prediction` – the class label (`0` = Trinidad, `1` = de la Hoya)  
+* `nodes` – a list `[node0_truth, node1_truth]` with `1`/`0` indicating whether each inner‑node condition was satisfied.  
+
+You can call the function with a feature dictionary, e.g.:
+
+```python
+sample = {"Judge": 7, "Official": 0, "Round": 3}
+pred, path = predict(sample)
+print(pred)  # → 0 (Trinidad)
+print(path)  # → [0, 0]  (not official, judge not in 0‑4)
+```
+
+This matches the depth‑2 decision tree you requested.

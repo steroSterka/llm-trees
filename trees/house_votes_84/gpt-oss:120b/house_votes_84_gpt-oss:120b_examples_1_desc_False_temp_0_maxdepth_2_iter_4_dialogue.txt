@@ -1,0 +1,99 @@
+**Induced Decision‑Tree (max depth = 2)**  
+
+*Target: Party affiliation (Democrat vs Republican)*  
+
+The two most discriminative votes (based on historical voting patterns of U.S. Congressional members) are:
+
+1. **Vote on aid to Nicaraguan Contras** – Republicans tended to support the aid; Democrats tended to oppose it.  
+2. **Vote on immigration** – Democrats are far more likely to vote *yes* (pro‑immigration), while Republicans are far more likely to vote *no* (restrictive).
+
+Treat “yes” = 1 and “no” = 0, and split on the binary threshold 0.5 (≤ 0.5 → *no*, > 0.5 → *yes*).
+
+```
+|--- aid to Nicaraguan contras (yes/no) <= 0.5
+||--- class: Democrat
+|--- aid to Nicaraguan contras (yes/no) > 0.5
+||--- immigration (yes/no) <= 0.5
+|||--- class: Republican
+||--- immigration (yes/no) > 0.5
+|||--- class: Democrat
+```
+
+**Interpretation**
+
+- **Root node** – If a legislator **did not** vote for aid to the Nicaraguan Contras, the model classifies the legislator as a **Democrat**.  
+- **Right branch** – If the legislator **did** vote for aid to the Contras, the decision depends on the immigration vote:  
+  - A **no** vote on immigration → **Republican**.  
+  - A **yes** vote on immigration → **Democrat**.
+
+This tree respects the requested maximum depth of 2 and uses the two most informative features for separating the two parties.
+
+
+#########################
+
+
+**Python function that implements the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (0 = Democrat, 1 = Republican) from voting records.
+
+    Expected keys in X (exact spelling, case‑sensitive):
+        'handicapped-infants', 'water-project-cost-sharing',
+        'adoption-of-the-budget-resolution', 'physician-fee-freeze',
+        'el-salvador-adi', 'religious-groups-in-schools',
+        'anti-satellite-test-ban', 'aid-to-nicaraguan-contras',
+        'mx-missile', 'immigration', 'synfuels-corporation-cutback',
+        'education-spending', 'superfund-right-to-sue', 'crime',
+        'duty-free-exports', 'export-administration-act-south-africa',
+        'Target variable', 'target'
+
+    Feature encoding (used by this tree):
+        * 1 = No (the legislator voted *against* the measure)
+        * 2 = Yes (the legislator voted *for* the measure)
+
+    Returns
+    -------
+    prediction : int
+        0 → Democrat, 1 → Republican
+    nodes : list[int]
+        Truth values of the two inner nodes (1 = condition satisfied, 0 = not satisfied)
+        nodes[0] → (aid‑to‑nicaraguan‑contras == 1)
+        nodes[1] → (immigration == 1)   # evaluated only when node 0 is false
+    """
+
+    # ---- inner‑node evaluations ------------------------------------------------
+    # Node 0 : "aid-to-nicaraguan-contras" == 1  (did NOT vote for aid)
+    nodes = [0, 0]                       # placeholder for the two inner nodes
+    nodes[0] = 1 if X["aid-to-nicaraguan-contras"] == 1 else 0
+
+    # Node 1 : "immigration" == 1  (voted NO on immigration)
+    # This node is only relevant when node 0 is false, but we compute it anyway.
+    nodes[1] = 1 if X["immigration"] == 1 else 0
+
+    # ---- decision logic --------------------------------------------------------
+    if nodes[0]:                     # No aid to Nicaraguan Contras → Democrat
+        prediction = 0
+    else:                            # Voted for aid → need immigration vote
+        if nodes[1]:                 # No on immigration → Republican
+            prediction = 1
+        else:                        # Yes on immigration → Democrat
+            prediction = 0
+
+    return prediction, nodes
+```
+
+### How the tree works
+
+| Node | Condition (interpreted from the encoding) | Meaning when **True** (value = 1) |
+|------|--------------------------------------------|-----------------------------------|
+| 0    | `aid-to-nicaraguan-contras == 1`           | The legislator **did not** vote for aid → **Democrat** |
+| 1    | `immigration == 1`                         | The legislator voted **against** immigration → **Republican** |
+
+* If node 0 is true, the function returns **Democrat** (`prediction = 0`).  
+* If node 0 is false (i.e., the legislator voted *yes* on the Contras aid), node 1 decides:  
+  * node 1 true → **Republican** (`prediction = 1`)  
+  * node 1 false → **Democrat** (`prediction = 0`)
+
+The returned `nodes` list contains `1` for a satisfied condition and `0` otherwise, exactly as requested.

@@ -1,0 +1,95 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Target: “Outcome of the labor negotiations” → **good** / **bad***  
+
+The tree is built by first selecting the single most‑discriminative feature (the one that best separates “good” from “bad” outcomes in the training data). In most historical negotiations the **first‑year wage increase** carries the strongest signal, followed by the **type of cost‑of‑living adjustment (COLA)**.  
+
+```
+|--- wage increase in first year (2‑7) <= 4
+||--- cost of living adjustment = none
+|||--- class: bad
+||--- cost of living adjustment ≠ none
+|||--- class: good
+|--- wage increase in first year (2‑7) > 4
+||--- class: good
+```
+
+### How to read the tree  
+
+| Path (from root to leaf)                                   | Predicted outcome |
+|-------------------------------------------------------------|-------------------|
+| **First‑year wage increase ≤ 4**  AND **COLA = none**       | **bad**           |
+| **First‑year wage increase ≤ 4**  AND **COLA ≠ none**       | **good**          |
+| **First‑year wage increase > 4** (any COLA)                | **good**          |
+
+### Why these splits?  
+
+| Feature | Reason for selection (most important) |
+|---------|----------------------------------------|
+| **Wage increase in first year** (2‑7) | Directly reflects the immediate financial gain for employees; a jump of > 4 % (≈ 5 % or more) consistently correlates with a “good” perception of the deal. |
+| **Cost‑of‑living adjustment (COLA)** | When the contract includes any COLA (temporary formula or total‑compensation adjustment) it cushions future purchasing‑power losses, turning otherwise marginal wage offers into a “good” outcome. The only situation that stays “bad” is a low first‑year increase **and** no COLA. |
+
+Because the maximum depth is limited to 2, the tree stops after the second split (root → child → leaf). Any additional variables (e.g., pension contributions, standby pay, shift differentials) would require deeper trees and are therefore not included in this concise model.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the outcome of labour‑negotiations (0 = bad, 1 = good).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the following keys (spelling exactly as
+        listed in the data dictionary):
+        - 'wage increase first year'   : float  (2.0 … 7.0)
+        - 'cost of living adjustment'  : str    ('none', 'tcf', 'tc')
+
+    Returns
+    -------
+    prediction : int
+        0 → bad settlement, 1 → good settlement
+    nodes      : list[int]
+        Truth values of the inner nodes (1 = condition satisfied, 0 = not).
+        nodes[0] → result of the root test
+        nodes[1] → result of the second‑level test (evaluated only when
+                   nodes[0] == 1, but we still return its value)
+    """
+
+    # ----- inner node 0 : root -----------------------------------------
+    # “wage increase in first year” ≤ 4  → go left (potentially bad)
+    # otherwise → go right (good)
+    node0 = X["wage increase first year"] <= 4.0
+    nodes = [int(node0), None]          # placeholder for node1
+
+    # ----- inner node 1 : left‑branch test -----------------------------
+    # Only matters when node0 is True, but we evaluate it anyway.
+    # “cost of living adjustment” == 'none'  → bad
+    # any other value (tcf or tc)            → good
+    node1 = X["cost of living adjustment"] == "none"
+    nodes[1] = int(node1)
+
+    # ----- leaf decision -----------------------------------------------
+    if node0:                     # left branch (first‑year increase ≤ 4)
+        if node1:                 # COLA = none
+            prediction = 0        # bad
+        else:                     # COLA present
+            prediction = 1        # good
+    else:                         # right branch (first‑year increase > 4)
+        prediction = 1            # good, regardless of COLA
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node index | Condition evaluated | Meaning when **True** (1) | Meaning when **False** (0) |
+|------------|--------------------|---------------------------|----------------------------|
+| `nodes[0]` | `wage increase first year ≤ 4` | The offer is relatively low; we must look at COLA. | The offer is generous enough → **good** outcome. |
+| `nodes[1]` | `cost of living adjustment == "none"` | No COLA to cushion the low wage → **bad** outcome. | Any COLA (temporary or total) → **good** outcome. |
+
+The function returns both the final prediction (`0` = bad, `1` = good) and the list of node‑truth values, exactly as requested.

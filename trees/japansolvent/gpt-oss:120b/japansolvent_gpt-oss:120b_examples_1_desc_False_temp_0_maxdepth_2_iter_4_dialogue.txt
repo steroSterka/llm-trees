@@ -1,0 +1,148 @@
+Below is a **hand‑crafted** decision‑tree that respects the constraints you set:
+
+* **Goal:** predict **“Solvent”** (the company can meet its long‑term obligations) vs. **“Insolvent”**.  
+* **Maximum depth:** 2 (root → first split → second split, then leaf).  
+* **Feature selection:** The two most‑informative ratios for solvency, based on typical financial‑statement‑analysis and on the feature‑importance you would obtain from a fitted CART model, are  
+
+| Rank | Feature (ratio) | Why it matters for solvency |
+|------|-----------------|----------------------------|
+| 1    | **Equity / Total Assets** (E/TA) | Direct measure of the cushion that owners have against creditors; higher values → stronger balance‑sheet. |
+| 2    | **EBIT / Total Assets** (EBIT/TA) | Shows how efficiently the firm generates operating profit from its asset base; a proxy for the ability to service debt. |
+
+The remaining ratios (Net‑Income/Total‑Capital, Sales/Total‑Assets, etc.) are still useful, but they contribute less to the split power of a shallow tree.
+
+---
+
+### Decision‑Tree (max depth = 2)
+
+```
+|--- Equity/Total Assets <= 0.25
+|    |--- EBIT/Total Assets <= 0.04
+|    |    |--- class: Insolvent
+|    |--- EBIT/Total Assets > 0.04
+|    |    |--- class: Insolvent
+|
+|--- Equity/Total Assets > 0.25
+     |--- EBIT/Total Assets <= 0.06
+     |    |--- class: Solvent
+     |--- EBIT/Total Assets > 0.06
+          |--- class: Solvent
+```
+
+#### How to read the tree
+
+1. **Root split – Equity/Total Assets (E/TA)**
+   * **≤ 0.25** → the firm has a thin equity cushion.  
+     *Regardless of EBIT/TA* the model predicts **Insolvent** (both child leaves are “Insolvent”).  
+   * **> 0.25** → the firm enjoys a healthier equity base.  
+2. **Second level – EBIT/Total Assets (EBIT/TA)** (only evaluated when E/TA > 0.25)  
+   * **≤ 0.06** → modest operating profit relative to assets → **Solvent** (still enough equity to cover the shortfall).  
+   * **> 0.06** → strong operating profit → **Solvent**.
+
+> **Why the second split does not change the prediction when E/TA ≤ 0.25?**  
+> In a depth‑2 tree the algorithm first tries to find the split that *most* reduces impurity. In practice the data usually show that firms with **Equity/Assets ≤ 0.25** are overwhelmingly insolvent, so any further split adds little information. The algorithm therefore keeps the leaf pure (all “Insolvent”) and spends the remaining depth on the other branch where the decision is more nuanced.
+
+---
+
+### Quick “rules‑of‑thumb” derived from the tree
+
+| Condition (simple rule)                                 | Predicted outcome |
+|----------------------------------------------------------|-------------------|
+| **Equity/Total Assets ≤ 0.25**                           | Insolvent |
+| **Equity/Total Assets > 0.25** **and** **EBIT/TA ≤ 0.06**| Solvent |
+| **Equity/Total Assets > 0.25** **and** **EBIT/TA > 0.06**| Solvent |
+
+These three rules are exactly the three leaf nodes of the tree and can be used directly in a spreadsheet or a rule‑engine without having to reconstruct the tree structure.
+
+---
+
+#### Note on the thresholds
+
+The numeric cut‑offs (0.25 for equity ratio, 0.04/0.06 for EBIT ratio) are **illustrative** – they are typical values that separate most “healthy” from “troubled” firms in publicly‑available bankruptcy‑prediction datasets (e.g., Altman Z‑score samples). In a real‑world implementation you would:
+
+1. **Fit a CART model** on your labeled dataset (solvent / insolvent).  
+2. **Extract the two highest‑importance features** (usually the same as listed above).  
+3. **Read the optimal split points** from the fitted tree.  
+4. **Prune** the tree to a maximum depth of 2 (or manually enforce the depth).  
+
+The representation above follows the exact format you used in the iris‑example, making it easy to copy‑paste into a markdown report or a code comment.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company is solvent (1) or insolvent (0).
+
+    The tree (max depth = 2) uses the two most important ratios:
+
+        1️⃣  Equity/TA  ≤ 0.25          →  Insolvent
+        2️⃣  EBIT/TA   ≤ 0.06  (evaluated only when Equity/TA > 0.25)
+            →  Solvent
+            else →  Solvent
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the exact feature keys listed below
+        (case‑ and space‑sensitive).
+
+        Required keys:
+            - "Equity/TA"   : Equity / Total Assets
+            - "EBIT/TA"     : Earnings Before Interest and Taxes / Total Assets
+
+    Returns
+    -------
+    prediction : int
+        1 if the model predicts *solvent*, 0 otherwise.
+    nodes : list[int]
+        Truth values of the inner nodes (in the order they appear in the tree).
+        1 → condition satisfied, 0 → condition not satisfied.
+    """
+    # ---------- inner‑node evaluations ----------
+    # node 0 : root split on Equity/TA
+    node0 = 1 if X["Equity/TA"] <= 0.25 else 0
+
+    # node 1 : second split on EBIT/TA (still evaluated even if node0 = 1,
+    #          because we want to return a value for every inner node)
+    node1 = 1 if X["EBIT/TA"] <= 0.06 else 0
+
+    nodes = [node0, node1]
+
+    # ---------- leaf decision ----------
+    if node0:                     # Equity/TA ≤ 0.25 → definitely insolvent
+        prediction = 0
+    else:                         # Equity/TA  > 0.25 → solvent regardless of EBIT/TA
+        prediction = 1
+
+    return prediction, nodes
+```
+
+### How it works
+| Inner node (index) | Condition evaluated | `nodes[i]` value |
+|--------------------|---------------------|------------------|
+| 0                  | `X["Equity/TA"] <= 0.25` | 1 if true, 0 if false |
+| 1                  | `X["EBIT/TA"] <= 0.06`   | 1 if true, 0 if false |
+
+* **Leaf 0** (when node 0 = 1) → prediction **0** (insolvent).  
+* **Leaf 1** (when node 0 = 0) → prediction **1** (solvent).  
+  The second‑level split (node 1) does not change the outcome in this shallow tree, but its truth value is still returned as required.
+
+### Quick example
+
+```python
+sample = {
+    "Equity/TA": 0.32,   # > 0.25  → good equity cushion
+    "EBIT/TA": 0.04      # ≤ 0.06  (irrelevant for final label here)
+}
+
+pred, node_vals = predict(sample)
+print(pred)        # 1  (solvent)
+print(node_vals)   # [0, 1]  (root condition false, second condition true)
+```
+
+Feel free to plug this function into any pipeline that supplies the two required ratios per company.

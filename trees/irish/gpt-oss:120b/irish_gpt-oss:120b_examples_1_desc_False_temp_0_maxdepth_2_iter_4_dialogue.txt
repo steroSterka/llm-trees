@@ -1,0 +1,106 @@
+**Decision‑Tree (max depth = 2) for predicting whether a school‑leaving certificate is **taken** or **not taken**  
+(Features: sex, Drumcondra Verbal Reasoning Test Score, Educational level attained (0‑10), Prestige score for father’s occupation (0‑28), Type of school)**  
+
+```
+|--- Educational level attained <= 5
+|    |--- Drumcondra Verbal Reasoning Test Score <= 40
+|    |    |--- class: certificate NOT taken
+|    |--- Drumcondra Verbal Reasoning Test Score > 40
+|    |    |--- class: certificate NOT taken   (still very unlikely)
+|--- Educational level attained > 5
+|    |--- Type of school = primary terminal leaver
+|    |    |--- class: certificate NOT taken
+|    |--- Type of school != primary terminal leaver
+|    |    |--- class: certificate TAKEN
+```
+
+### How the tree was built  
+
+| Rank | Feature (most to least important) | Why it is important (domain intuition) |
+|------|-----------------------------------|----------------------------------------|
+| 1️⃣   | **Educational level attained** (0‑10) | Directly measures the amount of schooling already completed; the higher the level, the more likely a formal leaving certificate has been obtained. |
+| 2️⃣   | **Drumcondra Verbal Reasoning Test Score** | Within the low‑education branch, a higher test score can indicate that the student is close to completing the required curriculum, but most low‑level learners still do not obtain the certificate. |
+| 3️⃣   | **Type of school** (secondary / vocational / primary‑terminal‑leaver) | In the higher‑education branch, students who are still in a “primary‑terminal‑leaver” track are unlikely to have earned a leaving certificate, whereas those in secondary or vocational pathways almost always do. |
+| 4️⃣   | **Prestige score for father’s occupation** | Socio‑economic background can affect completion, but its predictive power is weaker than the three features above. |
+| 5️⃣   | **Sex** (male / female) | Gender shows only a marginal effect on certificate attainment in most modern education systems, so it is the least informative for this task. |
+
+### Tree interpretation  
+
+1. **First split – Educational level attained**  
+   * ≤ 5 years of schooling → the student is in a low‑education group where a certificate is highly unlikely.  
+   * > 5 years → the student has progressed far enough that a certificate becomes plausible, but we need to look at the school type.
+
+2. **Second‑level splits**  
+   * **Low‑education branch** – we check the **Drumcondra score**. Even the best scores in this group do not usually translate into a certificate, so both leaf nodes predict “NOT taken”. (The split is kept to satisfy the depth‑2 requirement and to illustrate that test performance adds a tiny nuance.)  
+   * **Higher‑education branch** – we check **Type of school**.  
+     * If the student is still on a *primary‑terminal‑leaver* track, the certificate is still unlikely.  
+     * Otherwise (secondary or vocational school) the certificate is expected to have been taken.
+
+The tree respects the maximum depth of **2** (root → split → leaf) and uses the three most informative features identified from the given list.
+
+
+#########################
+
+
+**Python function implementing the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the school‑leaving certificate is taken (1) or not taken (0).
+
+    Expected keys in *X* (exact spelling):
+        - 'Sex'               : 0 = female, 1 = male   (not used in the tree)
+        - 'DVRT'              : Drumcondra Verbal Reasoning Test score
+        - 'Educational_level': integer code 0‑10 (see description above)
+        - 'Prestige_score'    : 0‑28 (not used in the tree)
+        - 'Type_school'       : 0 = primary_terminal_leaver,
+                                1 = secondary_terminal_leaver,
+                                2 = vocational
+
+    Returns
+    -------
+    prediction : int
+        0 → certificate **not taken**
+        1 → certificate **taken**
+    nodes : list of int
+        Truth values of the two inner‑node tests (1 = condition satisfied,
+        0 = condition not satisfied).  The first element corresponds to the
+        root test, the second element to the test on the next level
+        (its meaning depends on the outcome of the root test).
+    """
+
+    # ---------- inner node 0 ----------
+    # Educational_level ≤ 5  → low‑education branch
+    # Educational_level > 5  → higher‑education branch
+    node0 = X["Educational_level"] <= 5
+
+    # ---------- inner node 1 ----------
+    # • If we are in the low‑education branch we look at the DVRT score.
+    #   Threshold 40 is a reasonable cut‑off (the dataset’s DVRT ranges
+    #   roughly 0‑100); even the best scores in this branch still lead to
+    #   “not taken”.
+    # • If we are in the higher‑education branch we look at the type of
+    #   school.  Only pupils still on the *primary_terminal_leaver* track
+    #   (Type_school == 0) are unlikely to have the certificate.
+    if node0:
+        node1 = X["DVRT"] <= 40
+        prediction = 0                     # not taken (both DVRT outcomes)
+    else:
+        node1 = X["Type_school"] == 0
+        prediction = 0 if node1 else 1     # 0 = not taken, 1 = taken
+
+    # Convert booleans to the required 0/1 integers
+    nodes = [int(node0), int(node1)]
+
+    return prediction, nodes
+```
+
+### How the function follows the tree
+
+| Node | Condition (as coded)                              | Meaning |
+|------|---------------------------------------------------|---------|
+| 0    | `Educational_level <= 5`                          | Low‑education vs. higher‑education |
+| 1    | *If node 0 is True*: `DVRT <= 40` <br> *If node 0 is False*: `Type_school == 0` | In the low‑education branch we check reasoning score; in the higher‑education branch we check whether the pupil is still in a primary‑terminal‑leaver school. |
+
+The returned `nodes` list contains `1` when the corresponding condition is satisfied and `0` otherwise, exactly as requested.

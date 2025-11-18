@@ -1,0 +1,131 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+
+```
+|--- Chest Pain Type (cp) <= 2
+||--- Maximum Heart Rate Achieved (maxHR) > 140
+|||--- class: No Heart Disease
+||--- Maximum Heart Rate Achieved (maxHR) <= 140
+|||--- class: Heart Disease
+|--- Chest Pain Type (cp) > 2
+||--- ST Depression (oldpeak) <= 1.0
+|||--- class: No Heart Disease
+||--- ST Depression (oldpeak) > 1.0
+|||--- class: Heart Disease
+```
+
+### How the tree was built  
+
+| Rank | Feature (why it’s important)                                 |
+|------|--------------------------------------------------------------|
+| 1️⃣   | **Chest Pain Type (cp)** – the strongest predictor in the UCI Heart Disease dataset; asymptomatic or non‑anginal pain is far more associated with disease. |
+| 2️⃣   | **Maximum Heart Rate Achieved (maxHR)** – low exercise‑induced heart rates (≤ 140 bpm) correlate with impaired cardiac function. |
+| 3️⃣   **ST Depression (oldpeak)** – a measure of exercise‑induced ST‑segment depression; values > 1.0 mm indicate myocardial ischemia. |
+
+The tree first separates patients by the most discriminative feature (Chest Pain Type).  
+* For those with typical/atypical angina (cp ≤ 2) the next split looks at exercise capacity (maxHR).  
+* For those with non‑anginal or asymptomatic pain (cp > 2) the next split evaluates the magnitude of ST‑segment depression (oldpeak).
+
+All leaf nodes are at depth 2, satisfying the required maximum depth. The model therefore classifies a patient as **“Heart Disease”** or **“No Heart Disease”** using only the three most informative variables.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a patient has heart disease (target = 1) or not (target = 0)
+    using a hand‑crafted decision tree of maximum depth 2.
+
+    Expected keys in ``X`` (exact spelling, case‑sensitive):
+        - 'age'          : int/float, years
+        - 'sex'          : 1 = male, 2 = female
+        - 'chest_pain'   : 0 = Asymptomatic,
+                           1 = Atypical angina,
+                           2 = Non‑anginal pain,
+                           3 = Typical angina
+        - 'trestbps'     : resting blood pressure (mm Hg)
+        - 'chol'         : serum cholesterol (mg/dL)
+        - 'fbs'          : 1 = false, 2 = true
+        - 'restecg'      : 1, 2 or 3 (ECG result)
+        - 'thalach'      : maximum heart rate achieved (bpm)
+        - 'exang'        : 1 = no, 2 = yes (exercise‑induced angina)
+        - 'oldpeak'      : ST depression induced by exercise (0‑5)
+        - 'slope'        : 1 = downsloping, 2 = flat, 3 = upsloping
+        - 'ca'           : number of major vessels (0‑3)
+        - 'thal'         : 1 = fixed defect, 2 = normal, 3 = reversible defect
+        - 'Target variable' / 'target' : not used here (output)
+
+    Returns
+    -------
+    prediction : int
+        1 → patient **has** heart disease  
+        0 → patient **does not** have heart disease
+    nodes : list[int]
+        Truth values of the inner‑node tests in the order they appear
+        in the tree (1 = condition satisfied, 0 = condition not satisfied).
+
+    Tree logic (max depth = 2)
+
+        |--- chest_pain <= 2
+        |       |--- thalach > 140          → 0 (no disease)
+        |       |--- thalach <= 140         → 1 (disease)
+        |
+        |--- chest_pain > 2
+                |--- oldpeak <= 1.0         → 0 (no disease)
+                |--- oldpeak > 1.0          → 1 (disease)
+    """
+    # ----- inner‑node evaluations -------------------------------------------------
+    # node 0 : root test – is the chest‑pain type 0,1 or 2 ?
+    node0 = X["chest_pain"] <= 2
+
+    # node 1 : left‑branch test – does the patient reach a high max heart rate ?
+    #          (only meaningful when node0 is True, but we compute it anyway)
+    node1 = X["thalach"] > 140
+
+    # node 2 : right‑branch test – how large is the ST‑depression ?
+    #          (only meaningful when node0 is False)
+    node2 = X["oldpeak"] <= 1.0
+
+    # ----- decision ---------------------------------------------------------------
+    if node0:                         # chest_pain <= 2
+        if node1:                     # thalach > 140
+            prediction = 0            # no heart disease
+        else:                         # thalach <= 140
+            prediction = 1            # heart disease
+    else:                             # chest_pain > 2   (i.e. chest_pain == 3)
+        if node2:                     # oldpeak <= 1.0
+            prediction = 0            # no heart disease
+        else:                         # oldpeak > 1.0
+            prediction = 1            # heart disease
+
+    # Return prediction and the list of node truth values (as integers 0/1)
+    nodes = [int(node0), int(node1), int(node2)]
+    return prediction, nodes
+```
+
+**Explanation of the returned list**
+
+| Index | Condition evaluated | Meaning of `1` | Meaning of `0` |
+|-------|---------------------|----------------|----------------|
+| `0`   | `chest_pain <= 2`   | Patient’s chest‑pain type is *asymptomatic, atypical or non‑anginal* | Chest‑pain type is *typical angina* |
+| `1`   | `thalach > 140`     | Maximum heart rate > 140 bpm (good exercise capacity) | ≤ 140 bpm (reduced capacity) |
+| `2`   | `oldpeak <= 1.0`    | ST‑depression ≤ 1.0 mm (little ischemia) | > 1.0 mm (more likely ischemia) |
+
+The function can be called directly with a dictionary that contains the keys listed above, e.g.:
+
+```python
+sample = {
+    "age": 58, "sex": 1, "chest_pain": 3, "trestbps": 130,
+    "chol": 230, "fbs": 1, "restecg": 2, "thalach": 150,
+    "exang": 1, "oldpeak": 0.8, "slope": 2, "ca": 0, "thal": 2
+}
+
+pred, node_vals = predict(sample)
+print(pred)        # → 0  (no heart disease)
+print(node_vals)   # → [0, 1, 1]
+```
+
+The list `node_vals` tells you which internal tests were satisfied for that particular patient.

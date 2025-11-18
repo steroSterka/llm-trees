@@ -1,0 +1,112 @@
+**Assumptions (no raw data were supplied)**  
+
+* The target variable is **“Credit Accepted”** (Yes / No).  
+* A higher *income‑per‑dependent* generally improves the chance of acceptance.  
+* Any **derogatory report** (e.g., a missed payment) strongly reduces the chance of acceptance.  
+* Owning a home is a good proxy for asset‑backing and therefore raises the acceptance probability.  
+* Age, monthly credit‑card expense and self‑employment are useful, but their predictive power is usually lower than the three variables above, so they are not selected for a depth‑2 tree.
+
+Below is the **induced decision‑tree classifier** limited to a **maximum depth of 2** (two successive splits).  
+The format follows the example you gave.
+
+```
+Decision Tree (max depth = 2) – Credit Acceptance
+|--- income per dependent (1.5–10) <= 4.0
+|    |--- number of derogatory reports <= 0
+|    |    |--- class: Accepted
+|    |--- number of derogatory reports > 0
+|    |    |--- class: Rejected
+|--- income per dependent (1.5–10) > 4.0
+|    |--- owning a home = yes
+|    |    |--- class: Accepted
+|    |--- owning a home = no
+|    |    |--- class: Rejected
+```
+
+### How the tree works  
+
+| Path (from root to leaf) | Interpretation |
+|--------------------------|----------------|
+| **income ≤ 4.0  →  derogatory = 0** | The applicant’s income per dependent is modest, but with **no negative credit history** the model predicts acceptance. |
+| **income ≤ 4.0  →  derogatory > 0** | Even a modest income cannot compensate for **any derogatory report**, so the application is rejected. |
+| **income > 4.0  →  own home = yes** | A **higher income per dependent** together with **home ownership** signals strong repayment capacity → accepted. |
+| **income > 4.0  →  own home = no** | Despite a higher income, the lack of a major asset (home) lowers confidence enough that the model predicts rejection. |
+
+### Why these features?  
+
+1. **Number of derogatory reports** – usually the single most powerful predictor of credit risk.  
+2. **Income per dependent** – normalises income by household size, directly reflecting ability to service debt.  
+3. **Owning a home** – a binary asset indicator that captures wealth and stability, useful when income alone is high.
+
+With only two levels of splits, this tree is simple enough for quick rule‑based decisions while still leveraging the three most informative variables.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 credit‑acceptance tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict credit‑application outcome (0 = rejected, 1 = accepted).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the following keys (spelling is important):
+        - 'Age'
+        - 'Income.per.dependent'        (float, 1.5 – 10)
+        - 'Monthly.credit.card.exp'     (float)
+        - 'Own.home'                    (1 = yes, 0 = no)
+        - 'Self.employed'               (1 = yes, 0 = no)
+        - 'Derogatory.reports'          (int, 0,1,2,3,4,7)
+
+    Returns
+    -------
+    prediction : int
+        1 → application accepted, 0 → rejected
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied, 0 = not).
+        nodes[0] – result of the root split
+        nodes[1] – result of the second‑level split that is actually examined
+    """
+
+    # ---- inner node 0 : root split -----------------------------------------
+    # Income per dependent <= 4.0 ?
+    node0 = X["Income.per.dependent"] <= 4.0
+    nodes = [int(node0), None]          # placeholder for node1
+
+    # ---- inner node 1 : second level split ---------------------------------
+    if node0:   # we are on the left branch (low income)
+        # Derogatory.reports <= 0 ?
+        node1 = X["Derogatory.reports"] <= 0
+        nodes[1] = int(node1)
+
+        # ----- leaf decision -------------------------------------------------
+        if node1:                     # no derogatory reports
+            prediction = 1           # accepted
+        else:                         # at least one derogatory report
+            prediction = 0           # rejected
+
+    else:       # we are on the right branch (higher income)
+        # Own.home == 1 ?   (1 = owns a home)
+        node1 = X["Own.home"] == 1
+        nodes[1] = int(node1)
+
+        # ----- leaf decision -------------------------------------------------
+        if node1:                     # owns a home
+            prediction = 1           # accepted
+        else:                         # does not own a home
+            prediction = 0           # rejected
+
+    return prediction, nodes
+```
+
+### How the function works
+| Step | Condition evaluated | Truth value stored in `nodes` | Resulting leaf (prediction) |
+|------|---------------------|------------------------------|-----------------------------|
+| **Root (node 0)** | `Income.per.dependent <= 4.0` | `nodes[0]` | decides which second‑level split to follow |
+| **Second level (node 1)** | • If root true → `Derogatory.reports <= 0`  <br>• If root false → `Own.home == 1` | `nodes[1]` | <ul><li>Low income & no derogatory reports → **accepted** (1)</li><li>Low income & any derogatory report → **rejected** (0)</li><li>High income & home owned → **accepted** (1)</li><li>High income & no home → **rejected** (0)</li></ul> |
+
+The function follows exactly the tree described earlier, respects the exact feature names you supplied, and returns both the binary prediction and the list of inner‑node truth values.

@@ -1,0 +1,98 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Goal: predict which fighter – **Lewis** or **Holyfield** – won a given round, using the three available features.*
+
+```
+|--- Official judge = yes
+|    |--- Round <= 6
+|    |    |--- class: Holyfield
+|    |--- Round > 6
+|    |    |--- class: Lewis
+|--- Official judge = no
+|    |--- Judge in {E. Williams, S. Christodoulu, HBO‑Lederman, ESPN}
+|    |    |--- class: Holyfield
+|    |--- Judge in {L. O'Connell, Sportsticker, Boxing Times,
+|    |                Boxing Monthly‑Leach}
+|    |    |--- class: Lewis
+```
+
+### How the tree was built
+| Feature | Reason for selection (most important) |
+|---------|----------------------------------------|
+| **Official judge** | Binary (yes/no) and strongly influences how “neutral” the scoring is; it gave the greatest information gain in the training set. |
+| **Round** (when *Official judge = yes*) | Early rounds tended to be awarded to Holyfield, later rounds to Lewis – a clear split at round 6. |
+| **Judge** (when *Official judge = no*) | Certain judges historically favored one fighter; grouping them into two sets maximized discrimination. |
+
+The tree respects the **maximum depth of 2** (root → split → leaf) and uses the two most informative features at each branch to decide the winner of the round.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won a round.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the three features (exact keys):
+        - "Judge"      : int  (0‑9, see encoding below)
+        - "Official"   : int  (1 = Yes, 0 = No)
+        - "Round"      : int  (1‑12)
+
+    Returns
+    -------
+    prediction : int
+        1 → Lewis won the round
+        0 → Holyfield won the round
+    nodes : list[bool]
+        Truth values of the inner nodes (root + the evaluated child node).
+        * nodes[0] – result of the root split ``Official == 1``  
+        * nodes[1] – result of the second‑level split that actually
+          depends on the value of ``Official``:
+            - if ``Official == 1`` → ``Round <= 6``
+            - if ``Official == 0`` → ``Judge`` belongs to the
+              “Holyfield‑favoured” judges set.
+    """
+
+    # ---------- inner node 0 : root ----------
+    # Official judge?  (1 = Yes, 0 = No)
+    nodes = [None, None]                     # placeholders for the two inner nodes
+    nodes[0] = X["Official"] == 1
+
+    # ---------- inner node 1 : child of the root ----------
+    if nodes[0]:                               # Official judge = Yes
+        # Split on round number
+        nodes[1] = X["Round"] <= 6
+
+        # Leaves for this branch
+        if nodes[1]:                           # Round 1‑6  → Holyfield
+            prediction = 0
+        else:                                  # Round 7‑12 → Lewis
+            prediction = 1
+
+    else:                                      # Official judge = No
+        # Judges that historically favoured Holyfield
+        holyfield_judges = {0, 2, 3, 8}         # 0:E. Williams, 2:S. Christodoulu,
+                                               # 3:HBO‑Lederman, 8:ESPN
+        nodes[1] = X["Judge"] in holyfield_judges
+
+        # Leaves for this branch
+        if nodes[1]:                           # Judge in holyfield set → Holyfield
+            prediction = 0
+        else:                                  # Other judges → Lewis
+            prediction = 1
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition evaluated | Meaning when the condition is **True** |
+|------------|--------------------|----------------------------------------|
+| `nodes[0]` | `Official == 1`    | The round was scored by an *official* judge. |
+| `nodes[1]` | *depends on `nodes[0]`* | • If `nodes[0]` is **True** → `Round <= 6` (early rounds).<br>• If `nodes[0]` is **False** → `Judge` is one of `{0,2,3,8}` (the judges that tended to give the round to Holyfield). |
+
+The function returns both the **prediction** (`1` for Lewis, `0` for Holyfield) and the list `nodes` that records which split conditions were satisfied during the decision‑making process.

@@ -1,0 +1,146 @@
+Below is a **sample decision‑tree** that respects the constraints you gave:
+
+* **Maximum depth = 2** (root + one split‑level below each child)  
+* **Only the two most‑informative ratios** (according to the classic Altman Z‑score literature) are used as split variables  
+* The tree predicts the binary outcome **“Bankrupt” / “Not Bankrupt”**  
+
+> **Important note** – Because no actual data set was supplied, the numeric cut‑offs shown here are **illustrative only**.  In a real modelling exercise you would let a CART algorithm (e.g. `sklearn.tree.DecisionTreeClassifier`) search the training data for the thresholds that maximise information‑gain (or Gini‑impurity reduction).  The structure below follows the same logic, but the numbers have been chosen to reflect typical ranges observed in financial‑ratio studies.
+
+---
+
+### Decision‑Tree (depth = 2)
+
+```
+|--- Working Capital / Total Assets <= 0.12
+|    |--- class: Not Bankrupt
+|--- Working Capital / Total Assets > 0.12
+|    |--- Retained Earnings / Total Assets <= 0.03
+|    |    |--- class: Bankrupt
+|    |--- Retained Earnings / Total Assets > 0.03
+|    |    |--- class: Not Bankrupt
+```
+
+#### How to read the tree
+
+| Path (from root to leaf)                                   | Predicted class |
+|------------------------------------------------------------|-----------------|
+| **WC/TA ≤ 0.12**                                            | **Not Bankrupt** (companies with a healthy liquidity cushion) |
+| **WC/TA > 0.12**  **AND** **RE/TA ≤ 0.03**                  | **Bankrupt** (high working‑capital ratio but very low retained earnings – a sign of persistent losses) |
+| **WC/TA > 0.12**  **AND** **RE/TA > 0.03**                  | **Not Bankrupt** (both liquidity and profitability buffers are adequate) |
+
+---
+
+### Why these two ratios?
+
+| Rank | Ratio (feature)                               | Why it matters (financial‑ratio theory) |
+|------|----------------------------------------------|------------------------------------------|
+| 1️⃣   | **Working Capital / Total Assets** (WC/TA)   | Measures short‑term liquidity relative to the firm’s asset base. Very low values often precede cash‑flow crises. |
+| 2️⃣   | **Retained Earnings / Total Assets** (RE/TA) | Captures the cumulative profitability retained in the business. Negative or near‑zero values signal that earnings have been insufficient to build a cushion. |
+| (Other ratios – e.g., EBIT/TA, Sales/TA, Book‑Equity/Book‑Liabilities – are also useful, but they are not needed to keep the tree at depth 2.) |
+
+---
+
+### How you could obtain the exact thresholds
+
+If you have a labelled data set (`X` = the five ratios, `y` = 0 = Not Bankrupt, 1 = Bankrupt), the following short Python snippet would give you the *exact* tree that maximises the chosen impurity criterion:
+
+```python
+from sklearn.tree import DecisionTreeClassifier, export_text
+
+# X = pandas DataFrame with the five ratio columns
+# y = binary target (0/1)
+
+clf = DecisionTreeClassifier(max_depth=2, criterion='gini', random_state=42)
+clf.fit(X, y)
+
+# Show the tree in a text format similar to the example you gave
+tree_text = export_text(clf,
+                        feature_names=[
+                            "WC/TA",
+                            "RE/TA",
+                            "EBIT/TA",
+                            "Sales/TA",
+                            "BookEq/BookLiab"
+                        ])
+print(tree_text)
+```
+
+Running the code on your actual data will replace the illustrative thresholds (`0.12`, `0.03`) with the values that truly **maximise the split‑quality** for your sample.
+
+---
+
+#### TL;DR
+
+*Root node*: **Working Capital / Total Assets**  
+*Left leaf*: “Not Bankrupt” (WC/TA ≤ 0.12)  
+
+*Right child*: split on **Retained Earnings / Total Assets**  
+ – ≤ 0.03 → “Bankrupt”  
+ – > 0.03 → “Not Bankrupt”
+
+Feel free to plug in your own data and let the algorithm discover the optimal cut‑offs – the skeleton of the tree (which two variables to use) will most likely stay the same, because those two ratios are the strongest predictors of corporate distress in the classic Z‑score framework.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company went bankrupt (target = 1) or not (target = 0)
+    using the two most‑informative financial ratios.
+
+    Expected keys in the input dictionary *X* (exact spelling, case‑sensitive):
+        - 'WC/TA'   : Working Capital / Total Assets
+        - 'RE/TA'   : Retained Earnings / Total Assets
+        - 'EBIT/TA' : Earnings Before Interest and Tax / Total Assets   (unused)
+        - 'S/TA'    : Sales / Total Assets                               (unused)
+        - 'BVE/BVL' : Book Value of Equity / Book Value of Liabilities   (unused)
+
+    Returns
+    -------
+    prediction : int
+        0 → company did **not** go bankrupt  
+        1 → company **did** go bankrupt
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied, 0 = not satisfied)
+        * nodes[0] – result of the root split  (WC/TA ≤ 0.12)
+        * nodes[1] – result of the right‑child split (RE/TA ≤ 0.03)
+
+    Note
+    ----
+    The thresholds 0.12 and 0.03 are typical cut‑offs that emerge from
+    empirical Z‑score studies.  In a real‑world setting you would let a CART
+    algorithm learn the exact numbers from your training data.
+    """
+    # ------------------------------------------------------------------
+    # 1️⃣  Evaluate the two inner‑node conditions (store as 1/0)
+    # ------------------------------------------------------------------
+    nodes = [0, 0]                     # initialise list of length 2
+    nodes[0] = int(X['WC/TA'] <= 0.12)   # root node
+    nodes[1] = int(X['RE/TA'] <= 0.03)   # right‑child node (evaluated always)
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the tree logic
+    # ------------------------------------------------------------------
+    if nodes[0] == 1:                     # WC/TA ≤ 0.12  → leaf “Not bankrupt”
+        prediction = 0
+    else:                                 # WC/TA  > 0.12 → go to right child
+        if nodes[1] == 1:                 # RE/TA ≤ 0.03 → leaf “Bankrupt”
+            prediction = 1
+        else:                             # RE/TA  > 0.03 → leaf “Not bankrupt”
+            prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Step | Condition evaluated | Stored in `nodes[i]` (1 = True, 0 = False) | Decision taken |
+|------|----------------------|-------------------------------------------|----------------|
+| **Root** | `X['WC/TA'] <= 0.12` | `nodes[0]` | If **True** → prediction = 0 (safe) |
+| **Right‑child** (only reached when `nodes[0]==0`) | `X['RE/TA'] <= 0.03` | `nodes[1]` | If **True** → prediction = 1 (bankrupt) otherwise → prediction = 0 |
+
+The returned `nodes` list gives a full, binary trace of the path the sample followed through the inner nodes, which is exactly what you asked for. Feel free to plug the function into your code base and pass a dictionary that contains the required keys.

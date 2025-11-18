@@ -1,0 +1,101 @@
+**Induced Decision‑Tree (max depth = 2)**  
+*Goal: predict whether the outcome of a set of labour‑negotiations will be **Good** or **Bad**.  
+Only the two most‑informative features (as judged by domain knowledge and typical information‑gain on similar data sets) are used.*
+
+```
+|--- wage increase in first year of contract (2‑7) <= 4
+|    |--- cost‑of‑living adjustment = none
+|    |    |--- class: Bad
+|    |--- cost‑of‑living adjustment != none
+|    |    |--- class: Good
+|
+|--- wage increase in first year of contract (2‑7) > 4
+|    |--- employer contributions to pension plan = none
+|    |    |--- class: Bad
+|    |--- employer contributions to pension plan != none
+|    |    |--- class: Good
+```
+
+### Why these features?
+| Rank | Feature | Reason it is likely the strongest predictor |
+|------|---------|---------------------------------------------|
+| 1 | **Wage increase in first year of contract** (numeric 2‑7) | The first‑year raise directly signals the immediate “win” for workers; historically it explains the largest share of variance in negotiation outcomes. |
+| 2 (split 1) | **Cost‑of‑living adjustment (COLA)** (none / temporary formula / total compensation) | When a COLA is *absent* the real‑term value of any raise is eroded, often turning an otherwise positive deal into a perceived loss. |
+| 2 (split 2) | **Employer contributions to pension plan** (none / retirement allowance included / employee contribution) | A pension contribution is a long‑term benefit that workers value highly; its presence usually tips a borderline deal into the “good” category. |
+
+### How to read the tree
+1. **First split** – Look at the size of the first‑year wage increase.  
+   * ≤ 4 % (or points on the 2‑7 scale) → go left.  
+   * > 4 % → go right.  
+
+2. **Second split (depth 2)** –  
+   * For the “low‑raise” branch, check whether any COLA is offered. **No COLA → Bad**; **any COLA → Good**.  
+   * For the “high‑raise” branch, check the pension contribution. **No pension contribution → Bad**; **any contribution → Good**.
+
+The tree stops at depth 2, giving a quick, interpretable rule‑set that can be applied without needing the full data set. If you later obtain a labeled data set you can refine thresholds (e.g., the exact cut‑off on the wage‑increase scale) or replace the categorical splits with more granular ones, but this structure already captures the two most influential drivers of a **Good** vs. **Bad** negotiation outcome.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the outcome of a labour‑negotiation (0 = bad, 1 = good).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **exactly** the feature names shown below
+        (case‑sensitive, with spaces).
+
+        Required keys
+        -------------
+        'wage increase first year'      : float  (2.0 … 7.0)
+        'cost of living adjustment'     : str    ('none', 'tcf', 'tc')
+        'pension'                       : str    ('none', 'ret_allw', 'empl_contr')
+
+        Any additional keys are ignored.
+
+    Returns
+    -------
+    prediction : int
+        0 = bad settlement, 1 = good settlement
+    nodes : list[int]
+        Truth values of the two inner‑node tests.
+        * nodes[0] – ``wage increase first year <= 4``
+        * nodes[1] – depends on the branch taken:
+            * if nodes[0] is True → ``cost of living adjustment != 'none'``
+            * if nodes[0] is False → ``pension != 'none'``
+    """
+
+    # ---------- inner node 0 ----------
+    # “low” first‑year raise (≤ 4) goes left, “high” raise (> 4) goes right
+    nodes = [None, None]                     # placeholder for the two inner nodes
+    nodes[0] = X["wage increase first year"] <= 4.0
+
+    # ---------- inner node 1 (branch‑specific) ----------
+    if nodes[0]:                              # left branch → look at COLA
+        nodes[1] = X["cost of living adjustment"] != "none"
+        prediction = 1 if nodes[1] else 0    # COLA present → Good, else Bad
+    else:                                     # right branch → look at pension
+        nodes[1] = X["pension"] != "none"
+        prediction = 1 if nodes[1] else 0    # any pension contribution → Good, else Bad
+
+    # Convert booleans to integers (0 / 1) as the spec asks for “truth values”
+    nodes = [int(b) for b in nodes]
+
+    return int(prediction), nodes
+```
+
+### How the function works  
+
+| Node | Test (as evaluated in the code)                                   | Meaning when the test is **True** |
+|------|-------------------------------------------------------------------|-----------------------------------|
+| 0    | `wage increase first year <= 4`                                   | The first‑year raise is relatively low; we then inspect the cost‑of‑living adjustment. |
+| 1‑L  | `cost of living adjustment != "none"` (only evaluated when Node 0 is True) | A COLA is offered → the settlement is classified **Good**; otherwise **Bad**. |
+| 1‑R  | `pension != "none"` (only evaluated when Node 0 is False)         | Any pension contribution is present → **Good**; otherwise **Bad**. |
+
+The function returns both the final class (`prediction`) and a list `nodes` that contains the binary outcomes of the two inner‑node decisions, exactly as required.

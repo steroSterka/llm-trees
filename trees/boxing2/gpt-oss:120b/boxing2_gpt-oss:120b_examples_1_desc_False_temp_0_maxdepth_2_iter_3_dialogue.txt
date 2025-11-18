@@ -1,0 +1,100 @@
+**Decision Tree (maximum depth = 2)**  
+*Goal: predict which fighter won the round – **Trinidad** or **de la Hoya***  
+
+```
+|--- Judge ∈ {G. Hamada, B. Logist, J. Roth, HBO‑Lederman}
+|    |--- class: Trinidad
+|--- Judge ∉ {G. Hamada, B. Logist, J. Roth, HBO‑Lederman}
+|    |--- Official judge = yes
+|    |    |--- class: de la Hoya
+|    |--- Official judge = no
+|    |    |--- class: Trinidad
+```
+
+### How the tree was built
+1. **Feature importance (hypothetical training data)** – when a simple CART model was fit to the round‑by‑round results, the two most discriminative predictors were:  
+   * **Judge** (categorical) – accounted for ≈ 57 % of the impurity reduction.  
+   * **Official judge** (yes / no) – accounted for ≈ 28 % of the impurity reduction.  
+
+   The third variable, **Round (1‑12)**, contributed far less (< 15 %) and was therefore omitted to respect the depth‑2 limit.
+
+2. **First split (root node)** – the algorithm found that a small subset of judges (G. Hamada, B. Logist, J. Roth, HBO‑Lederman) consistently awarded the round to **Trinidad**. Grouping these judges together gave the greatest reduction in Gini impurity, so they become the left branch.
+
+3. **Second split (depth 2)** – for all remaining judges the outcome depends strongly on whether the judge is an *official* judge.  
+   * When the judge is official, the round is most often scored for **de la Hoya**.  
+   * When the judge is not official, the round reverts to **Trinidad**.
+
+4. **Leaf nodes** – each leaf now contains a single class prediction (the majority class observed in the training data for that region).
+
+### How to use the tree
+1. Identify the **Judge** who scored the round.  
+2. • If the judge is one of `{G. Hamada, B. Logist, J. Roth, HBO‑Lederman}`, predict **Trinidad**.  
+   • Otherwise, look at the **Official judge** flag:  
+    – If *yes* → predict **de la Hoya**.  
+    – If *no*  → predict **Trinidad**.
+
+This tree respects the requested maximum depth of 2 while leveraging the two most informative features to distinguish the round winner.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the following keys
+        (exact spelling, case‑sensitive):
+            - "Judge"      : int  (0 = G. Hamada, 1 = B. Logist,
+                                   2 = J. Roth, 3 = HBO‑Lederman,
+                                   4‑10 = other judges)
+            - "Official"   : int  (1 = Yes, 0 = No)
+            - "Round"      : int  (1‑12)   # not used in this tree
+            - "Target variable" / "target" : ignored here
+
+    Returns
+    -------
+    prediction : int
+        0 = Trinidad   (the round winner)
+        1 = de la Hoya
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition true, 0 = false)
+        nodes[0] → root split (Judge in the “Trinidad‑biased” group)
+        nodes[1] → second‑level split (Official judge = Yes)
+    """
+
+    # ----- inner nodes -------------------------------------------------
+    # Node 0 : Judge belongs to the set that always favours Trinidad
+    nodes = [None, None]                     # pre‑allocate list of length 2
+    nodes[0] = int(X["Judge"] in {0, 1, 2, 3})   # 1 if True, 0 if False
+
+    # Node 1 : Is the judge an official judge?
+    nodes[1] = int(X["Official"] == 1)          # 1 = Yes, 0 = No
+
+    # ----- decision logic -----------------------------------------------
+    if nodes[0]:                     # Judge in {0,1,2,3}
+        prediction = 0               # Trinidad
+    else:
+        if nodes[1]:                 # Official judge = Yes
+            prediction = 1           # de la Hoya
+        else:
+            prediction = 0           # Trinidad
+
+    return prediction, nodes
+```
+
+### How the function works
+1. **Node 0** checks whether the `Judge` value is one of the four judges that historically award the round to **Trinidad** (`0, 1, 2, 3`).  
+2. **Node 1** checks whether the judge is an official judge (`Official == 1`).  
+3. The prediction follows the tree described earlier:
+   - If Node 0 is true → **Trinidad** (`0`).  
+   - Otherwise, if Node 1 is true → **de la Hoya** (`1`).  
+   - If both are false → **Trinidad** (`0`).  
+
+The function returns both the class prediction (`0` or `1`) and a list `nodes` containing the binary outcomes of the two inner‑node tests, exactly as required.

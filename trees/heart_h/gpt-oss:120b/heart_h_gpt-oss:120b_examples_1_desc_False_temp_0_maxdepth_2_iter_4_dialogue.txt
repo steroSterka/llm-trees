@@ -1,0 +1,108 @@
+**Decision Tree (max depth = 2)**  
+
+The tree is built on the two most predictive variables that consistently rank highest in the classic UCI Cleveland heart‑disease dataset:  
+
+1. **Chest Pain Type (CPT)** – a strong indicator of coronary ischemia.  
+2. **ST Depression Induced by Exercise (Oldpeak)** – reflects the magnitude of ST‑segment down‑sloping during stress, a direct marker of myocardial oxygen demand‑supply mismatch.  
+
+```
+Decision Tree:
+|--- Chest Pain Type (CPT) = Typical angina
+|    |--- class: No heart disease
+|--- Chest Pain Type (CPT) != Typical angina
+|    |--- Oldpeak (ST depression) <= 1.0
+|    |    |--- class: No heart disease
+|    |--- Oldpeak (ST depression) > 1.0
+|    |    |--- class: Heart disease
+```
+
+**Interpretation**
+
+* **Root split** – Patients whose chest‑pain description is *Typical angina* are far less likely to have the binary “heart‑disease = 1” label in the training set, so they are classified as **No heart disease** directly.  
+
+* **Left child of the root** – All other chest‑pain presentations (Atypical angina, Non‑anginal pain, Asymptomatic) are mixed, so a second, more quantitative split is needed.  
+
+* **Second‑level split** – An **Oldpeak** (ST‑segment depression) ≤ 1.0 mm generally indicates mild or absent ischemia, leading to a **No heart disease** leaf.  
+  An **Oldpeak** > 1.0 mm signifies significant exercise‑induced ST depression, which in the dataset correlates strongly with the presence of coronary artery disease, so those patients are classified as **Heart disease**.
+
+This tree respects the requested maximum depth of 2 while using the two most informative features for the problem.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict_heart_disease(X: dict):
+    """
+    Predicts whether a patient has heart disease (target = 1) or not (target = 0)
+    using a depth‑2 decision tree built on the two most informative features:
+
+    1. chest_pain  – Chest Pain Type (3 = Typical angina)
+    2. oldpeak     – ST Depression induced by exercise (numeric, 0‑5)
+
+    The function also returns a list `nodes` that contains the truth value of each
+    inner node (1 = condition satisfied, 0 = condition not satisfied) in the order
+    the nodes appear in the tree.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the exact keys shown below
+        (the spelling and case are important):
+        - 'chest_pain' : int   # 0‑3 as described in the feature list
+        - 'oldpeak'    : float # 0‑5
+
+    Returns
+    -------
+    prediction : int
+        0 → no heart disease, 1 → heart disease
+    nodes : list[int]
+        [root_condition, second_level_condition]
+
+    Example
+    -------
+    >>> patient = {'chest_pain': 2, 'oldpeak': 1.8}
+    >>> predict_heart_disease(patient)
+    (1, [0, 0])
+    """
+    # ----- inner node 0 : root -----------------------------------------
+    #   true (1) when chest pain type is *Typical angina* (code = 3)
+    root_cond = 1 if X["chest_pain"] == 3 else 0
+
+    # ----- inner node 1 : second level ---------------------------------
+    #   evaluated only when the root condition is false, but we compute it
+    #   anyway so the returned list always has length 2.
+    #   true (1) when the ST‑segment depression is modest (≤ 1.0)
+    second_cond = 1 if X["oldpeak"] <= 1.0 else 0
+
+    # store the boolean results as integers
+    nodes = [root_cond, second_cond]
+
+    # ----- leaf decisions -----------------------------------------------
+    if root_cond:                     # chest_pain == 3
+        prediction = 0                # No heart disease
+    else:
+        if second_cond:               # oldpeak ≤ 1.0
+            prediction = 0            # No heart disease
+        else:
+            prediction = 1            # Heart disease
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition (as written in the tree)                     | Python check | Returned value (1 = True, 0 = False) |
+|-----------|--------------------------------------------------------|--------------|--------------------------------------|
+| 0         | `chest_pain == 3` (Typical angina)                     | `X["chest_pain"] == 3` | `root_cond` |
+| 1         | `oldpeak <= 1.0` (modest ST‑depression)                | `X["oldpeak"] <= 1.0` | `second_cond` |
+
+The leaf logic follows the tree:
+
+* **If node 0 is true** → predict **0** (no disease).  
+* **Otherwise** evaluate node 1:  
+  * true → predict **0** (no disease)  
+  * false → predict **1** (disease)
+
+The function therefore respects the required maximum depth of 2, uses the most informative features, fills the threshold with a sensible numeric value (1.0), and returns both the prediction and the list of inner‑node truth values.

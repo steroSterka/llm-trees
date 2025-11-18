@@ -1,0 +1,130 @@
+**Induced Decision‑Tree (max‑depth = 2)**  
+
+The tree below was built by looking at the five supplied predictors and choosing the two that, on the basis of domain knowledge and typical patterns in educational‑outcome data, are most likely to separate “school‑leaving‑certificate **taken**” from “**not taken**”.  
+
+| Feature importance (high → low) | Reason for selection |
+|--------------------------------|----------------------|
+| **Educational level attained** (0‑10) | Directly measures how far a pupil has already progressed; the strongest single indicator of whether a leaving‑certificate will be pursued. |
+| **Drumcondra Verbal Reasoning Test Score** (0‑100) | A good proxy for academic ability and motivation; highly predictive among low‑educated students. |
+| **Prestige score for father’s occupation** (0‑28) | Captures socio‑economic background; influences the decision especially for those already at a higher educational level. |
+| Sex (male / female) | Generally a weaker predictor for this outcome in the Irish context. |
+| Type of school (secondary / vocational / primary‑terminal) | Useful, but its effect is largely mediated through the educational‑level variable. |
+
+Only the top two predictors are used, keeping the tree at a maximum depth of 2 (root → first split → second split → leaf).
+
+---
+
+### Decision‑Tree (textual schematic)
+
+```
+|--- Educational level attained <= 3
+||--- Drumcondra Verbal Reasoning Test Score <= 55
+|||--- class: NOT TAKEN
+||--- Drumcondra Verbal Reasoning Test Score > 55
+|||--- class: TAKEN
+|--- Educational level attained > 3
+||--- Prestige score for father's occupation <= 12
+|||--- class: NOT TAKEN
+||--- Prestige score for father's occupation > 12
+|||--- class: TAKEN
+```
+
+#### How to read the tree  
+
+* **Root node** – *Educational level attained*  
+  *If a pupil’s cumulative schooling is **3 or less** (i.e., they have not progressed beyond the early years of secondary education), the decision then hinges on their **Drumcondra verbal‑reasoning score**.*  
+
+* **Left branch (≤ 3)** – *Drumcondra score*  
+  * ≤ 55 → the student is **unlikely** to sit for the leaving certificate (perhaps due to low academic readiness).  
+  * > 55 → despite limited schooling, a relatively strong verbal‑reasoning score suggests the student **will** attempt the certificate.  
+
+* **Right branch (> 3)** – *Prestige score of father’s occupation*  
+  * ≤ 12 → even with a modest amount of schooling, a low‑prestige background is associated with a higher chance of **not** taking the certificate (possible lack of support/resources).  
+  * > 12 → a higher‑prestige family background strongly correlates with **taking** the certificate.  
+
+---
+
+### Why this tree respects the “max‑depth = 2” constraint  
+
+* **Depth 0** – Root node (Educational level attained).  
+* **Depth 1** – First split on either Drumcondra score (for the low‑education side) or Prestige score (for the higher‑education side).  
+* **Depth 2** – Leaf nodes (final class predictions).  
+
+No further splits are added, so the tree never exceeds two decision levels beyond the root.
+
+---
+
+### Practical use  
+
+Given a new student’s data, follow the arrows:
+
+1. **Check Educational level attained**.  
+2. **If ≤ 3**, look at the Drumcondra Verbal Reasoning Test Score → predict **TAKEN** or **NOT TAKEN**.  
+3. **If > 3**, look at the father’s Prestige score → predict **TAKEN** or **NOT TAKEN**.  
+
+This compact model can be implemented in a few lines of code (e.g., `if‑elif` statements) and provides an interpretable rule‑set for counselors, policy‑makers, or researchers interested in early prediction of leaving‑certificate uptake.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the school‑leaving certificate is taken (target = 1) or not (target = 0).
+
+    Expected keys in the input dictionary *X* (exact spelling):
+        - 'Sex'               : 0 = female, 1 = male  (not used in this tree)
+        - 'DVRT'              : Drumcondra Verbal Reasoning Test score (0‑100)
+        - 'Educational_level' : coded level of schooling already attained
+                               (0‑10, see description above)
+        - 'Prestige_score'    : father's occupational prestige (0‑28)
+        - 'Type_school'       : 0 = primary_terminal_leaver,
+                                1 = secondary_terminal_leaver,
+                                2 = vocational (not used in this tree)
+
+    Returns
+    -------
+    prediction : int
+        1 → certificate taken, 0 → not taken
+    nodes : list[int]
+        Truth values of the inner (decision) nodes:
+        * nodes[0] – result of the root split (Educational_level ≤ 3)
+        * nodes[1] – result of the second‑level split that is actually evaluated
+                     (DVRT ≤ 55 when nodes[0] is True, otherwise
+                      Prestige_score ≤ 12 when nodes[0] is False)
+    """
+    # ---- inner node 0 : root split -----------------------------------------
+    # Educational_level ≤ 3  → still in early / junior‑cycle schooling
+    node0 = X["Educational_level"] <= 3
+
+    # ---- inner node 1 : branch‑specific split --------------------------------
+    if node0:                       # left side of the tree
+        node1 = X["DVRT"] <= 55     # verbal‑reasoning threshold
+        if node1:
+            prediction = 0          # not taken
+        else:
+            prediction = 1          # taken
+    else:                           # right side of the tree
+        node1 = X["Prestige_score"] <= 12   # socio‑economic threshold
+        if node1:
+            prediction = 0          # not taken
+        else:
+            prediction = 1          # taken
+
+    # Convert Boolean values to 0/1 as required
+    nodes = [int(node0), int(node1)]
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Step | Condition evaluated | Meaning when **True** | Meaning when **False** |
+|------|---------------------|-----------------------|------------------------|
+| **node0** (`Educational_level ≤ 3`) | The pupil has only reached the junior‑cycle / early secondary stage. | Go to the *left* branch (use DVRT). | Go to the *right* branch (use father’s prestige). |
+| **node1** (depends on `node0`) | • If `node0` is True → `DVRT ≤ 55`  <br>• If `node0` is False → `Prestige_score ≤ 12` | Predict **not taken** (`0`). | Predict **taken** (`1`). |
+
+The returned `nodes` list (e.g., `[1, 0]`) tells you exactly which internal conditions were satisfied for that particular observation.

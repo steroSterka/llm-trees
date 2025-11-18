@@ -1,0 +1,130 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Target:* **School‑leaving certificate – taken (Yes) / not taken (No)**  
+
+The two most informative predictors (based on typical information‑gain / Gini‑importance when the model is trained on a representative sample) are:
+
+1. **Educational level attained** – a numeric scale from 0 to 10 that directly reflects how far a person has progressed in formal schooling.  
+2. **Type of school** – categorical (secondary / vocational / primary‑terminal‑leaver).  This captures the institutional pathway and strongly correlates with whether a formal leaving certificate is awarded.
+
+Using only these two features we can build a shallow tree that still captures the bulk of the predictive power.
+
+---
+
+### Tree structure (textual format)
+
+```
+|--- Educational level attained <= 4.5
+|    |--- class: No  (certificate NOT taken)
+|--- Educational level attained > 4.5
+|    |--- Type of school = secondary
+|    |    |--- class: Yes (certificate TAKEN)
+|    |--- Type of school != secondary
+|    |    |--- class: No  (certificate NOT taken)
+```
+
+**Explanation of the splits**
+
+| Split | Reason for selection | Typical decision rule |
+|-------|----------------------|-----------------------|
+| **Root node – Educational level attained ≤ 4.5** | This threshold separates learners who have not yet reached the level at which a national leaving certificate is normally awarded (≤ 4.5 ≈ “below secondary”); they almost always lack a certificate. | If the person’s self‑reported educational attainment is 4 or lower → predict **No**. |
+| **Second‑level split – Type of school = secondary** (applied only when Educational level > 4.5) | Among those who have progressed beyond the early grades, only those enrolled in a *secondary* school program are typically granted a formal leaving certificate. Vocational or primary‑terminal pathways rarely issue the standard certificate. | If the school type is **secondary** → predict **Yes**; otherwise (vocational or primary‑terminal) → predict **No**. |
+
+---
+
+### How to use the tree
+
+1. **Collect the two required features** for the individual you want to classify:  
+   - `Educational level attained` (numeric 0‑10)  
+   - `Type of school` (categorical: *secondary*, *vocational*, *primary terminal leaver*)
+
+2. **Apply the rules** in order:  
+   - If `Educational level attained ≤ 4.5` → **No certificate**.  
+   - Else (`Educational level attained > 4.5`):  
+     - If `Type of school = secondary` → **Certificate taken**.  
+     - If `Type of school` is *vocational* or *primary terminal leaver* → **No certificate**.
+
+---
+
+### Why other features are not used at this depth
+
+- **Sex**, **Drumcondra Verbal Reasoning Test Score**, and **Father’s occupational prestige** do provide some signal, but their marginal information gain after accounting for *educational level* and *school type* is comparatively small.  
+- Adding them would increase tree depth beyond the requested limit of 2, which would complicate the model without a commensurate boost in accuracy for this binary outcome.
+
+---
+
+### Quick sanity check (illustrative)
+
+| Educational level | Type of school | Predicted class |
+|-------------------|----------------|-----------------|
+| 2 (low)           | secondary      | No (fails root) |
+| 7                 | secondary      | Yes (passes both) |
+| 8                 | vocational     | No (fails 2nd split) |
+| 5                 | primary terminal leaver | No (fails 2nd split) |
+| 4.4               | vocational     | No (fails root) |
+
+The tree satisfies the **maximum depth = 2** constraint (root + one additional split) and relies on the two most discriminative features to decide whether a school‑leaving certificate has been taken.
+
+
+#########################
+
+
+**Python implementation**
+
+```python
+def predict(X: dict):
+    """
+    Decision‑tree (max depth = 2) that predicts whether a school‑leaving
+    certificate has been taken (target = 1) or not (target = 0).
+
+    Expected keys in ``X`` (exact spelling):
+        'Sex', 'DVRT', 'Educational_level', 'Prestige_score',
+        'Type_school', 'Target variable', 'target'
+
+    Feature encoding (relevant for this tree):
+        Educational_level : integer 0‑10 (see description in the prompt)
+        Type_school       : 0 = primary_terminal_leaver,
+                            1 = secondary_terminal_leaver,
+                            2 = vocational
+
+    Returns
+    -------
+    prediction : int
+        1 → certificate taken, 0 → not taken
+    nodes : list[int]
+        Truth values of the two inner nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they are evaluated.
+    """
+
+    # ---- inner nodes -------------------------------------------------
+    # Node 0 : Educational_level <= 4.5
+    #          This separates the early‑stage categories (0‑4) from
+    #          the higher‑level categories (5‑10).
+    node0 = X["Educational_level"] <= 4.5
+
+    # Node 1 : Type_school == 1  (secondary terminal leaver)
+    #          Evaluated only when the first split goes to the right branch
+    #          (i.e. Educational_level > 4.5).  We still compute it here so
+    #          the returned list always has two entries.
+    node1 = X["Type_school"] == 1
+
+    # ---- prediction --------------------------------------------------
+    if node0:                     # Educational_level <= 4.5  → almost always NO certificate
+        prediction = 0
+    else:                         # Educational_level > 4.5
+        if node1:                 # secondary school → certificate is taken
+            prediction = 1
+        else:                     # vocational or primary‑terminal → certificate not taken
+            prediction = 0
+
+    # Return prediction together with the truth values of the inner nodes
+    return prediction, [int(node0), int(node1)]
+```
+
+**How it works**
+
+| Node | Condition (truth value)                               | Meaning when true |
+|------|--------------------------------------------------------|-------------------|
+| 0    | `Educational_level <= 4.5`                             | The learner is in a very early stage (levels 0‑4) → **no certificate** |
+| 1    | `Type_school == 1` (secondary terminal leaver)        | The learner is in a secondary school pathway → **certificate taken** (only considered if Node 0 is false) |
+
+The function always returns a list of two integers (`0` or `1`) that indicate whether each inner‑node condition was satisfied, followed by the final binary prediction (`0` = not taken, `1` = taken).

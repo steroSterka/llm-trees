@@ -1,0 +1,147 @@
+**Decision‑Tree Classifier (max depth = 2) – Surgical vs Non‑surgical Colic Lesion**  
+
+*Feature selection:*  
+Using veterinary‑colic literature and expert knowledge, the two variables that most consistently predict the need for surgery are  
+
+1. **Degree of Pain** (none / mild / moderate / severe) – a direct indicator of intestinal compromise.  
+2. **Abdominal Distension** (none / slight / moderate / severe) – reflects the volume of gas/fluid and the likelihood of a strangulating lesion.  
+
+A secondary, still‑important cue is **Nasogastric Reflux Volume** (none, < 1 L, > 1 L).  It is used on the “moderate‑pain” branch to keep the tree within the depth limit while still capturing a key surgical signal.
+
+---
+
+```
+Decision Tree (Depth ≤ 2)
+|--- Degree of Pain = severe
+||--- Abdominal Distension = moderate or severe
+|||--- class: SURGICAL
+||--- Abdominal Distension = none or slight
+|||--- class: NON‑SURGICAL
+|
+|--- Degree of Pain = moderate
+||--- Nasogastric Reflux > 1 liter
+|||--- class: SURGICAL
+||--- Nasogastric Reflux ≤ 1 liter  (none or <1 L)
+|||--- class: NON‑SURGICAL
+|
+|--- Degree of Pain = mild or none
+|||--- class: NON‑SURGICAL
+```
+
+### How to read the tree
+* **Root node** – *Degree of Pain* splits the dataset into three primary groups.  
+* **First level (depth = 1)** – For the two higher‑pain categories we apply a second split (depth = 2) using the most discriminating companion feature (Abdominal Distension for “severe” pain; Nasogastric Reflux for “moderate” pain).  
+* **Leaves (depth = 2 or 1)** – Each leaf assigns the predicted outcome: **SURGICAL** (the horse will likely need an operation) or **NON‑SURGICAL** (medical management is expected to succeed).
+
+### Rationale for the chosen splits
+| Split | Why it matters for surgery |
+|-------|----------------------------|
+| **Degree of Pain (severe)** | Severe, uncontrolled pain is a classic sign of strangulating or ruptured lesions that usually require prompt surgery. |
+| **Abdominal Distension (moderate–severe)** | When severe pain is accompanied by marked distension, the gut is often obstructed or compromised, raising the surgical probability. |
+| **Nasogastric Reflux (> 1 L)** | Large‑volume reflux indicates a blockage or ileus that frequently does not resolve medically. |
+| **Degree of Pain (moderate)** | Moderate pain alone is ambiguous; reflux volume helps discriminate. |
+| **Degree of Pain (mild/none)** | Mild or absent pain together with normal‑appearing abdomen almost always resolves with medical treatment. |
+
+> **Note:** This tree is a *knowledge‑driven* prototype. With a real colic dataset (e.g., the UCI “Horse Colic” data) one would fit a CART model, extract feature importances, and then prune to depth = 2. The structure above mirrors what such a model typically yields, emphasizing pain, distension, and reflux as the top predictors.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(colic: dict):
+    """
+    Predict whether a horse with colic needs surgery (target = 1) or not (target = 0).
+
+    The tree (max depth = 2) uses the three most important variables that
+    are usually available in the UCI “Horse Colic” data set:
+
+        1. pain (Degree of Pain)
+        2. abdominal_distension
+        3. nasogastric_reflux
+
+    Encoding used in the data set (see the description you gave):
+
+        pain:
+            1 = alert
+            2 = continuous severe pain
+            3 = depressed                ← “moderate”
+            4 = intermittent mild pain
+            5 = intermittent severe pain
+
+        abdominal_distension:
+            1 = moderate
+            2 = none
+            3 = severe
+            4 = slight
+
+        nasogastric_reflux:
+            0 = > 1 liter
+            1 = < 1 liter
+            2 = missing
+            3 = none
+
+    The tree logic (written as a series of Boolean inner‑node tests) is:
+
+        if pain is severe (2 or 5):
+            -> look at abdominal distension
+               * moderate (1) or severe (3) → surgery
+               * otherwise                → no surgery
+        elif pain is moderate (3):
+            -> look at nasogastric reflux
+               * > 1 liter (0)            → surgery
+               * otherwise                → no surgery
+        else:   # pain is mild/none (1 or 4)
+            -> no surgery
+
+    The function returns
+        * prediction : 1 = surgery, 0 = no surgery
+        * nodes      : list of the four inner‑node truth values
+                      (1 = condition satisfied, 0 = not satisfied)
+                      order = [pain_is_severe,
+                               abd_dist_mod_or_sev,
+                               pain_is_moderate,
+                               reflux_more_than_1L]
+    """
+    # ------------------------------------------------------------------
+    # 1️⃣  Inner‑node 0 : “pain is severe”
+    pain = colic.get("pain")
+    node0 = int(pain in (2, 5))                     # severe pain ?
+
+    # 2️⃣  Inner‑node 1 : “abdominal distension is moderate or severe”
+    abd_dist = colic.get("abdominal_distension")
+    node1 = int(abd_dist in (1, 3))                # moderate / severe ?
+
+    # 3️⃣  Inner‑node 2 : “pain is moderate (depressed)”
+    node2 = int(pain == 3)                         # moderate pain ?
+
+    # 4️⃣  Inner‑node 3 : “nasogastric reflux > 1 L”
+    reflux = colic.get("nasogastric_reflux")
+    node3 = int(reflux == 0)                       # > 1 L ?
+
+    # ------------------------------------------------------------------
+    # Decision logic (depth ≤ 2)
+    if node0:                     # severe pain branch
+        prediction = 1 if node1 else 0
+    else:                         # not severe pain
+        if node2:                 # moderate pain branch
+            prediction = 1 if node3 else 0
+        else:                     # mild / no pain
+            prediction = 0
+
+    # Return prediction and the list of inner‑node truth values (0/1)
+    nodes = [node0, node1, node2, node3]
+    return prediction, nodes
+```
+
+### How the function works
+| Inner node | Condition evaluated | Meaning (when value = 1) |
+|------------|---------------------|--------------------------|
+| `node0`    | `pain in (2, 5)`    | The horse shows **severe** pain |
+| `node1`    | `abdominal_distension in (1, 3)` | Abdomen is **moderately** or **severely** distended |
+| `node2`    | `pain == 3`         | The horse shows **moderate** (depressed) pain |
+| `node3`    | `nasogastric_reflux == 0` | **> 1 L** of reflux is present |
+
+The list `nodes` always contains four integers (0 or 1) reflecting whether each inner‑node condition is true for the supplied record, regardless of which branch of the tree was actually taken. The final `prediction` follows the tree described above.

@@ -1,0 +1,112 @@
+To build a decision tree classifier with the provided features that determines which of the two boxing fighters (Lewis and Holyfield) won each round, we first need to understand the data. However, you've only provided the feature names without any actual data or target variable information (i.e., who won each round). 
+
+Given this limitation, I'll guide you through a general approach on how one might construct such a decision tree using Python's `sklearn` library, assuming we have a dataset with the features and a target variable indicating the winner of each round.
+
+Let's assume our dataset looks something like this:
+
+| Judge              | Official Judge | Round | Winner  |
+|--------------------|----------------|-------|---------|
+| E. Williams        | yes            | 1     | Lewis   |
+| L. O'Connell       | no             | 2     | Holyfield|
+| ...                | ...            | ...   | ...     |
+
+We want to predict `Winner` based on `Judge`, `Official Judge`, and `Round`.
+
+First, you'd need to preprocess the data (e.g., encode categorical variables like `Judge` and `Winner`). Then, we can proceed to build our decision tree.
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import LabelEncoder
+
+# Assuming 'df' is your DataFrame with the data
+le = LabelEncoder()
+df['Judge'] = le.fit_transform(df['Judge'])
+df['Winner'] = le.fit_transform(df['Winner'])
+df['Official Judge'] = df['Official Judge'].map({'yes': 1, 'no': 0})
+
+X = df[['Judge', 'Official Judge', 'Round']]
+y = df['Winner']
+
+# Split the data into a training set and a test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Initialize and fit the decision tree classifier with max_depth of 2
+clf = DecisionTreeClassifier(max_depth=2, random_state=42)
+clf.fit(X_train, y_train)
+
+# Predict the labels of the test set samples
+y_pred = clf.predict(X_test)
+
+# Evaluate the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+
+# To visualize or get the decision tree rules (as in your example), 
+# you can use sklearn's export_text function or any tree visualization method.
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10,8))
+plot_tree(clf, feature_names=X.columns, class_names=['Lewis', 'Holyfield'], filled=True)
+plt.show()
+```
+
+Please note, without the actual dataset, we cannot directly build and evaluate a decision tree. The example provided is a general guideline on how to approach this problem with Python's `sklearn` library.
+
+To specifically answer your question about building a decision tree based on features you've listed (Judge, Official judge, Round) with a maximum depth of 2, you would need to follow these steps but adjust the preprocessing and feature selection based on your actual dataset.
+
+
+#########################
+
+
+Here's the Python function representing the decision tree for predicting which of the two boxing fighters won each round:
+
+```python
+def predict(X: dict):
+    """
+    Decision Tree to Predict Boxing Round Winner.
+
+    Parameters:
+    X (dict): Dictionary containing features.
+        - Judge (int): Judge identifier (0 = E. Williams, 1 = L. O'Connell, 2 = S. Christodoulu, 3 = HBO-Lederman, 
+                       4 = Sportsticker, 5 = Boxing Times, 6 = Sportsline, 7 = Associated Press, 8 = ESPN, 
+                       9 = Boxing Monthly-Leach)
+        - Official (int): Official judge indicator (1 = Yes, 0 = No)
+        - Round (int): Round number (1 to 12)
+
+    Returns:
+    tuple: A tuple containing the prediction and a list of truth values for inner nodes.
+    """
+    # Initialize inner node results
+    nodes = 2 * [None]
+    
+    # Node conditions based on feature values
+    nodes[0] = X["Judge"] <= 4  # Considering judges up to Sportsticker (inclusive)
+    nodes[1] = X["Round"] <= 6  # Middle rounds
+    
+    prediction = None
+    if nodes[0]:  # If judge is one of the first five
+        if nodes[1]:  # And it's in the early or middle rounds
+            prediction = 1  # Lewis wins
+        else:
+            prediction = 0  # Holyfield wins
+    else:  # For other judges (after Sportsticker)
+        prediction = 0  # Assuming Holyfield has an advantage with these judges
+    
+    return prediction, nodes
+
+# Example usage:
+features = {
+    "Judge": 3,  # HBO-Lederman
+    "Official": 1,  # Yes
+    "Round": 5  # Fifth round
+}
+winner_prediction, node_results = predict(features)
+print(f"Predicted Winner: {'Lewis' if winner_prediction == 1 else 'Holyfield'}")
+print(f"Inner Node Results: {node_results}")
+```
+
+This decision tree assumes that the first five judges (up to Sportsticker) and rounds up to the sixth round favor Lewis, while other conditions might favor Holyfield. Note that these assumptions are arbitrary without actual data or a clear understanding of how different judges and rounds influence the outcome of boxing matches. In real scenarios, you would want to train your decision tree on historical match data to derive meaningful rules based on actual outcomes.

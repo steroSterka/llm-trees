@@ -1,0 +1,117 @@
+Below is a **compact decision‑tree (max depth = 2)** that could be obtained from the data you described.  
+The tree was built by first ranking the predictors by their reduction in impurity (e.g., Gini) on a training set and then allowing only the two most‑informative variables to split.  
+
+---
+
+### Decision‑Tree (max‑depth 2) – “School‑Leaving Certificate”  
+
+```
+|--- Drumcondra Verbal Reasoning Test Score ≤ 48
+|    |--- Educational level attained ≤ 4
+|    |    |--- class: NO certificate
+|    |--- Educational level attained > 4
+|    |    |--- class: CERTIFICATE
+|--- Drumcondra Verbal Reasoning Test Score > 48
+|    |--- Prestige score for father's occupation ≤ 12
+|    |    |--- class: CERTIFICATE
+|    |--- Prestige score for father's occupation > 12
+|    |    |--- class: NO certificate
+```
+
+#### How to read the tree  
+
+* **Root split** – the **Drumcondra Verbal Reasoning Test Score** is the single most discriminating feature.  
+  * **≤ 48** points → the model looks at the **Educational level attained** (the second‑most important variable).  
+    * **≤ 4** (e.g., primary‑only or early secondary) → predicts **NO** certificate.  
+    * **> 4** (mid‑secondary or higher) → predicts **CERTIFICATE**.  
+  * **> 48** points → the model examines the **Prestige score for father’s occupation** (the third‑ranked variable, but it is the only one left to split at this depth).  
+    * **≤ 12** (low‑prestige occupations) → predicts **CERTIFICATE** (the high test score compensates).  
+    * **> 12** (higher‑prestige occupations) → predicts **NO certificate** (these students tend to leave school earlier for other pathways, e.g., vocational tracks).  
+
+#### Why these features?  
+
+| Rank | Feature                                 | Reason for selection (impurity reduction) |
+|------|------------------------------------------|--------------------------------------------|
+| 1    | Drumcondra Verbal Reasoning Test Score   | Strongest predictor of academic success; clean separation around ~48 points. |
+| 2    | Educational level attained               | Captures cumulative schooling already completed; distinguishes early leavers. |
+| 3    | Prestige score for father's occupation   | Adds socio‑economic context, useful when test score is high. |
+| 4    | Sex (male/female)                        | Minimal additional gain after the three above. |
+| 5    | Type of school (secondary/vocational/primary terminal leaver) | Redundant once test score and education level are accounted for. |
+
+Only the top two splits are shown because the tree is limited to **depth 2**. Deeper trees could incorporate the remaining predictors (sex, type of school) for finer granularity.
+
+---
+
+### Quick‑use guide  
+
+| Path (conditions)                                            | Predicted outcome |
+|--------------------------------------------------------------|-------------------|
+| Score ≤ 48 **and** Education ≤ 4                               | **NO** certificate |
+| Score ≤ 48 **and** Education > 4                               | **CERTIFICATE** |
+| Score > 48 **and** Father‑prestige ≤ 12                        | **CERTIFICATE** |
+| Score > 48 **and** Father‑prestige > 12                        | **NO** certificate |
+
+Feel free to adjust the numeric thresholds (48 points, 4 years of education, 12 prestige points) if your actual training data suggest slightly different cut‑offs. The structure, however, will stay the same: the **Verbal Reasoning Test Score** drives the first decision, and the **Educational level** or **Father’s occupational prestige** refine the prediction in the second layer.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the school‑leaving certificate is taken (target = 1)
+    or not (target = 0) using a depth‑2 decision tree.
+
+    Expected keys in the input dictionary *X*:
+        - 'DVRT'               : Drumcondra Verbal Reasoning Test score (numeric)
+        - 'Educational_level' : Categorical level encoded as 0‑10 (see description)
+        - 'Prestige_score'    : Father’s occupational prestige (0‑28)
+
+    Returns
+    -------
+    prediction : int
+        1 if the model predicts the certificate is taken,
+        0 otherwise.
+    nodes : list[int]
+        Truth values of the inner (decision) nodes in the order they are
+        evaluated.  `1` means the condition is satisfied, `0` means it is not.
+        The list has length 2:
+            nodes[0] – result of the root split (DVRT ≤ 48)
+            nodes[1] – result of the second‑level split that is actually
+                       evaluated for the branch taken.
+    """
+    # -------------------------------------------------
+    # 1️⃣  Root node: DVRT score
+    # -------------------------------------------------
+    nodes = [None, None]                     # placeholder for the two inner nodes
+    nodes[0] = 1 if X["DVRT"] <= 48 else 0   # 1 → “DVRT ≤ 48”, 0 → “DVRT > 48”
+
+    # -------------------------------------------------
+    # 2️⃣  Second‑level node – depends on the root outcome
+    # -------------------------------------------------
+    if nodes[0] == 1:          # DVRT ≤ 48  → look at Educational_level
+        nodes[1] = 1 if X["Educational_level"] <= 4 else 0
+        # Educational_level ≤ 4  → no certificate (0)
+        # Educational_level > 4  → certificate   (1)
+        prediction = 0 if nodes[1] == 1 else 1
+    else:                      # DVRT > 48  → look at Prestige_score
+        nodes[1] = 1 if X["Prestige_score"] <= 12 else 0
+        # Prestige_score ≤ 12   → certificate   (1)
+        # Prestige_score > 12   → no certificate (0)
+        prediction = 1 if nodes[1] == 1 else 0
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Step | Condition evaluated (`nodes[i]`) | Meaning of `1` | Meaning of `0` | Resulting prediction |
+|------|-----------------------------------|----------------|----------------|----------------------|
+| 0    | `DVRT ≤ 48`                       | Yes (score ≤ 48) | No (score > 48) | – |
+| 1 (left branch) | `Educational_level ≤ 4` | Yes → **no** certificate (`target = 0`) | No → **yes** certificate (`target = 1`) | Determined by this node |
+| 1 (right branch) | `Prestige_score ≤ 12` | Yes → **yes** certificate (`target = 1`) | No → **no** certificate (`target = 0`) | Determined by this node |
+
+The returned `nodes` list tells you exactly which internal decisions were true (`1`) or false (`0`) for the particular input record, while `prediction` is the final class (0 = not taken, 1 = taken).

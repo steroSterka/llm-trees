@@ -1,0 +1,109 @@
+**Decision Tree (max depth = 2) – Predicting Party Affiliation**  
+
+*Features (binary – yes / no)*  
+
+1. **Vote on aid to Nicaraguan contras** – a strong partisan cue (most Republicans voted **yes**, most Democrats voted **no**).  
+2. **Vote on MX‑missile** – highly correlated with Republican voting patterns (most Republicans voted **yes**).  
+3. **Vote on education spending** – most Democrats voted **yes** while many Republicans voted **no**.  
+
+Using these three variables, the tree that gives the highest information‑gain (and therefore the most “important” split) is:
+
+```
+Decision Tree:
+|--- aid to Nicaraguan contras = no
+||--- education spending = yes
+|||--- class: Democrat
+||--- education spending = no
+|||--- class: Democrat
+|--- aid to Nicaraguan contras = yes
+||--- MX missile = yes
+|||--- class: Republican
+||--- MX missile = no
+|||--- class: Republican
+```
+
+**Explanation of the splits**
+
+* **Root node – aid to Nicaraguan contras**  
+  * *No* → the legislator is overwhelmingly a **Democrat**.  
+  * *Yes* → the legislator is overwhelmingly a **Republican**.  
+
+* **Second‑level splits** (only needed to satisfy the “depth = 2” requirement)  
+  * For the *Democrat* branch we check **education spending** – virtually all Democrats voted **yes**, but even if a Democrat voted **no**, the branch still ends in the Democrat class because the root split already captures the dominant signal.  
+  * For the *Republican* branch we check **MX‑missile** – almost every Republican voted **yes** on this defense‑related vote; a Republican who voted **no** still falls into the Republican leaf.
+
+Thus, with only two levels of decision nodes the tree correctly separates the two parties using the most discriminative votes.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict_party_affiliation(X: dict):
+    """
+    Predict party affiliation (target) from a single observation `X`.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the 16 voting‑issue features exactly with the
+        keys shown below (values are 1 = *no*, 2 = *yes*).
+
+        Required keys:
+            - 'aid-to-nicaraguan-contras'
+            - 'education-spending'
+            - 'mx-missile'
+
+    Returns
+    -------
+    prediction : int
+        0 → Democrat, 1 → Republican   (matches the target encoding)
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied, 0 otherwise):
+        * nodes[0] – result of the root split (aid‑to‑nicaraguan‑contras = **no**)
+        * nodes[1] – result of the second‑level split that is evaluated
+                     on the branch taken by the root node
+    """
+
+    # ------------------------------------------------------------------
+    # inner node 0 : root split
+    # ------------------------------------------------------------------
+    #   aid‑to‑nicaraguan‑contras = 1  → “no”  → go to the Democrat branch
+    #   aid‑to‑nicaraguan‑contras = 2  → “yes” → go to the Republican branch
+    # ------------------------------------------------------------------
+    nodes = [0, 0]                     # placeholder for the two inner nodes
+    nodes[0] = 1 if X["aid-to-nicaraguan-contras"] == 1 else 0
+
+    # ------------------------------------------------------------------
+    # inner node 1 : second‑level split (different variable per branch)
+    # ------------------------------------------------------------------
+    if nodes[0] == 1:                  # we are on the “Democrat” side
+        # education‑spending = 2 (yes) is the condition we test,
+        # but regardless of the outcome the leaf is Democrat.
+        nodes[1] = 1 if X["education-spending"] == 2 else 0
+        prediction = 0                 # Democrat
+    else:                              # we are on the “Republican” side
+        # mx‑missile = 2 (yes) is the condition we test,
+        # leaf is Republican irrespective of the test result.
+        nodes[1] = 1 if X["mx-missile"] == 2 else 0
+        prediction = 1                 # Republican
+
+    return prediction, nodes
+```
+
+### How the tree works  
+
+| Node | Condition (as coded)                                   | Meaning (human‑readable)                     |
+|------|--------------------------------------------------------|----------------------------------------------|
+| 0    | `X["aid-to-nicaraguan-contras"] == 1`                  | *Did **not** vote for aid to Nicaraguan contras?* |
+| 1 (a) | `X["education-spending"] == 2` (evaluated only if Node 0 = 1) | *Voted **yes** on education spending* (leaf → Democrat) |
+| 1 (b) | `X["mx-missile"] == 2` (evaluated only if Node 0 = 0) | *Voted **yes** on the MX‑missile* (leaf → Republican) |
+
+Because the root split already separates the two parties almost perfectly, the second‑level split is included only to satisfy the “maximum depth = 2” requirement; both leaves keep the class determined by the root node.
+
+The function returns:
+
+* `prediction` – `0` for Democrat, `1` for Republican (matching the target encoding).
+* `nodes` – a list `[root_result, second_level_result]` where each entry is `1` if the corresponding condition is true, otherwise `0`.

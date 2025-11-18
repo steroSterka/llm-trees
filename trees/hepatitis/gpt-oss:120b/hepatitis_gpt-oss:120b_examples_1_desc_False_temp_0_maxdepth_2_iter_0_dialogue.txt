@@ -1,0 +1,130 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+
+*Goal: predict **Survive** vs. **Die** for a patient with the clinical variables you listed.  
+The tree uses the two most informative variables (based on typical prognostic importance in liver‑failure / hepatitis studies):*  
+
+* **Bilirubin (mg/dL)** – a direct marker of liver excretory function.  
+* **Prothrombin Time (seconds)** – reflects the liver’s synthetic capacity (coagulation factors).  
+* **Albumin (g/dL)** – another synthetic‑function marker used when bilirubin is already high.*
+
+---
+
+```
+|--- bilirubin (mg/dL) <= 3.0
+||--- prothrombin time (seconds) <= 12
+|||--- class: Survive
+||--- prothrombin time (seconds) > 12
+|||--- class: Die
+|--- bilirubin (mg/dL) > 3.0
+||--- albumin (g/dL) <= 2.5
+|||--- class: Die
+||--- albumin (g/dL) > 2.5
+|||--- class: Survive
+```
+
+### How to read the tree  
+
+1. **First split (root)** – `bilirubin`.  
+   *If the patient’s bilirubin ≤ 3 mg/dL, go to the left branch; otherwise go to the right branch.*
+
+2. **Left branch (`bilirubin ≤ 3`)** – split on `prothrombin time`.  
+   * ≤ 12 s → **Survive**  
+   * > 12 s → **Die**
+
+3. **Right branch (`bilirubin > 3`)** – split on `albumin`.  
+   * ≤ 2.5 g/dL → **Die**  
+   * > 2.5 g/dL → **Survive**
+
+### Why these features?  
+
+| Rank | Feature                | Reason for importance (clinical evidence)                                   |
+|------|------------------------|-----------------------------------------------------------------------------|
+| 1    | **Bilirubin**          | High bilirubin is a core component of the MELD score and strongly predicts mortality. |
+| 2    | **Prothrombin Time**   | Prolonged PT indicates loss of clotting factor production → poor prognosis. |
+| 3    | **Albumin**            | Low albumin reflects diminished synthetic function and correlates with higher death risk. |
+
+The tree respects the **maximum depth of 2** (root → one internal split → leaf) and uses the most prognostically powerful variables to separate patients into *Survive* vs. *Die* groups.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict) -> tuple[int, list[int]]:
+    """
+    Predict whether a patient survives (1) or dies (0) using the
+    tree that was built from the most important clinical variables.
+
+    Tree (max depth = 2)
+
+        if BILIRUBIN ≤ 3.0:
+            if PROTIME ≤ 12  → survive (1)
+            else            → die     (0)
+        else:   # BILIRUBIN > 3.0
+            if ALBUMIN ≤ 2.5 → die     (0)
+            else             → survive (1)
+
+    The function returns:
+        prediction : 1 (live) or 0 (die)
+        nodes      : list of the truth values of the three inner nodes
+                     [root, left‑child, right‑child]
+                     1 → condition satisfied, 0 → not satisfied.
+                     The left‑child is evaluated only when the root is true,
+                     the right‑child only when the root is false.
+    """
+    # ----- inner node evaluations -----
+    # node 0 : root – BILIRUBIN <= 3.0 ?
+    root = 1 if X["BILIRUBIN"] <= 3.0 else 0
+
+    # node 1 : left branch – PROTIME <= 12 ?
+    # evaluated only when root == 1
+    left = 1 if (root == 1 and X["PROTIME"] <= 12) else 0
+
+    # node 2 : right branch – ALBUMIN <= 2.5 ?
+    # evaluated only when root == 0
+    right = 1 if (root == 0 and X["ALBUMIN"] <= 2.5) else 0
+
+    # ----- prediction according to the tree -----
+    if root:                         # BILIRUBIN ≤ 3.0
+        prediction = 1 if left else 0          # PROTIME ≤ 12 ? → live : die
+    else:                            # BILIRUBIN > 3.0
+        prediction = 0 if right else 1         # ALBUMIN ≤ 2.5 ? → die : live
+
+    # Return prediction and the three node truth values (as 0/1 ints)
+    nodes = [root, left, right]
+    return prediction, nodes
+```
+
+**How to use**
+
+```python
+patient = {
+    "AGE": 52,
+    "SEX": 2,
+    "STEROID": 0,
+    "ANTIVIRALS": 1,
+    "FATIGUE": 1,
+    "MALAISE": 0,
+    "ANOREXIA": 0,
+    "LIVER BIG": 1,
+    "LIVER FIRM": 0,
+    "SPLEEN PALPABLE": 0,
+    "SPIDERS": 0,
+    "ASCITES": 0,
+    "VARICES": 0,
+    "BILIRUBIN": 2.4,
+    "ALK PHOSPHATE": 115,
+    "SGOT": 58,
+    "ALBUMIN": 3.1,
+    "PROTIME": 11,
+    "HISTOLOGY": 1
+}
+
+pred, node_vals = predict(patient)
+print("Prediction (1=live, 0=die):", pred)
+print("Node truth values [root, left, right]:", node_vals)
+```
+
+The function follows the exact feature keys you provided, uses clinically‑reasonable thresholds (bilirubin ≤ 3 mg/dL, prothrombin time ≤ 12 s, albumin ≤ 2.5 g/dL), and returns both the class prediction and the boolean outcomes of each internal decision node.

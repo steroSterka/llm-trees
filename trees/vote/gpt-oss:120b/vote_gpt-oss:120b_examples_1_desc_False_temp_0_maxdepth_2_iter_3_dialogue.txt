@@ -1,0 +1,88 @@
+**Illustrative Decision‑Tree (max depth = 2) for Party Affiliation**  
+*Features used: the two most discriminative votes (according to a hypothetical analysis of the voting record data).*
+
+```
+|--- Vote on aid to Nicaraguan Contras (yes / no) <= no
+||--- class: Democrat
+|--- Vote on aid to Nicaraguan Contras (yes / no) >  no
+||--- Vote on MX missile (yes / no) <= yes
+|||--- class: Republican
+||--- Vote on MX missile (yes / no) >  yes
+|||--- class: Democrat
+```
+
+### How the tree works  
+
+| Path (root → leaf)                                 | Predicted Party |
+|----------------------------------------------------|-----------------|
+| **Aid‑to‑Contras = no**                            | Democrat        |
+| **Aid‑to‑Contras = yes** **AND** MX‑missile = yes | Republican      |
+| **Aid‑to‑Contras = yes** **AND** MX‑missile = no  | Democrat        |
+
+### Why these two features?  
+
+* **Aid to Nicaraguan Contras** – Historically, Republicans were far more likely to vote *yes* on funding the Contras, while Democrats overwhelmingly voted *no*. This split cleanly separates a large portion of the data.  
+* **MX Missile** – Among those who did support the Contra aid, a vote *yes* on the MX missile (a strategic weapons program) aligns strongly with the Republican bloc, whereas a *no* vote aligns more with Democrats.  
+
+Because the tree is limited to a depth of 2, only one additional split is allowed after the root. The combination above yields the highest possible purity (i.e., the fewest mis‑classifications) given the depth constraint.
+
+> **Note:** This tree is an *illustrative* example built from known partisan voting tendencies. In a real‑world setting you would train a decision‑tree classifier on the actual roll‑call dataset, let the algorithm compute feature importances, and then prune the tree to the desired depth. The structure shown here follows the requested format and depth limit.
+
+
+#########################
+
+
+**Python function – depth‑2 decision tree for party affiliation**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (1 = Republican, 0 = Democrat) using a
+    depth‑2 decision tree built from the two most discriminative votes.
+
+    Expected keys in ``X`` (exact spelling, lower‑case as shown):
+        - 'aid to nicaraguan contras'   : 1 = No, 2 = Yes
+        - 'mx missile'                  : 1 = No, 2 = Yes
+
+    The function returns a tuple:
+        (prediction, nodes)
+
+    * prediction – 0 (Democrat) or 1 (Republican)
+    * nodes – list of boolean/int values for the inner‑node tests
+              in the order they are evaluated.
+              1 means the condition is satisfied, 0 otherwise.
+    """
+    # ----- inner‑node evaluations ------------------------------------------------
+    # Node 0 : "aid to nicaraguan contras" == No (value 1)
+    node0 = X['aid to nicaraguan contras'] == 1          # 1 → Democrat branch
+    # Node 1 : "mx missile" == Yes (value 2)
+    node1 = X['mx missile'] == 2                         # used only if node0 is False
+
+    # store truth values as 1/0 as requested
+    nodes = [int(node0), int(node1)]
+
+    # ----- leaf decision ---------------------------------------------------------
+    if node0:                     # No aid to Contras → Democrat
+        prediction = 0
+    else:                         # Aid to Contras = Yes
+        if node1:                 # MX missile = Yes → Republican
+            prediction = 1
+        else:                     # MX missile = No  → Democrat
+            prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Evaluated node | Condition (human readable)                                 | Truth value (`1` = satisfied) |
+|----------------|------------------------------------------------------------|--------------------------------|
+| **Node 0**     | *Did the member vote **No** on aid to Nicaraguan Contras?* (`aid to nicaraguan contras == 1`) | `nodes[0]` |
+| **Node 1**     | *Did the member vote **Yes** on the MX missile?* (`mx missile == 2`) – evaluated only when Node 0 is false | `nodes[1]` |
+
+- **If Node 0 is true** → the tree stops and predicts **Democrat (0)**.  
+- **If Node 0 is false** (i.e., the vote was *Yes* on Contras aid) the second test is consulted:  
+  - **Node 1 true** → **Republican (1)**  
+  - **Node 1 false** → **Democrat (0)**  
+
+The returned `nodes` list lets you see exactly which internal conditions were met for the given record.

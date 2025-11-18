@@ -1,0 +1,130 @@
+**Decision Tree (max depth = 2) – Predict Survival (Live vs Die)**  
+
+```
+|--- bilirubin (mg/dL) <= 2.8
+||--- class: Live
+|--- bilirubin (mg/dL) > 2.8
+||--- prothrombin time (seconds) <= 14.5
+|||--- class: Live
+||--- prothrombin time (seconds) > 14.5
+|||--- class: Die
+```
+
+### How the tree was built  
+
+| Rank | Feature (most important) | Why it is important |
+|------|--------------------------|---------------------|
+| 1 | **bilirubin** (mg/dL) | Direct measure of liver dysfunction; higher values are strongly associated with mortality in cirrhosis. |
+| 2 | **prothrombin time** (seconds) | Reflects liver synthetic capacity (clotting factors). Prolonged PT is a well‑known predictor of poor outcome. |
+
+*Other features (age, albumin, ascites, etc.) also influence prognosis, but with a depth limit of 2 only the two strongest predictors can be used.*  
+
+**Interpretation**
+
+* If a patient’s bilirubin ≤ 2.8 mg/dL, the model predicts survival (Live) regardless of any other information.  
+* If bilirubin > 2.8 mg/dL, the model looks at the clotting function:  
+  * PT ≤ 14.5 seconds → still likely to survive.  
+  * PT > 14.5 seconds → high risk of death.
+
+The thresholds (2.8 mg/dL for bilirubin and 14.5 s for PT) are typical cut‑points that separate low‑risk from high‑risk patients in many clinical studies of liver disease and were chosen as representative “most‑important” split points for a depth‑2 tree.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a patient survives (1) or dies (0) using the
+    following tree (max depth = 2):
+
+        if BILIRUBIN <= 2.8:
+            → survive (1)
+        else:
+            if PROTIME <= 14.5:
+                → survive (1)
+            else:
+                → die (0)
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains **exactly** the feature keys listed
+        in the problem statement (case‑ and space‑sensitive).  
+        Only the two features used by the tree are required:
+        - "BILIRUBIN"  (float, mg/dL)
+        - "PROTIME"    (float, seconds)
+
+    Returns
+    -------
+    prediction : int
+        1 = patient survives, 0 = patient dies
+    nodes : list[int]
+        Truth values of the inner nodes (in the order they are evaluated):
+        * nodes[0] – result of the first split (BILIRUBIN <= 2.8)
+        * nodes[1] – result of the second split (PROTIME <= 14.5)
+        Each entry is 1 if the condition is satisfied, otherwise 0.
+    """
+
+    # ----- evaluate inner nodes ------------------------------------------------
+    # node 0 : BILIRUBIN <= 2.8 ?
+    node0 = X["BILIRUBIN"] <= 2.8
+    # node 1 : PROTIME <= 14.5 ?   (evaluated regardless of node0 for simplicity)
+    node1 = X["PROTIME"] <= 14.5
+
+    # store as integers (1 = true, 0 = false)
+    nodes = [int(node0), int(node1)]
+
+    # ----- leaf decision -------------------------------------------------------
+    if node0:                     # BILIRUBIN low → survive
+        prediction = 1
+    else:                         # BILIRUBIN high → look at PROTIME
+        if node1:                 # PROTIME normal → survive
+            prediction = 1
+        else:                     # PROTIME prolonged → die
+            prediction = 0
+
+    return prediction, nodes
+```
+
+### How to use the function
+
+```python
+# Example patient record
+patient = {
+    "AGE": 55,
+    "SEX": 2,
+    "STEROID": 0,
+    "ANTIVIRALS": 1,
+    "FATIGUE": 1,
+    "MALAISE": 0,
+    "ANOREXIA": 0,
+    "LIVER BIG": 1,
+    "LIVER FIRM": 0,
+    "SPLEEN PALPABLE": 0,
+    "SPIDERS": 0,
+    "ASCITES": 0,
+    "VARICES": 0,
+    "BILIRUBIN": 3.2,          # > 2.8
+    "ALK PHOSPHATE": 150,
+    "SGOT": 45,
+    "ALBUMIN": 3.5,
+    "PROTIME": 16.0,          # > 14.5
+    "HISTOLOGY": 1
+}
+
+pred, node_vals = predict(patient)
+print("Prediction (1=live, 0=die):", pred)
+print("Node truth values:", node_vals)   # [0, 0]  → both conditions false
+```
+
+**Output**
+
+```
+Prediction (1=live, 0=die): 0
+Node truth values: [0, 0]
+```
+
+The function follows exactly the requested format: it returns a single binary prediction and a list of `1`/`0` values indicating whether each inner‑node condition was met.

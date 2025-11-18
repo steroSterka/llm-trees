@@ -1,0 +1,97 @@
+**Decision‑Tree (max depth = 2) for Party Affiliation  
+(“Democrat” vs “Republican”)**
+
+```
+|--- Vote on aid to Nicaraguan contras = yes
+||--- class: Republican
+|--- Vote on aid to Nicaraguan contras = no
+||--- Vote on immigration = yes
+|||--- class: Democrat
+||--- Vote on immigration = no
+|||--- class: Republican
+```
+
+### Why these features?
+
+| Rank | Feature                              | Reason it is highly discriminative |
+|------|--------------------------------------|-------------------------------------|
+| 1️⃣   | **Vote on aid to Nicaraguan contras** | During the 1980s‑90s the vote on Contra aid split almost perfectly along party lines – Republicans overwhelmingly voted *yes* (supporting the Reagan‑Bush anti‑communist effort) while Democrats voted *no* (opposing it). |
+| 2️⃣   | **Vote on immigration**               | Immigration‑related votes (e.g., legal‑status, border enforcement) have become a clear partisan cue: Democrats tend to vote *yes* for more liberal immigration policies, Republicans tend to vote *no*. This makes it the next most informative split for the subset that voted “no” on Contra aid. |
+
+### How the tree works
+
+1. **Root node – Contra aid**  
+   - If a legislator voted **yes**, the model assigns **Republican** (the overwhelming majority of Republican‑voting legislators supported the aid).  
+   - If the vote was **no**, the classifier proceeds to the second‑level split.
+
+2. **Second‑level node – Immigration** (only for the “no‑Contra‑aid” group)  
+   - **Yes** → **Democrat** (most Democrats supported more permissive immigration measures).  
+   - **No** → **Republican** (a minority of Republicans also voted against Contra aid but remained conservative on immigration).
+
+The tree stops after two levels, satisfying the “maximum depth = 2” requirement while using the two most partisan‑predictive features.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**  
+*Target*: `target` (1 = Republican, 0 = Democrat)  
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation from the voting record.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the exact feature keys listed below
+        (case‑ and space‑sensitive).  Each vote is encoded as
+        2 = yes, 1 = no.
+
+        Required keys:
+            - 'aid to nicaraguan contras'
+            - 'immigration'
+
+    Returns
+    -------
+    prediction : int
+        1 for Republican, 0 for Democrat.
+    nodes : list[int]
+        Truth values of the inner (decision) nodes in the order they are
+        evaluated.  1 means the condition at that node is satisfied,
+        0 means it is not.
+    """
+
+    # ---------- inner node evaluations ----------
+    # Node 0 : root – did the legislator vote *yes* on aid to Nicaraguan contras?
+    nodes = [0, 0]                       # initialise list of length 2
+    nodes[0] = 1 if X.get('aid to nicaraguan contras') == 2 else 0
+
+    # Node 1 : second level – vote on immigration (only matters when node 0 is 0)
+    nodes[1] = 1 if X.get('immigration') == 2 else 0
+
+    # ---------- leaf decision ----------
+    if nodes[0] == 1:                     # yes on contras aid → Republican
+        prediction = 1
+    else:                                # no on contras aid
+        if nodes[1] == 1:                 # yes on immigration → Democrat
+            prediction = 0
+        else:                             # no on immigration → Republican
+            prediction = 1
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node | Condition (human readable)                     | Code check (`1` = True) |
+|------|------------------------------------------------|--------------------------|
+| 0    | `aid to nicaraguan contras` = **yes** (`2`)    | `nodes[0] = 1 if X['aid to nicaraguan contras']==2 else 0` |
+| 1    | `immigration` = **yes** (`2`)                  | `nodes[1] = 1 if X['immigration']==2 else 0` |
+
+- If **Node 0** is true → prediction **Republican** (`1`).  
+- If **Node 0** is false, we look at **Node 1**:  
+  - true → **Democrat** (`0`)  
+  - false → **Republican** (`1`)
+
+The returned `nodes` list lets you see which split conditions were satisfied for any given input.

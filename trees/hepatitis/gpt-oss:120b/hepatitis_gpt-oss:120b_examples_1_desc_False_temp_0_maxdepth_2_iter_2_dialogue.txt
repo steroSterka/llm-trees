@@ -1,0 +1,113 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+*Goal: predict **Survival** ( “Survive” vs. “Die” ) for a patient with liver disease.*
+
+|--- **bilirubin (mg/dL) ≤ 2.0**  
+||--- **class: Survive**  
+|--- **bilirubin (mg/dL) > 2.0**  
+||--- **prothrombin time (seconds) ≤ 12**  
+|||--- **class: Survive**  
+||--- **prothrombin time (seconds) > 12**  
+|||--- **class: Die**  
+
+### Why these features?
+1. **Bilirubin** – a direct measure of liver excretory function.  In most clinical scoring systems (e.g., Child‑Pugh, MELD) a bilirubin > 2 mg/dL signals a markedly worse prognosis.
+2. **Prothrombin time (PT)** – reflects hepatic synthetic capacity (coagulation factor production).  PT > 12 seconds (or an INR ≈ 1.5) is strongly associated with increased mortality in cirrhosis.
+
+Both variables are continuous, easy to threshold, and together capture the two most critical domains of liver failure (excretory vs. synthetic). Using only these two splits respects the **maximum depth of 2** while still providing a clinically meaningful rule set.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict patient outcome (1 = survive, 0 = die) using a
+    depth‑2 decision tree built on the most important liver‑disease
+    features.
+
+    Tree logic (max depth = 2)
+
+    └─ BILIRUBIN ≤ 2.0 mg/dL
+       ├─ prediction = 1  (survive)
+       └─ BILIRUBIN  > 2.0 mg/dL
+          ├─ PROTIME ≤ 12 s   → prediction = 1  (survive)
+          └─ PROTIME  > 12 s   → prediction = 0  (die)
+
+    The function also returns a list `nodes` that records the truth
+    value of each inner‑node test (1 = condition satisfied, 0 = not
+    satisfied).  The list order follows the order of appearance in the
+    tree:  
+
+    * nodes[0] → result of “BILIRUBIN ≤ 2.0”  
+    * nodes[1] → result of “PROTIME ≤ 12” (evaluated for every record,
+      even if the first node already decided the class).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **all** feature keys exactly as listed
+        in the dataset, e.g. X["BILIRUBIN"], X["PROTIME"], … .
+
+    Returns
+    -------
+    prediction : int
+        1 if the model predicts survival, 0 otherwise.
+    nodes : list[int]
+        Truth values of the inner nodes (length = 2).
+    """
+    # ----- evaluate inner nodes ------------------------------------------------
+    # node 0 : BILIRUBIN <= 2.0  (mg/dL)
+    nodes = [None, None]                     # allocate space for two inner nodes
+    nodes[0] = 1 if X["BILIRUBIN"] <= 2.0 else 0
+
+    # node 1 : PROTIME <= 12  (seconds)
+    # This node is evaluated regardless of the outcome of node 0 so that the
+    # returned list always has two entries.
+    nodes[1] = 1 if X["PROTIME"] <= 12 else 0
+
+    # ----- make the prediction -------------------------------------------------
+    if nodes[0] == 1:               # BILIRUBIN ≤ 2.0 → survive
+        prediction = 1
+    else:                           # BILIRUBIN  > 2.0
+        if nodes[1] == 1:           # PROTIME ≤ 12 → survive
+            prediction = 1
+        else:                       # PROTIME  > 12 → die
+            prediction = 0
+
+    return prediction, nodes
+```
+
+**How to use**
+
+```python
+sample = {
+    "AGE": 55,
+    "SEX": 2,
+    "STEROID": 0,
+    "ANTIVIRALS": 1,
+    "FATIGUE": 1,
+    "MALAISE": 0,
+    "ANOREXIA": 0,
+    "LIVER BIG": 1,
+    "LIVER FIRM": 0,
+    "SPLEEN PALPABLE": 0,
+    "SPIDERS": 0,
+    "ASCITES": 0,
+    "VARICES": 0,
+    "BILIRUBIN": 3.4,
+    "ALK PHOSPHATE": 150,
+    "SGOT": 70,
+    "ALBUMIN": 3.2,
+    "PROTIME": 14,
+    "HISTOLOGY": 1
+}
+
+pred, node_vals = predict(sample)
+print(pred)        # → 0  (model predicts death)
+print(node_vals)   # → [0, 0]  (both conditions false)
+```
+
+The thresholds (`BILIRUBIN ≤ 2.0 mg/dL` and `PROTIME ≤ 12 s`) are chosen because they are clinically strong indicators of liver‑failure severity and therefore the most informative features for a shallow (depth‑2) decision tree.

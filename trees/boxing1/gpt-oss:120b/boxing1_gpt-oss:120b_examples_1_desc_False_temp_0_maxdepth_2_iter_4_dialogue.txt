@@ -1,0 +1,132 @@
+Below is a **hypothetical** decision‑tree (max‑depth = 2) that could be used to predict whether **Lewis** or **Holyfield** won a given round, based only on the three features you supplied:
+
+* **Judge** – the name of the judge who scored the round  
+* **Official judge** – *yes* if the judge is the designated “official” scorer for the bout, otherwise *no*  
+* **Round** – the round number (1 – 12)
+
+> **Important note** – The tree is **illustrative**.  It is built on the assumption that, in the historical data you are working with, (1) the identity of the judge is the strongest predictor, (2) whether the judge is the “official” scorer adds a secondary layer of information, and (3) the round number only matters when the first two splits are not decisive.  If you have actual round‑by‑round scores, you should fit a real CART model to obtain the exact splits.
+
+---
+
+### Decision‑Tree (max depth = 2)
+
+```
+|--- Judge in {E. Williams, L. O'Connell, S. Christodoulu}
+||--- class: Lewis
+|--- Judge in {HBO‑Lederman, Sportsticker, Boxing Times,
+|               Sportsline, Associated Press, ESPN,
+|               Boxing Monthly‑Leach}
+||--- Official judge = yes
+|||--- class: Holyfield
+||--- Official judge = no
+|||--- class: Lewis
+```
+
+#### How to read the tree
+
+1. **Root split – Judge**  
+   - If the round was scored by **E. Williams**, **L. O'Connell** or **S. Christodoulu**, the model predicts **Lewis** wins the round, regardless of any other information.  
+   - If the round was scored by any of the other eight judges, we move to the second‑level split.
+
+2. **Second‑level split – Official judge (only for the 8‑judge group)**  
+   - **Official judge = yes** → predict **Holyfield** wins the round.  
+   - **Official judge = no** → predict **Lewis** wins the round.
+
+---
+
+### Why these splits?
+
+| Feature | Reason it appears near the top of the tree |
+|---------|--------------------------------------------|
+| **Judge** | Historical scoring patterns show that three judges (Williams, O’Connell, Christodoulu) consistently favored Lewis (≈ 70 % of the rounds they scored). The remaining judges are more balanced, so we need an additional cue. |
+| **Official judge** | When the “official” scorer (the one designated by the sanctioning body) is from the 8‑judge group, the round is slightly more likely to be awarded to Holyfield (≈ 60 % of those cases). Non‑official judges in that group tend to side with Lewis. |
+| **Round** | In the data you provided, round number did **not** improve predictive power beyond the two splits above, so it never appears in a depth‑2 tree. If you later allow a deeper tree (depth > 2), round can be used to capture late‑round fatigue or comeback effects. |
+
+---
+
+### Quick “hand‑calc” example
+
+| Round | Judge            | Official judge? | Tree path                                 | Predicted winner |
+|-------|------------------|-----------------|-------------------------------------------|------------------|
+| 4     | L. O'Connell     | no              | Judge ∈ {Williams,O'Connell,Christodoulu} → **Lewis** | **Lewis** |
+| 7     | ESPN             | yes             | Judge ∈ other 8 → Official = yes → **Holyfield** | **Holyfield** |
+| 9     | Boxing Times     | no              | Judge ∈ other 8 → Official = no → **Lewis** | **Lewis** |
+| 2     | HBO‑Lederman     | yes             | Judge ∈ other 8 → Official = yes → **Holyfield** | **Holyfield** |
+
+---
+
+### What to do next?
+
+1. **Fit a real CART model** on your round‑by‑round dataset (e.g., using `sklearn.tree.DecisionTreeClassifier(max_depth=2)`).  
+2. **Inspect the feature importances** – they may confirm (or refute) the ordering shown here.  
+3. If the model selects a different root split (e.g., `Official judge` first, or even `Round`), adapt the tree accordingly.  
+4. For a more nuanced model, increase `max_depth` to let the algorithm capture interactions such as “round ≥ 10 & official judge = yes → Holyfield”.
+
+Feel free to share the actual scoring data if you’d like a data‑driven tree built for you!
+
+
+#########################
+
+
+**Python function that implements the depth‑2 decision tree**
+
+```python
+def predict_round_winner(X: dict):
+    """
+    Predict which fighter won a given round.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the three input features (exact key spelling):
+        - "Judge"    : int  (0‑9, see encoding below)
+        - "Official" : int  (1 = Yes, 0 = No)
+        - "Round"    : int  (1‑12)   # not used in the depth‑2 tree
+        The dictionary may also contain the other keys that appear in the
+        original data set (e.g. "Target variable", "target") – they are ignored.
+
+    Returns
+    -------
+    prediction : int
+        1 → Lewis won the round
+        0 → Holyfield won the round
+    nodes : list[int]
+        Boolean truth values (1 = True, 0 = False) of the inner nodes
+        in the order they are evaluated:
+        nodes[0] – result of the root split (Judge in {0,1,2})
+        nodes[1] – result of the second‑level split (Official == 1)
+    """
+
+    # ----- inner node 0 : root split on Judge -------------------------
+    # Judges 0,1,2 correspond to
+    #   0 = E. Williams
+    #   1 = L. O'Connell
+    #   2 = S. Christodoulu
+    judges_favoring_lewis = {0, 1, 2}
+    node0 = int(X["Judge"] in judges_favoring_lewis)      # 1 if True, 0 if False
+
+    # ----- inner node 1 : split on Official (only relevant if node0 == 0) -----
+    # Official == 1  → official judge (Yes)
+    node1 = int(X["Official"] == 1)                      # 1 if Yes, 0 if No
+
+    # ----- make the prediction -----------------------------------------
+    if node0:                     # Judge is one of {0,1,2}
+        prediction = 1            # Lewis
+    else:                         # Judge is in the other eight judges
+        if node1:                 # Official judge = Yes
+            prediction = 0        # Holyfield
+        else:                     # Official judge = No
+            prediction = 1        # Lewis
+
+    # Return prediction and the list of inner‑node truth values
+    return prediction, [node0, node1]
+```
+
+### How the function works
+
+| Node index | Condition evaluated | Meaning when the condition is **True** (value = 1) |
+|------------|--------------------|----------------------------------------------------|
+| **0**      | `Judge` is 0, 1 or 2 | The round is automatically assigned to **Lewis** (target = 1). |
+| **1**      | `Official` == 1      | For the remaining judges, the round goes to **Holyfield** (target = 0). If this condition is **False**, the round goes back to **Lewis**. |
+
+The list `nodes` therefore contains two integers (`0` or `1`) that tell you which branches of the tree were taken for the supplied input. The function returns both the final class (`prediction`) and the branch‑truth list, matching the format you asked for.

@@ -1,0 +1,147 @@
+Below is a **max‑depth‑2** decision‑tree that could be induced from the voting‑record data if the goal is to separate **Democrats** from **Republicans**.  
+The tree uses the two features that (in most historical roll‑call datasets) show the strongest partisan split:
+
+| Rank | Feature (binary “yes / no”) | Why it’s powerful |
+|------|-----------------------------|-------------------|
+| 1️⃣   | **Vote on aid to Nicaraguan contras** | Republicans overwhelmingly voted **YES** (supporting the Reagan‑era anti‑communist effort), while Democrats voted **NO** (opposing U.S. involvement). |
+| 2️⃣   | **Vote on immigration** (or, alternatively, **Vote on aid to El Salvador**) | Among members who voted the same way on the Contras issue, immigration (or Central‑American aid) further separates the parties: Democrats tend to vote **YES** on more permissive immigration policies, Republicans **NO**. |
+
+Using only these two splits we obtain a tree that classifies every record into a party with a reasonable (often > 80 %) accuracy in the classic “Congressional voting” datasets.
+
+---
+
+## Decision‑Tree (max depth = 2)
+
+```
+|--- Vote on aid to Nicaraguan contras = Yes
+|    |--- class: Republican
+|--- Vote on aid to Nicaraguan contras = No
+|    |--- Vote on immigration = Yes
+|    |    |--- class: Democrat
+|    |--- Vote on immigration = No
+|    |    |--- class: Republican
+```
+
+### How to read the tree
+
+1. **Root node** – *Aid to Nicaraguan Contras*  
+   * If the legislator voted **YES**, the model predicts **Republican** (no further split needed).  
+   * If the legislator voted **NO**, we need a second test.
+
+2. **Second‑level node** – *Immigration* (applied only to those who said **NO** on the Contras vote)  
+   * **YES** → **Democrat**  
+   * **NO**  → **Republican**
+
+---
+
+## Why this tree satisfies the requirements
+
+| Requirement | How it is met |
+|-------------|----------------|
+| **Maximum depth of 2** | The tree has a root (depth 0) and one additional level of splits (depth 1). No branch goes deeper than two edges. |
+| **Uses the most important features** | Feature importance (measured by information gain / Gini reduction on typical roll‑call data) places *Aid to Nicaraguan Contras* first, followed by *Immigration* (or a comparable “Aid to El Salvador” split). |
+| **Binary classification (Democrat / Republican)** | Leaves are labeled only with **Democrat** or **Republican**. |
+| **Readable, same style as the example** | The ASCII‑tree format mirrors the Iris‑dataset example you supplied. |
+
+---
+
+### Quick “what‑if” alternative
+
+If you prefer **Aid to El Salvador** as the second split (it shows a similar partisan pattern), the tree would be:
+
+```
+|--- Vote on aid to Nicaraguan contras = Yes
+|    |--- class: Republican
+|--- Vote on aid to Nicaraguan contras = No
+|    |--- Vote on aid to El Salvador = Yes
+|    |    |--- class: Democrat
+|    |--- Vote on aid to El Salvador = No
+|    |    |--- class: Republican
+```
+
+Both versions respect the depth limit and rely on the two strongest partisan predictors. Feel free to substitute whichever second‑level feature best matches the actual distribution in your dataset.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (1 = Republican, 0 = Democrat) from a
+    congressional‑voting record.
+
+    The tree (max depth = 2) uses the two most‑discriminative binary votes:
+
+        1️⃣  aid-to-nicaraguan-contras  (2 = yes, 1 = no)   ← root node
+        2️⃣  immigration                (2 = yes, 1 = no)   ← second‑level node
+                                                (evaluated only when the root is “no”)
+
+    The function returns:
+        prediction : int            # 1 = Republican, 0 = Democrat
+        nodes      : List[int]      # truth values of the inner nodes
+                                      # nodes[0] → root condition
+                                      # nodes[1] → immigration condition
+    """
+    # -------------------------------------------------
+    # 0 – inner node (root): “aid‑to‑nicaraguan‑contras == yes”
+    # -------------------------------------------------
+    nodes = [0, 0]                     # initialise list of node truth values
+    nodes[0] = int(X["aid-to-nicaraguan-contras"] == 2)
+
+    # -------------------------------------------------
+    # 1 – inner node (second level): “immigration == yes”
+    # -------------------------------------------------
+    nodes[1] = int(X["immigration"] == 2)
+
+    # -------------------------------------------------
+    # Decision logic
+    # -------------------------------------------------
+    if nodes[0]:                     # voted YES on Nicaraguan Contras → Republican
+        prediction = 1
+    else:                            # voted NO on Contras → look at immigration
+        if nodes[1]:                 # YES on immigration → Democrat
+            prediction = 0
+        else:                        # NO on immigration → Republican
+            prediction = 1
+
+    return prediction, nodes
+```
+
+### How it works
+| Node | Condition evaluated | Meaning of `True` (value = 1) |
+|------|--------------------|--------------------------------|
+| `nodes[0]` | `aid-to-nicaraguan-contras == 2` | Legislator **voted YES** on aid to the Nicaraguan Contras → classified as **Republican** |
+| `nodes[1]` | `immigration == 2` | Legislator **voted YES** on immigration (more permissive stance) → classified as **Democrat** (only examined when `nodes[0]` is `False`) |
+
+### Quick test
+
+```python
+sample = {
+    "handicapped-infants": 2,
+    "water-project-cost-sharing": 1,
+    "adoption-of-the-budget-resolution": 2,
+    "physician-fee-freeze": 1,
+    "el-salvador-adi": 1,
+    "religious-groups-in-schools": 2,
+    "anti-satellite-test-ban": 1,
+    "aid-to-nicaraguan-contras": 1,   # NO
+    "mx-missile": 2,
+    "immigration": 2,                # YES
+    "synfuels-corporation-cutback": 1,
+    "education-spending": 2,
+    "superfund-right-to-sue": 1,
+    "crime": 2,
+    "duty-free-exports": 1,
+    "export-administration-act-south-africa": 2,
+    "target": 0,                     # (ground‑truth Democrat)
+    "Target variable": 0
+}
+
+pred, nodes = predict(sample)
+print(pred, nodes)      # → 0  [0, 1]   (Democrat, root = False, immigration = True)
+```
+
+The function follows exactly the format you asked for: a single prediction together with a list of *1/0* values that indicate whether each inner‑node condition is satisfied. Feel free to plug it into any pipeline that supplies a dictionary with the feature keys shown above.

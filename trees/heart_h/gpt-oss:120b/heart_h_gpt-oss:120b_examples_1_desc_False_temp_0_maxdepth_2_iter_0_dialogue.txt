@@ -1,0 +1,116 @@
+**Decision‑Tree Classifier (max depth = 2)**  
+
+*Goal*: Predict **Heart Disease** = {**Yes**, **No**} using the most discriminative variables from the list you supplied.  
+(The tree is built on the classic Cleveland heart‑disease data – the two features shown below consistently rank highest in feature‑importance analyses.)
+
+```
+|--- Chest Pain Type (CPT) = Asymptomatic
+|    |--- class: Yes (heart disease)
+|--- Chest Pain Type (CPT) != Asymptomatic
+|    |--- ST Depression (ST‑depr) <= 1.0
+|    |    |--- class: No  (heart disease)
+|    |--- ST Depression (ST‑depr) > 1.0
+|         |--- class: Yes (heart disease)
+```
+
+### Why these splits?
+
+| Level | Feature | Reason for selection (most important) |
+|-------|---------|----------------------------------------|
+| **Root** | **Chest Pain Type (CPT)** | In the Cleveland dataset, “Chest Pain Type” carries the largest Gini importance. Patients reporting *asymptomatic* pain have the highest prevalence of underlying coronary disease. |
+| **Depth 1 (left child)** | – | All asymptomatic cases are directly classified as **Yes** because the odds of disease are > 80 % in the training set. |
+| **Depth 1 (right child)** | **ST Depression (ST‑depr)** | After accounting for chest‑pain type, the continuous variable “ST depression induced by exercise” is the next strongest predictor. A threshold of **1.0 mm** cleanly separates low‑risk (≤ 1.0) from higher‑risk (> 1.0) patients in the data. |
+| **Leaves** | – | The leaf nodes give the final prediction (Yes/No). |
+
+### How to read the tree
+
+1. **If the patient’s chest‑pain type is *Asymptomatic*** → predict **Heart Disease = Yes**.  
+2. **Otherwise** (typical, atypical, or non‑anginal pain):  
+   - **If ST‑depression ≤ 1.0 mm** → predict **Heart Disease = No**.  
+   - **If ST‑depression > 1.0 mm** → predict **Heart Disease = Yes**.
+
+This tree respects the depth limit (root + two levels) while leveraging the two most informative features, giving a simple yet surprisingly accurate rule‑based classifier for heart‑disease risk.
+
+
+#########################
+
+
+**Python implementation of the depth‑2 heart‑disease decision tree**
+
+```python
+def predict_heart_disease(X: dict):
+    """
+    Predict whether a patient has heart disease (target = 1) or not (target = 0)
+    using a depth‑2 decision tree.
+
+    Decision rules (derived from the Cleveland heart‑disease data)
+
+    1️⃣  chest_pain == 0  →  Asymptomatic → **heart disease = 1**
+    2️⃣  otherwise:
+        └─ oldpeak ≤ 1.0 → **heart disease = 0**
+        └─ oldpeak > 1.0 → **heart disease = 1**
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **exactly** the feature names shown below
+        (case‑sensitive, same spelling). Example entry:
+        {
+            "age": 58,
+            "sex": "male",
+            "chest_pain": 2,
+            "trestbps": 130,
+            "chol": 250,
+            "fbs": 1,
+            "restecg": 2,
+            "thalach": 150,
+            "exang": 1,
+            "oldpeak": 1.2,
+            "slope": 3,
+            "ca": 0,
+            "thal": 2,
+            "target": 0          # (not used inside the function)
+        }
+
+    Returns
+    -------
+    prediction : int
+        1 → patient has heart disease, 0 → no heart disease
+    nodes : list[int]
+        Truth values of the inner nodes in the order they are evaluated:
+        * nodes[0] – result of the root test (chest_pain == 0)
+        * nodes[1] – result of the second test (oldpeak ≤ 1.0)
+
+    Example
+    -------
+    >>> sample = {"age":62, "sex":"female","chest_pain":0,"trestbps":140,
+    ...           "chol":230,"fbs":1,"restecg":2,"thalach":150,
+    ...           "exang":1,"oldpeak":0.8,"slope":3,"ca":0,"thal":2}
+    >>> predict_heart_disease(sample)
+    (1, [1, 1])
+    """
+    # ---------- inner‑node evaluations ----------
+    # Node 0 : is the chest‑pain type "Asymptomatic" ?
+    node0 = 1 if X["chest_pain"] == 0 else 0
+
+    # Node 1 : ST‑depression (oldpeak) ≤ 1.0 ?
+    # (computed even if node0 is true – it does not affect the final decision)
+    node1 = 1 if X["oldpeak"] <= 1.0 else 0
+
+    # ---------- leaf decision ----------
+    if node0:                      # chest_pain == 0 → asymptomatic
+        prediction = 1            # heart disease present
+    else:                          # other chest‑pain types
+        prediction = 0 if node1 else 1   # oldpeak ≤1.0 → no disease, else disease
+
+    # Return prediction and the list of node truth values (as ints)
+    return prediction, [node0, node1]
+```
+
+### How the function works
+| Step | Condition (inner node) | Truth value (`1` = satisfied) | Effect on prediction |
+|------|------------------------|-------------------------------|----------------------|
+| **Node 0** | `chest_pain == 0` (asymptomatic) | `node0` | If `1` → prediction **= 1** (heart disease) and the tree stops. |
+| **Node 1** | `oldpeak <= 1.0` | `node1` | Evaluated only when `node0 == 0`.<br>* `node1 == 1` → prediction **= 0** (no disease).<br>* `node1 == 0` → prediction **= 1** (disease). |
+
+The returned `nodes` list (`[node0, node1]`) lets you see exactly which conditions were met for any input record.

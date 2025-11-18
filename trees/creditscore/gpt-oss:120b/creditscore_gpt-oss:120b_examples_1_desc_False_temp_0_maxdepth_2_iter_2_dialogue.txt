@@ -1,0 +1,95 @@
+**Decision Tree (max depth = 2)**  
+
+```
+|--- number of derogatory reports <= 0
+|    |--- class: Accepted
+|--- number of derogatory reports > 0
+|    |--- income per dependent >= 4.0
+|    |    |--- class: Accepted
+|    |--- income per dependent < 4.0
+|    |    |--- class: Rejected
+```
+
+**Explanation of the splits**
+
+| Feature (importance)                | Reason for selection |
+|-------------------------------------|----------------------|
+| **Number of derogatory reports**    | Strongest predictor of credit risk – applicants with any derogatory mark are far more likely to be denied. |
+| **Income per dependent**            | Among those with derogatory reports, the ability to sustain debt (higher income per dependent) is the next most discriminating factor. |
+
+*All thresholds ( 0  for derogatory reports and 4.0  for income per dependent ) are illustrative and would be tuned on actual credit‑application data.*
+
+
+#########################
+
+
+**Python implementation of the depth‑2 decision tree**
+
+```python
+def predict_credit_application(X: dict):
+    """
+    Predict whether a credit‑application is accepted (1) or rejected (0).
+
+    The tree (max depth = 2) uses the two most important features:
+
+    1️⃣  Derogatory.reports <= 0
+        └─→  if true → Accepted (1)
+        └─→  if false → go to node 2
+
+    2️⃣  Income.per.dependent >= 4.0
+        └─→  if true → Accepted (1)
+        └─→  if false → Rejected (0)
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains **exactly** the following keys
+        (spelling and case must match):
+
+        - 'Age'
+        - 'Income.per.dependent'
+        - 'Monthly.credit.card.exp'
+        - 'Own.home'
+        - 'Self.employed'
+        - 'Derogatory.reports'
+
+        The values are expected to be numeric (int/float) as described in the
+        feature description.
+
+    Returns
+    -------
+    tuple
+        (prediction, nodes)
+
+        *prediction* – 0 (rejected) or 1 (accepted)  
+        *nodes*      – list of length 2 with the truth value of each inner node
+                       (1 = condition satisfied, 0 = condition not satisfied)
+    """
+
+    # ----- inner‑node evaluations ------------------------------------------------
+    # node 0 : Derogatory.reports <= 0
+    node0 = X["Derogatory.reports"] <= 0
+    # node 1 : Income.per.dependent >= 4.0
+    # (computed regardless of node0 so that the returned list always has length 2)
+    node1 = X["Income.per.dependent"] >= 4.0
+
+    # ----- leaf decision ---------------------------------------------------------
+    if node0:                     # Derogatory.reports <= 0  → automatically accepted
+        prediction = 1
+    else:                         # Derogatory.reports > 0
+        if node1:                 # Income.per.dependent >= 4.0 → accepted
+            prediction = 1
+        else:                     # Income.per.dependent < 4.0 → rejected
+            prediction = 0
+
+    # return prediction together with the two node truth values (as 1/0 ints)
+    return prediction, [int(node0), int(node1)]
+```
+
+### How it works
+| Inner node | Condition (as coded)                     | Meaning when **True** (1) |
+|------------|------------------------------------------|---------------------------|
+| `node0`    | `Derogatory.reports <= 0`                | Applicant has **no** derogatory reports → automatically accepted. |
+| `node1`    | `Income.per.dependent >= 4.0`            | For applicants **with** at least one derogatory report, a relatively high income per dependent (≥ $4 k) still permits acceptance. |
+
+The function returns both the final credit‑decision (`prediction`) and a list `nodes` indicating which inner‑node conditions were met (`1`) or not (`0`). This matches the format shown in the example you provided.
