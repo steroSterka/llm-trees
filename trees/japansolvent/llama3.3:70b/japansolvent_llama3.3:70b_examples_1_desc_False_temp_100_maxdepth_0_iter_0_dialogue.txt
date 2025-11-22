@@ -1,0 +1,118 @@
+To build a decision tree classifier for determining whether a company is solvent or not based on the given financial features, we need to select the most informative features and construct the tree. Since this process typically involves actual data analysis (which isn't provided here), I'll create a hypothetical decision tree based on logical deductions about how these financial ratios might influence solvency.
+
+Given features:
+1. Earnings Before Interest and Taxes/Total Assets (EBIT/TA)
+2. Net Income/Total Capital (NI/TC)
+3. Sales/Total Assets (S/TA)
+4. Earnings Before Interest and Taxes/Sales (EBIT/S)
+5. Net Income/Sales (NI/S)
+6. Working Capital/Total Assets (WC/TA)
+7. Equity/Total Liabilities (E/TLiab)
+8. Equity/Total Assets (E/TA)
+
+Decision Tree:
+|--- Equity/Total Liabilities (E/TLiab) <= 1.0
+||--- class: Insolvent
+|--- Equity/Total Liabilities (E/TLiab) > 1.0
+||--- Earnings Before Interest and Taxes/Total Assets (EBIT/TA) <= 0.05
+|||--- class: Insolvent
+||--- Earnings Before Interest and Taxes/Total Assets (EBIT/TA) > 0.05
+|||--- Working Capital/Total Assets (WC/TA) >= 0.2
+|||--- class: Solvent
+|||--- Working Capital/Total Assets (WC/TA) < 0.2
+||||--- Net Income/Sales (NI/S) >= 0.01
+||||--- class: Solvent
+||||--- Net Income/Sales (NI/S) < 0.01
+||||--- class: Insolvent
+
+**Rationale:**
+- **Equity/Total Liabilities (E/TLiab)** is a critical ratio indicating a company's ability to meet its long-term obligations. A value less than or equal to 1 suggests the company has more liabilities than equity, which could indicate insolvency.
+- **Earnings Before Interest and Taxes/Total Assets (EBIT/TA)** measures profitability from operations relative to total assets. Low values might suggest inefficiency in asset utilization, potentially leading to insolvency.
+- **Working Capital/Total Assets (WC/TA)** reflects the liquidity position of a company. A higher ratio suggests better liquidity and ability to meet short-term obligations, indicating solvency.
+- **Net Income/Sales (NI/S)** indicates profitability from sales. Even with sufficient working capital, low or negative profitability could signal underlying issues leading towards insolvency.
+
+This decision tree is a simplified example based on logical deductions about financial health indicators. In practice, the construction of such a tree would require actual data to determine the optimal thresholds for each feature and might involve additional features not listed here.
+
+
+#########################
+
+
+Here's a Python function that implements the decision tree for predicting whether a company is solvent or not based on the provided financial features. The thresholds used are hypothetical and may need to be adjusted based on actual data analysis.
+
+```python
+def predict(X: dict):
+    """
+    Predicts whether a company is solvent (1) or insolvent (0) based on financial features.
+    
+    Parameters:
+    X (dict): Dictionary containing the financial features of the company.
+        - EBIT/TA: Earnings Before Interest and Taxes/Total Assets
+        - NI/TC: Net Income/Total Capital
+        - Sales/TA: Sales/Total Assets
+        - EBIT/Sales: Earnings Before Interest and Taxes/Sales
+        - NI/Sales: Net Income/Sales
+        - WC/TA: Working Capital/Total Assets
+        - Equity/TL: Equity/Total Liabilities
+        - Equity/TA: Equity/Total Assets
+    
+    Returns:
+    prediction (int): 1 if the company is predicted to be solvent, 0 otherwise.
+    nodes (list): List of boolean values representing the truth values of the inner nodes in the decision tree.
+    """
+    
+    # Initialize the list to store the truth values of the inner nodes
+    nodes = [None] * 4
+    
+    # Check if Equity/Total Liabilities is greater than 1.0
+    nodes[0] = X['Equity/TL'] > 1.0
+    
+    # If Equity/TL is greater than 1.0, check EBIT/TA
+    nodes[1] = X['EBIT/TA'] > 0.05 if nodes[0] else None
+    
+    # Check Working Capital/Total Assets if previous conditions are met
+    nodes[2] = X['WC/TA'] >= 0.2 if nodes[0] and nodes[1] else None
+    
+    # Check Net Income/Sales if previous conditions are partially met
+    nodes[3] = X['NI/Sales'] >= 0.01 if (nodes[0] and not nodes[1]) or (nodes[0] and nodes[1] and not nodes[2]) else None
+    
+    # Determine the prediction based on the node values
+    if nodes[0]:
+        if nodes[1]:
+            if nodes[2]:
+                prediction = 1  # Solvent
+            else:
+                if nodes[3]:
+                    prediction = 1  # Solvent
+                else:
+                    prediction = 0  # Insolvent
+        else:
+            if nodes[3]:
+                prediction = 1  # Solvent
+            else:
+                prediction = 0  # Insolvent
+    else:
+        prediction = 0  # Insolvent
+    
+    # Convert boolean values to integers (1 for True, 0 for False) in the nodes list
+    nodes = [int(node) if node is not None else None for node in nodes]
+    
+    return prediction, nodes
+
+# Example usage
+X = {
+    'EBIT/TA': 0.07,
+    'NI/TC': 0.1,
+    'Sales/TA': 2.5,
+    'EBIT/Sales': 0.03,
+    'NI/Sales': 0.02,
+    'WC/TA': 0.3,
+    'Equity/TL': 1.2,
+    'Equity/TA': 0.6
+}
+
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+This code implements a decision tree that checks the financial health of a company based on its `Equity/TL`, `EBIT/TA`, `WC/TA`, and `NI/Sales` ratios. The thresholds used are hypothetical and may need to be adjusted based on actual data analysis. The function returns a prediction (1 for solvent, 0 for insolvent) and a list of boolean values representing the truth values of the inner nodes in the decision tree.

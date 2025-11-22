@@ -1,0 +1,131 @@
+**Decision Tree – Penguin Species (Adelie / Chinstrap / Gentoo)**  
+
+*Features used (in order of importance):* **island**, **flipper length (mm)**, **culmen depth (mm)**, **body mass (g)**.  Sex adds little extra information and is therefore omitted from the splits.
+
+```
+|--- island = Biscoe
+||--- flipper length (mm) <= 210
+|||--- class: Gentoo
+||--- flipper length (mm) > 210
+|||--- class: Gentoo
+|
+|--- island = Dream
+||--- flipper length (mm) <= 190
+|||--- class: Adelie
+||--- flipper length (mm) > 190
+|||--- class: Adelie
+|
+|--- island = Torgersen
+||--- flipper length (mm) <= 200
+|||--- class: Adelie
+||--- flipper length (mm) > 200
+|||--- culmen depth (mm) <= 14.5
+||||--- class: Chinstrap
+||||--- culmen depth (mm) > 14.5
+||||--- body mass (g) <= 4300
+||||||||--- class: Gentoo
+||||--- body mass (g) > 4300
+||||||||--- class: Gentoo
+```
+
+### How to read the tree  
+
+* **First split** – the island where the penguin was observed is the strongest predictor.  
+* **Second split** – within each island, flipper length (in mm) separates the species very cleanly for Biscoe and Dream (almost all Biscoe are Gentoo, almost all Dream are Adelie).  
+* **Third split** – on Torgersen island, flipper length distinguishes Adelie from the larger‑bodied species.  
+* **Fourth split** – for the remaining Torgersen birds, culmen depth separates Chinstrap (shallower bills) from Gentoo (deeper bills).  
+* **Fifth split** – a final body‑mass check refines the Gentoo classification (larger birds are almost always Gentoo).
+
+This tree captures the most informative relationships in the classic Palmer Penguins dataset while keeping the structure simple and easy to follow.
+
+
+#########################
+
+
+**Python implementation of the penguin‑species decision tree**
+
+```python
+def predict_penguin(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo)
+    and return the list of truth‑values for every inner node that is
+    evaluated during the walk through the tree.
+
+    Expected keys in *X* (exact spelling):
+        - 'island'            : 0 = Biscoe, 1 = Dream, 2 = Torgersen
+        - 'culmen_length_mm' : (not used in the tree, but may be present)
+        - 'culmen_depth_mm'  : depth of the culmen in mm
+        - 'flipper_length_mm': flipper length in mm
+        - 'body_mass_g'      : body mass in g
+        - 'sex'               : (ignored by this tree)
+
+    The returned tuple is
+        (prediction, nodes)
+
+    *prediction* – integer code of the species (0/1/2)  
+    *nodes*      – list of booleans (1/0) for each inner‑node condition,
+                  in the order they are evaluated.  Positions that are
+                  never reached stay ``None``.
+    """
+
+    # ------------------------------------------------------------
+    # 0 – first split: which island?
+    # ------------------------------------------------------------
+    nodes = [None] * 8                 # we have at most 8 inner‑node checks
+    nodes[0] = X["island"] == 0        # Biscoe ?
+
+    if nodes[0]:                       # -------- Biscoe ----------
+        # All Biscoe birds in the classic dataset are Gentoo.
+        # The extra test on flipper length is kept only to illustrate a node.
+        nodes[1] = X["flipper_length_mm"] <= 210
+        prediction = 2                 # Gentoo
+    else:
+        # --------------------------------------------------------
+        # 2 – is it Dream island?
+        # --------------------------------------------------------
+        nodes[2] = X["island"] == 1    # Dream ?
+        if nodes[2]:                   # -------- Dream ------------
+            # Almost every Dream bird is Adelie.
+            nodes[3] = X["flipper_length_mm"] <= 190
+            prediction = 0             # Adelie
+        else:
+            # ----------------------------------------------------
+            # 4 – it must be Torgersen island
+            # ----------------------------------------------------
+            nodes[4] = X["island"] == 2    # Torgersen (always true here)
+
+            # 5 – flipper length separates Adelie from the larger species
+            nodes[5] = X["flipper_length_mm"] <= 200
+            if nodes[5]:
+                prediction = 0            # Adelie
+            else:
+                # 6 – culmen depth separates Chinstrap from Gentoo
+                nodes[6] = X["culmen_depth_mm"] <= 14.5
+                if nodes[6]:
+                    prediction = 1        # Chinstrap
+                else:
+                    # 7 – a final body‑mass check (both branches end as Gentoo,
+                    #     but we keep the node to fulfil the “inner‑node” list)
+                    nodes[7] = X["body_mass_g"] <= 4300
+                    prediction = 2        # Gentoo
+
+    # Convert Python booleans to 1/0 as requested
+    nodes = [int(v) if isinstance(v, bool) else v for v in nodes]
+
+    return prediction, nodes
+```
+
+### How it works
+
+| Node index | Condition (inner node)                              | Meaning (True = 1) |
+|------------|------------------------------------------------------|--------------------|
+| 0          | `island == 0` (Biscoe)                               | Biscoe island?     |
+| 1          | `flipper_length_mm <= 210` (only reached for Biscoe) | Small flipper?     |
+| 2          | `island == 1` (Dream)                                | Dream island?      |
+| 3          | `flipper_length_mm <= 190` (only reached for Dream) | Small flipper?     |
+| 4          | `island == 2` (Torgersen)                            | Torgersen island? |
+| 5          | `flipper_length_mm <= 200` (Torgersen branch)       | Adelie‑sized flipper? |
+| 6          | `culmen_depth_mm <= 14.5` (large‑flipper Torgersen)  | Chinstrap‑like bill? |
+| 7          | `body_mass_g <= 4300` (deep‑bill Torgersen)          | Gentoo‑like mass?  |
+
+The function returns the predicted species code together with the list of node‑truth values (filled with `1` for *True*, `0` for *False*, and `None` where a node was never visited).

@@ -1,0 +1,96 @@
+I'll build a decision tree classifier using the most important features. After analyzing the features, I've chosen the following features to include in the decision tree:
+
+* Maximum Heart Rate Achieved (bpm)
+* Chest Pain Type (Typical angina / Atypical angina / Non-anginal pain / Asymptomatic)
+* ST Depression Induced by Exercise Relative to Rest (0 to 5)
+* Number of Major Vessels Colored by Fluoroscopy (0 / 1 / 2 / 3)
+
+Here is the decision tree:
+
+|--- Maximum Heart Rate Achieved <= 120
+||--- Chest Pain Type = Typical angina
+|||--- class: No heart disease
+||--- Chest Pain Type != Typical angina
+|||--- ST Depression Induced by Exercise Relative to Rest <= 1
+||||--- class: No heart disease
+||||--- ST Depression Induced by Exercise Relative to Rest > 1
+|||||--- Number of Major Vessels Colored by Fluoroscopy <= 2
+||||||--- class: Heart disease
+||||||--- Number of Major Vessels Colored by Fluoroscopy > 2
+|||||||--- class: No heart disease
+|--- Maximum Heart Rate Achieved > 120
+||--- Chest Pain Type = Non-anginal pain or Asymptomatic
+|||--- ST Depression Induced by Exercise Relative to Rest <= 1
+||||--- class: No heart disease
+||||--- ST Depression Induced by Exercise Relative to Rest > 1
+|||||--- Number of Major Vessels Colored by Fluoroscopy <= 2
+||||||--- class: Heart disease
+||||||--- Number of Major Vessels Colored by Fluoroscopy > 2
+|||||||--- class: No heart disease
+
+Here's a brief explanation of the decision tree:
+
+* If the maximum heart rate achieved is less than or equal to 120, we look at the chest pain type. If it's typical angina, we classify as no heart disease.
+* If the chest pain type is not typical angina and the ST depression induced by exercise relative to rest is less than or equal to 1, we classify as no heart disease.
+* If the ST depression induced by exercise relative to rest is greater than 1, we look at the number of major vessels colored by fluoroscopy. If it's less than or equal to 2, we classify as heart disease; otherwise, we classify as no heart disease.
+* If the maximum heart rate achieved is greater than 120 and the chest pain type is non-anginal pain or asymptomatic, we look at the ST depression induced by exercise relative to rest. If it's less than or equal to 1, we classify as no heart disease; otherwise, we follow the same logic as before.
+
+Note that this decision tree is not a perfect classifier and may have some errors. It's essential to validate the performance of the model using metrics such as accuracy, precision, recall, and F1-score on a test dataset.
+
+
+#########################
+
+
+Here's the Python function that implements the decision tree based on the features you provided:
+
+```python
+def predict(X: dict):
+    nodes = 7 * [None]
+    
+    # Node 0: Maximum Heart Rate Achieved <= 120
+    nodes[0] = X["thalach"] <= 120
+    
+    # Node 1: Chest Pain Type != Typical angina (3)
+    nodes[1] = X["chest_pain"] != 3
+    
+    # Node 2: ST Depression Induced by Exercise Relative to Rest > 1
+    nodes[2] = X["oldpeak"] > 1
+    
+    # Node 3: Number of Major Vessels Colored by Fluoroscopy <= 2
+    nodes[3] = X["ca"] <= 2
+    
+    # Node 4: Chest Pain Type == Non-anginal pain or Asymptomatic (0, 2)
+    nodes[4] = X["chest_pain"] in [0, 2]
+    
+    # Node 5: ST Depression Induced by Exercise Relative to Rest > 1 (second instance)
+    nodes[5] = X["oldpeak"] > 1
+    
+    # Node 6: Number of Major Vessels Colored by Fluoroscopy <= 2 (second instance)
+    nodes[6] = X["ca"] <= 2
+
+    if not nodes[0]:
+        if nodes[4]:
+            if nodes[5]:
+                if nodes[6]:
+                    prediction = 1
+                else:
+                    prediction = 0
+            else:
+                prediction = 0
+        else:
+            prediction = 0
+    elif nodes[0]:
+        if X["chest_pain"] == 3:
+            prediction = 0
+        elif nodes[2]:
+            if nodes[3]:
+                prediction = 1
+            else:
+                prediction = 0
+        else:
+            prediction = 0
+    
+    return prediction, [int(x) for x in nodes]
+```
+
+This function uses the decision tree rules to make a prediction based on the input features. It returns both the prediction (0 or 1) and a list of truth values for each inner node in the decision tree. The truth values are represented as integers (0 or 1), where 1 indicates that the condition was satisfied, and 0 otherwise.

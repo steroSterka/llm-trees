@@ -1,0 +1,161 @@
+**Decision‑Tree Classifier – Credit‑Application Decision**  
+
+Features considered  
+- **age** (years)  
+- **income per dependent** (in $ k, range 1.5 – 10)  
+- **monthly credit‑card expenses** (USD)  
+- **owning a home** (yes / no)  
+- **self‑employed** (yes / no)  
+- **number of derogatory reports** (0, 1, 2, …)  
+
+The tree below follows the “most‑important‑first” principle (derived from typical credit‑scoring studies: **derogatory reports → income per dependent → credit‑card utilization → home ownership**).  
+The thresholds are illustrative; they would be tuned on real data.
+
+```
+|--- number of derogatory reports <= 0
+||--- income per dependent (k$) >= 4.0
+|||--- monthly credit‑card expenses <= 500
+||||--- class: accepted
+|||--- monthly credit‑card expenses > 500
+||||--- class: rejected
+||--- income per dependent (k$) < 4.0
+|||--- class: rejected
+|--- number of derogatory reports > 0
+||--- number of derogatory reports <= 2
+|||--- owning a home = yes
+||||--- class: accepted
+|||--- owning a home = no
+||||--- class: rejected
+||--- number of derogatory reports > 2
+|||--- class: rejected
+```
+
+### How to read the tree  
+
+1. **First split – Derogatory reports**  
+   *If the applicant has **no** derogatory reports, we move to the right branch; otherwise we evaluate the severity of the reports.*
+
+2. **Zero‑report branch** – **Income per dependent**  
+   - **≥ 4 k$** → good income relative to household size.  
+     *Next we check credit‑card usage.*  
+   - **< 4 k$** → income too low → **reject**.  
+
+3. **Income‑high branch** – **Monthly credit‑card expenses**  
+   - **≤ $500** → spending is modest relative to income → **accept**.  
+   - **> $500** → high utilization → **reject**.  
+
+4. **One‑or‑two‑report branch** – **Home ownership**  
+   - **Owns a home** (yes) → asset buffer, **accept**.  
+   - **Does not own a home** → higher risk, **reject**.  
+
+5. **Three‑or‑more‑report branch** → **reject** (risk is too high regardless of other factors).  
+
+### Why these features are placed where they are  
+
+| Rank | Feature                | Reason for priority in the tree |
+|------|------------------------|---------------------------------|
+| 1    | **Number of derogatory reports** | Direct, legally‑recorded indicator of past credit problems; strongest predictor of future default. |
+| 2    | **Income per dependent**          | Captures repayment capacity; higher per‑person income means more cash flow to service debt. |
+| 3    | **Monthly credit‑card expenses**  | A proxy for credit‑utilization; high expenses relative to income signal over‑extension. |
+| 4    | **Owning a home**                 | Home equity provides collateral and reflects financial stability. |
+| 5    | **Age** (not used in final splits) | Younger applicants are statistically riskier, but its effect is weaker once the above factors are accounted for. |
+| 6    | **Self‑employed**                 | May affect income stability, but the impact is captured indirectly by income per dependent. |
+
+---
+
+**Result:**  
+- **Accepted** → applicant passes all high‑risk checks (clean credit history, sufficient income, modest credit‑card use, and/or home ownership).  
+- **Rejected** → any red flag in the hierarchy (derogatory reports, low income, high credit‑card spend, or lack of home equity) triggers a denial.  
+
+The tree can be exported to any standard decision‑tree format (e.g., scikit‑learn’s `export_text`) for integration into a credit‑scoring system. Adjust the numeric thresholds (`4.0 k$`, `$500`, etc.) based on your institution’s historical data to optimize precision/recall trade‑offs.
+
+
+#########################
+
+
+**Python implementation of the credit‑approval decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a credit‑application is accepted (1) or rejected (0).
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the following keys (spelling exactly as
+        shown in the data description):
+            - 'Age'
+            - 'Income.per.dependent'          # float, 1.5 … 10 (k$ per dependent)
+            - 'Monthly.credit.card.exp'       # float, dollars
+            - 'Own.home'                      # 1 = yes, 0 = no
+            - 'Self.employed'                 # 1 = yes, 0 = no   (not used in the tree)
+            - 'Derogatory.reports'            # integer (0,1,2,…)
+
+    Returns
+    -------
+    prediction : int
+        1 → credit accepted, 0 → credit rejected
+    nodes : list[int]
+        Truth values of the inner‑node tests (1 = condition satisfied,
+        0 = condition not satisfied).  The order follows the tree layout:
+
+        0 – Derogatory.reports ≤ 0
+        1 – Income.per.dependent ≥ 4.0 (k$)
+        2 – Monthly.credit.card.exp ≤ 500 ($)
+        3 – Derogatory.reports ≤ 2
+        4 – Own.home == 1
+    """
+    # ------------------------------------------------------------------ #
+    # 1️⃣  Evaluate the five inner‑node conditions (store 1 / 0)
+    # ------------------------------------------------------------------ #
+    nodes = [0] * 5
+
+    # node 0 : clean credit history ?
+    nodes[0] = 1 if X['Derogatory.reports'] <= 0 else 0
+
+    # node 1 : sufficient income per dependent ?
+    nodes[1] = 1 if X['Income.per.dependent'] >= 4.0 else 0
+
+    # node 2 : modest credit‑card usage ?
+    nodes[2] = 1 if X['Monthly.credit.card.exp'] <= 500 else 0
+
+    # node 3 : only a few derogatory reports (1‑2) ?
+    nodes[3] = 1 if X['Derogatory.reports'] <= 2 else 0
+
+    # node 4 : does the applicant own a home ?
+    nodes[4] = 1 if X['Own.home'] == 1 else 0
+
+    # ------------------------------------------------------------------ #
+    # 2️⃣  Follow the tree to obtain the final prediction
+    # ------------------------------------------------------------------ #
+    if nodes[0]:                     # Derogatory.reports <= 0
+        if nodes[1]:                 # Income.per.dependent >= 4.0
+            if nodes[2]:             # Monthly.credit.card.exp <= 500
+                prediction = 1      # accepted
+            else:
+                prediction = 0      # rejected – high spending
+        else:
+            prediction = 0          # rejected – low income
+    else:                            # Derogatory.reports > 0
+        if nodes[3]:                 # Derogatory.reports <= 2
+            if nodes[4]:             # Own.home == 1
+                prediction = 1      # accepted – asset buffer
+            else:
+                prediction = 0      # rejected – no home equity
+        else:
+            prediction = 0          # rejected – 3 or more reports
+
+    return prediction, nodes
+```
+
+### How it works
+| Node index | Condition (checked)                     | Meaning when the node value = 1 |
+|-----------|------------------------------------------|---------------------------------|
+| 0 | `Derogatory.reports <= 0` | Applicant has **no** past derogatory reports |
+| 1 | `Income.per.dependent >= 4.0` | Income per dependent is **≥ 4 k$** (good repayment capacity) |
+| 2 | `Monthly.credit.card.exp <= 500` | Credit‑card spend is **≤ $500** (moderate utilization) |
+| 3 | `Derogatory.reports <= 2` | Applicant has **1‑2** derogatory reports (still tolerable) |
+| 4 | `Own.home == 1` | Applicant **owns a home** (provides collateral) |
+
+The function returns both the binary decision (`prediction`) and the list `nodes` so you can see which branches of the tree were taken for any given applicant.

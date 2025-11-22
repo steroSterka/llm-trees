@@ -1,0 +1,86 @@
+A boxing-themed decision tree!
+
+Before I induce the decision tree, I'll clarify some assumptions:
+
+* The target variable is the winner of each round, which can be either "Trinidad" or "de la Hoya".
+* The features you provided are:
+	+ Judge: a categorical feature representing the judge's name.
+	+ Offical judge: a binary feature indicating whether the judge is an official judge or not.
+	+ Round: a numerical feature representing the round number (1 to 12).
+
+Using these features, I'll induce a decision tree classifier. Here it is:
+
+|--- Official judge == yes
+||--- Judge in [G. Hamada, B. Logist, J. Roth]
+||||--- Round <= 6
+|||||--- class: Trinidad
+||||--- Round > 6
+|||||--- class: de la Hoya
+||--- Judge not in [G. Hamada, B. Logist, J. Roth]
+||||--- Round <= 3
+|||||--- class: Trinidad
+||||--- Round > 3
+|||||--- class: de la Hoya
+|--- Official judge == no
+||--- Round <= 9
+|||--- class: Trinidad
+||--- Round > 9
+|||--- class: de la Hoya
+
+This decision tree uses the following features in this order:
+
+1. Official judge (yes/no)
+2. Judge (categorical, with specific judges grouped together)
+3. Round (numerical)
+
+The tree suggests that the official judges' scores are more predictive of the round winner than the non-official judges'. Within the official judges, certain judges (G. Hamada, B. Logist, and J. Roth) tend to favor Trinidad in earlier rounds and de la Hoya in later rounds. The non-official judges seem to slightly favor Trinidad overall.
+
+Please note that this decision tree is based on a limited set of features and might not reflect the actual outcome of the boxing match.
+
+
+#########################
+
+
+Here is the Python function that implements the decision tree:
+
+```python
+def predict(X: dict):
+    nodes = 5 * [None]
+    
+    # Node 0: Official judge
+    nodes[0] = X["Official"] == 1
+    
+    # Node 1: Judge (if official)
+    if nodes[0]:
+        nodes[1] = X["Judge"] in [0, 1, 2]
+    else:
+        nodes[1] = False
+    
+    # Node 2: Round (if official and judge is one of the selected judges)
+    if nodes[0] and nodes[1]:
+        nodes[2] = X["Round"] <= 6
+    elif nodes[0] and not nodes[1]:
+        nodes[2] = X["Round"] <= 3
+    else:
+        nodes[2] = False
+    
+    # Node 3: Round (if non-official)
+    if not nodes[0]:
+        nodes[3] = X["Round"] <= 9
+    else:
+        nodes[3] = False
+    
+    # Node 4 is not used in this tree
+    
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 0 if nodes[2] else 1
+        else:
+            prediction = 0 if X["Round"] <= 3 else 1
+    else:
+        prediction = 0 if nodes[3] else 1
+    
+    return prediction, [int(node) for node in nodes[:4]]
+```
+
+In this function, I've used the same logic as in the decision tree. The `nodes` list contains the truth values of each inner node, where `True` is represented by `1` and `False` by `0`. The `prediction` variable stores the final class label (`0` for Trinidad or `1` for de la Hoya).

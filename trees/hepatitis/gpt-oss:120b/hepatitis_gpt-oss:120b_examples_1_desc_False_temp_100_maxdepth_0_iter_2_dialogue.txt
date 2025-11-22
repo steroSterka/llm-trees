@@ -1,0 +1,185 @@
+**Induced Decision‑Tree Classifier**  
+*Goal: predict **Survive** vs **Die** for a patient with liver disease*  
+
+```
+|--- bilirubin (mg/dL) <= 3.0
+||--- prothrombin time (seconds) <= 15
+|||--- ascites = no
+||||--- class: Survive
+|||--- ascites = yes
+||||--- class: Die
+||--- prothrombin time (seconds) > 15
+|||--- albumin (g/dL) >= 3.5
+||||--- class: Survive
+|||--- albumin (g/dL) < 3.5
+||||--- class: Die
+|--- bilirubin (mg/dL) > 3.0
+||--- age (years) <= 55
+|||--- steroid use = yes
+||||--- class: Survive
+|||--- steroid use = no
+||||--- class: Die
+||--- age (years) > 55
+|||--- prothrombin time (seconds) > 18
+||||--- class: Die
+|||--- prothrombin time (seconds) <= 18
+||||--- class: Survive
+```
+
+### How the tree was built (high‑level reasoning)
+
+| Rank | Feature (type)                | Why it often ends up near the top of a tree |
+|------|------------------------------|--------------------------------------------|
+| 1    | **Bilirubin** (continuous)   | Direct measure of liver excretory failure; strong predictor of mortality. |
+| 2    | **Prothrombin time** (continuous) | Reflects synthetic function of the liver; prolonged PT signals poor prognosis. |
+| 3    | **Ascites** (yes/no)         | Clinical sign of portal hypertension & decompensation. |
+| 4    | **Albumin** (continuous)     | Low albumin indicates loss of synthetic capacity and poor nutritional state. |
+| 5    | **Age** (continuous)         | Older patients have less physiologic reserve. |
+| 6    | **Steroid use** (yes/no)     | In selected cases steroids can improve short‑term survival; absence may signal untreated severe disease. |
+
+*Continuous thresholds (e.g., bilirubin ≤ 3 mg/dL, PT ≤ 15 s) are typical cut‑points that separate low‑risk from high‑risk groups in many published liver‑failure scoring systems (e.g., MELD, Child‑Pugh). The exact numbers would be tuned on real data, but they illustrate the hierarchy of importance.*
+
+### How to read the tree
+
+- Start at the root node (bilirubin).  
+- Follow the “yes”/“no” (or ≤/>) branch that matches the patient’s value.  
+- Continue down until you reach a leaf node that gives the predicted outcome (**Survive** or **Die**).
+
+*This tree is a compact, interpretable model that uses the most clinically informative variables for predicting short‑term mortality in liver disease.*
+
+
+#########################
+
+
+**Python implementation of the decision‑tree classifier**
+
+```python
+def predict(patient: dict):
+    """
+    Predict survival for a patient with liver disease.
+
+    Parameters
+    ----------
+    patient : dict
+        Dictionary that must contain the **exact** keys (case‑sensitive) listed
+        below.  Values follow the encoding described in the prompt.
+
+        Required keys
+        -------------
+        'AGE', 'SEX', 'STEROID', 'ANTIVIRALS', 'FATIGUE', 'MALAISE',
+        'ANOREXIA', 'LIVER BIG', 'LIVER FIRM', 'SPLEEN PALPABLE',
+        'SPIDERS', 'ASCITES', 'VARICES', 'BILIRUBIN', 'ALK PHOSPHATE',
+        'SGOT', 'ALBUMIN', 'PROTIME', 'HISTOLOGY'
+
+    Returns
+    -------
+    prediction : int
+        1 → patient survives (live)  
+        0 → patient dies
+    nodes : list[int]
+        Truth values of the inner‑node tests, in the order they appear in the
+        tree (1 = condition satisfied, 0 = condition not satisfied).
+
+    Tree structure (for reference)
+    --------------------------------
+    |--- BILIRUBIN <= 3.0
+    ||--- PROTIME <= 15
+    |||--- ASCITES == 0          → Survive
+    |||--- ASCITES == 1          → Die
+    ||--- PROTIME > 15
+    |||--- ALBUMIN >= 3.5        → Survive
+    |||--- ALBUMIN < 3.5         → Die
+    |--- BILIRUBIN > 3.0
+    ||--- AGE <= 55
+    |||--- STEROID == 1          → Survive
+    |||--- STEROID == 0          → Die
+    ||--- AGE > 55
+    |||--- PROTIME > 18          → Die
+    |||--- PROTIME <= 18         → Survive
+    """
+    # ------------------------------------------------------------------ #
+    # 1. Evaluate every inner‑node condition once and store the result.
+    # ------------------------------------------------------------------ #
+    nodes = [None] * 7                     # 7 inner nodes in the tree
+
+    # node 0 : root – bilirubin level
+    nodes[0] = 1 if patient["BILIRUBIN"] <= 3.0 else 0
+
+    # node 1 : prothrombin time (used only when bilirubin ≤ 3)
+    nodes[1] = 1 if patient["PROTIME"] <= 15 else 0
+
+    # node 2 : ascites (used only when PROTIME ≤ 15)
+    nodes[2] = 1 if patient["ASCITES"] == 0 else 0
+
+    # node 3 : albumin (used only when PROTIME > 15)
+    nodes[3] = 1 if patient["ALBUMIN"] >= 3.5 else 0
+
+    # node 4 : age (used only when bilirubin > 3)
+    nodes[4] = 1 if patient["AGE"] <= 55 else 0
+
+    # node 5 : steroid therapy (used only when AGE ≤ 55)
+    nodes[5] = 1 if patient["STEROID"] == 1 else 0
+
+    # node 6 : prothrombin time > 18 (used only when AGE > 55)
+    nodes[6] = 1 if patient["PROTIME"] > 18 else 0
+
+    # ------------------------------------------------------------------ #
+    # 2. Follow the tree using the previously‑computed node values.
+    # ------------------------------------------------------------------ #
+    if nodes[0]:                     # BILIRUBIN <= 3.0
+        if nodes[1]:                 # PROTIME <= 15
+            if nodes[2]:             # ASCITES == 0
+                prediction = 1       # Survive
+            else:                    # ASCITES == 1
+                prediction = 0       # Die
+        else:                        # PROTIME > 15
+            if nodes[3]:             # ALBUMIN >= 3.5
+                prediction = 1
+            else:
+                prediction = 0
+    else:                            # BILIRUBIN > 3.0
+        if nodes[4]:                 # AGE <= 55
+            if nodes[5]:             # STEROID == 1
+                prediction = 1
+            else:                    # STEROID == 0
+                prediction = 0
+        else:                        # AGE > 55
+            if nodes[6]:             # PROTIME > 18
+                prediction = 0
+            else:                    # PROTIME <= 18
+                prediction = 1
+
+    return prediction, nodes
+```
+
+### How to use the function
+
+```python
+sample_patient = {
+    'AGE': 48,
+    'SEX': 2,                # male
+    'STEROID': 1,
+    'ANTIVIRALS': 0,
+    'FATIGUE': 0,
+    'MALAISE': 0,
+    'ANOREXIA': 0,
+    'LIVER BIG': 0,
+    'LIVER FIRM': 0,
+    'SPLEEN PALPABLE': 0,
+    'SPIDERS': 0,
+    'ASCITES': 0,
+    'VARICES': 0,
+    'BILIRUBIN': 2.1,
+    'ALK PHOSPHATE': 150,
+    'SGOT': 45,
+    'ALBUMIN': 4.0,
+    'PROTIME': 12,
+    'HISTOLOGY': 1
+}
+
+prediction, node_truths = predict(sample_patient)
+print("Prediction (1=survive, 0=die):", prediction)
+print("Inner‑node truth values:", node_truths)
+```
+
+The function returns both the **binary prediction** (`1` = patient survives, `0` = patient dies) and a list of the seven inner‑node evaluations, allowing you to trace exactly which decisions led to the final outcome.

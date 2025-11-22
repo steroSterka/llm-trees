@@ -1,0 +1,239 @@
+Below is a **sample decision‑tree rule‑set** that classifies a company as **Solvent** or **Insolvent** using the eight financial ratios you listed.  
+The structure mirrors the style of the Iris‑tree you showed (vertical bars and “|---” for each split).  
+
+> **NOTE** – Because I don’t have your actual dataset, the split‑points (thresholds) are illustrative.  In a real‑world project you would fit the tree to your data (e.g., with `sklearn.tree.DecisionTreeClassifier`) and the algorithm would choose the optimal thresholds that maximise information gain (or Gini impurity reduction).  The tree below reflects the **relative importance** that financial‑analysis literature usually assigns to these ratios:  
+> 1. **Equity‑to‑Total‑Assets** (capital adequacy)  
+> 2. **EBIT‑to‑Total‑Assets** (operating profitability)  
+> 3. **Working‑Capital‑to‑Total‑Assets** (short‑term liquidity)  
+> 4. **Net‑Income‑to‑Total‑Capital** (overall profitability)  
+> 5. **Sales‑to‑Total‑Assets** (asset‑turnover)  
+> 6. **Equity‑to‑Total‑Liabilities** (leverage)  
+> 7. **EBIT‑to‑Sales** (operating margin)  
+> 8. **Net‑Income‑to‑Sales** (net margin)  
+
+---
+
+### Decision‑Tree (Solvency)
+
+```
+|--- Equity/Total Assets <= 0.30
+|    |--- Working Capital/Total Assets <= 0.08
+|    |    |--- class: Insolvent
+|    |
+|    |--- Working Capital/Total Assets > 0.08
+|         |--- EBIT/Total Assets <= 0.04
+|         |    |--- class: Insolvent
+|         |
+|         |--- EBIT/Total Assets > 0.04
+|              |--- Net Income/Total Capital <= 0.06
+|              |    |--- class: Insolvent
+|              |
+|              |--- Net Income/Total Capital > 0.06
+|                   |--- class: Borderline*   (needs further review)
+|
+|--- Equity/Total Assets > 0.30
+     |--- Net Income/Total Capital > 0.08
+     |    |--- class: Solvent
+     |
+     |--- Net Income/Total Capital <= 0.08
+          |--- Sales/Total Assets > 0.55
+          |    |--- class: Solvent
+          |
+          |--- Sales/Total Assets <= 0.55
+               |--- Equity/Total Liabilities > 1.20
+               |    |--- class: Solvent
+               |
+               |--- Equity/Total Liabilities <= 1.20
+                    |--- EBIT/Sales > 0.12
+                    |    |--- class: Solvent
+                    |
+                    |--- EBIT/Sales <= 0.12
+                         |--- class: Borderline*   (needs further review)
+```
+
+---
+
+#### How to read the tree
+
+* **Root split** – The most powerful predictor is **Equity / Total Assets**.  
+  * Companies with **> 30 %** of their assets financed by equity are generally solvent.  
+  * Those with **≤ 30 %** equity are at higher risk and are examined further.
+
+* **Second‑level splits** – For low‑equity firms we first look at **Working‑Capital / Total Assets** (liquidity).  
+  * If liquidity is also weak (≤ 8 %), the firm is classified **Insolvent** straight away.  
+
+* **Third‑level splits** – If liquidity is adequate, we assess **EBIT / Total Assets** (operating profitability).  
+  * Very low operating profit (≤ 4 %) again leads to **Insolvent**.  
+
+* **Fourth‑level splits** – When both liquidity and operating profit are modest, **Net‑Income / Total Capital** (overall profitability) determines the outcome.  
+  * Below 6 % → **Insolvent**; above 6 % → **Borderline** (the model is uncertain and a deeper credit analysis would be advisable).
+
+* **High‑equity branch** – For firms with a solid equity base, the tree checks **Net‑Income / Total Capital** first.  
+  * > 8 % → **Solvent** (strong profitability).  
+
+* If profitability is weaker (≤ 8 %), the tree evaluates **Sales / Total Assets** (asset turnover).  
+  * High turnover (> 55 %) still yields **Solvent**.  
+
+* When turnover is modest, the model looks at **Equity / Total Liabilities** (leverage).  
+  * A ratio > 1.20 (more equity than debt) is sufficient for **Solvent**.  
+
+* Finally, if leverage is also moderate, **EBIT / Sales** (operating margin) is the tie‑breaker.  
+  * Margins above 12 % are considered **Solvent**; lower margins fall into the **Borderline** zone.
+
+---
+
+### What “Borderline” means
+
+The tree produces a **Borderline** leaf when the available ratios give mixed signals. In practice you would:
+
+1. Pull additional qualitative information (industry outlook, management quality, covenant compliance).  
+2. Possibly run a **logistic‑regression** or **ensemble** model to refine the probability of default.  
+3. Set a risk‑tolerance threshold (e.g., probability > 0.6 → Insolvent, < 0.4 → Solvent, else manual review).
+
+---
+
+### How to generate a data‑driven version
+
+If you have a labelled dataset (`solvent = 1`, `insolvent = 0`) you can let Python do the heavy lifting:
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, export_text
+
+# Load your data
+df = pd.read_csv('financial_ratios.csv')          # columns = ratios + 'solvent'
+X = df[['EBIT_TA','NI_TC','Sales_TA','EBIT_Sales',
+        'NI_Sales','WC_TA','Equity_TL','Equity_TA']]
+y = df['solvent']
+
+# Train / test split
+X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, stratify=y, random_state=42)
+
+# Fit a tree (limit depth for readability)
+clf = DecisionTreeClassifier(max_depth=5,
+                             min_samples_leaf=30,
+                             criterion='gini',
+                             random_state=42)
+clf.fit(X_train, y_train)
+
+# Print the rule‑set
+tree_rules = export_text(clf,
+                         feature_names=list(X.columns))
+print(tree_rules)
+```
+
+Adjust `max_depth`, `min_samples_leaf`, or the `criterion` (`'entropy'` for information gain) to balance **interpretability** against **predictive performance**.  After fitting, you can also inspect `clf.feature_importances_` to confirm which ratios the algorithm deems most important.
+
+---
+
+#### TL;DR
+
+*The decision tree above classifies companies as **Solvent** or **Insolvent** using the eight financial ratios you supplied.  It follows a logical, finance‑driven hierarchy (capital adequacy → liquidity → profitability → leverage).  Replace the illustrative cut‑offs with values learned from your actual data, and you’ll have an interpretable, rule‑based credit‑risk model.*
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predicts solvency (1 = solvent, 0 = insolvent) and returns the
+    truth values of every inner node that is evaluated.
+
+    Expected keys in ``X`` (exact spelling, case‑sensitive):
+        'EBIT/TA'   – EBIT / Total Assets
+        'NI/TC'     – Net Income / Total Capital
+        'Sales/TA'  – Sales / Total Assets
+        'EBIT/Sales'– EBIT / Sales
+        'NI/Sales'  – Net Income / Sales        (not used in the tree)
+        'WC/TA'     – Working Capital / Total Assets
+        'Equity/TL' – Equity / Total Liabilities
+        'Equity/TA' – Equity / Total Assets
+    """
+    # ------------------------------------------------------------------
+    # 0 = condition not satisfied, 1 = condition satisfied
+    # ------------------------------------------------------------------
+    nodes = [0] * 8                     # eight inner decision points
+
+    # ---------- root node ------------------------------------------------
+    nodes[0] = 1 if X["Equity/TA"] <= 0.30 else 0        # 30 % equity threshold
+
+    if nodes[0]:                      # Equity/TA <= 0.30  → higher risk branch
+        # ---- node 1 ----------------------------------------------------
+        nodes[1] = 1 if X["WC/TA"] <= 0.08 else 0       # liquidity
+        if nodes[1]:
+            prediction = 0                               # Insolvent
+        else:
+            # ---- node 2 ------------------------------------------------
+            nodes[2] = 1 if X["EBIT/TA"] <= 0.04 else 0  # operating profit
+            if nodes[2]:
+                prediction = 0                           # Insolvent
+            else:
+                # ---- node 3 ----------------------------------------
+                nodes[3] = 1 if X["NI/TC"] <= 0.06 else 0   # overall profitability
+                if nodes[3]:
+                    prediction = 0                       # Insolvent
+                else:
+                    # Borderline – we treat it as solvent for the binary output
+                    prediction = 1
+
+    else:                              # Equity/TA > 0.30  → healthier capital base
+        # ---- node 4 ----------------------------------------------------
+        nodes[4] = 1 if X["NI/TC"] > 0.08 else 0        # strong profitability
+        if nodes[4]:
+            prediction = 1                               # Solvent
+        else:
+            # ---- node 5 ------------------------------------------------
+            nodes[5] = 1 if X["Sales/TA"] > 0.55 else 0   # asset‑turnover
+            if nodes[5]:
+                prediction = 1                           # Solvent
+            else:
+                # ---- node 6 ----------------------------------------
+                nodes[6] = 1 if X["Equity/TL"] > 1.20 else 0   # leverage (more equity than debt)
+                if nodes[6]:
+                    prediction = 1                       # Solvent
+                else:
+                    # ---- node 7 ------------------------------------
+                    nodes[7] = 1 if X["EBIT/Sales"] > 0.12 else 0  # operating margin
+                    if nodes[7]:
+                        prediction = 1                   # Solvent
+                    else:
+                        # Borderline – still counted as solvent
+                        prediction = 1
+
+    return prediction, nodes
+```
+
+### How the function works
+1. **`nodes` list** – length 8, one entry per inner decision point.  
+   *`1`* means the condition at that node is satisfied, *`0`* otherwise.  
+2. The tree follows the hierarchy described earlier:  
+   *Root* → **Equity/TA** → (if low) **WC/TA**, **EBIT/TA**, **NI/TC** → insolvent/solvent;  
+   *Else* → **NI/TC**, **Sales/TA**, **Equity/TL**, **EBIT/Sales** → solvent (or borderline).  
+3. The final **`prediction`** is `1` for *solvent* and `0` for *insolvent*.  
+4. Borderline leaves (where the tree is uncertain) are mapped to `1` (solvent) so the output remains binary as required.
+
+You can call the function with a dictionary that contains the eight financial‑ratio keys, e.g.:
+
+```python
+sample = {
+    "EBIT/TA": 0.05,
+    "NI/TC": 0.09,
+    "Sales/TA": 0.60,
+    "EBIT/Sales": 0.15,
+    "NI/Sales": 0.07,
+    "WC/TA": 0.10,
+    "Equity/TL": 1.30,
+    "Equity/TA": 0.35
+}
+
+pred, node_vals = predict(sample)
+print(pred)        # → 1 (solvent)
+print(node_vals)   # → [0, 0, 0, 0, 1, 0, 0, 0]  (example)
+```
+
+Feel free to adjust the thresholds (`0.30`, `0.08`, `0.04`, …) if you have empirical values from your own dataset. The structure of the function will stay the same.

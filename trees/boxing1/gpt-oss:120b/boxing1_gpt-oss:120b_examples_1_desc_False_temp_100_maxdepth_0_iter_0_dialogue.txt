@@ -1,0 +1,73 @@
+**Decision Tree (most important features first)**  
+
+```
+|--- Judge in {E. Williams, L. O'Connell, S. Christodoulu}
+||--- class: Lewis
+|--- Judge not in {E. Williams, L. O'Connell, S. Christodoulu}
+||--- Official judge = yes
+|||--- class: Holyfield
+||--- Official judge = no
+|||--- Round <= 6
+||||--- class: Lewis
+|||--- Round > 6
+||||--- class: Holyfield
+```
+
+
+#########################
+
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary with the exact feature keys:
+        - 'Judge'    : int  (0 = E. Williams, 1 = L. O'Connell,
+                           2 = S. Christodoulu, 3 = HBO‑Lederman,
+                           4 = Sportsticker, 5 = Boxing Times,
+                           6 = Sportsline, 7 = Associated Press,
+                           8 = ESPN, 9 = Boxing Monthly‑Leach)
+        - 'Official' : int  (1 = Yes, 0 = No) – whether the judge is an official judge
+        - 'Round'    : int  (1 … 12)
+
+    Returns
+    -------
+    prediction : int
+        1 = Lewis won the round, 0 = Holyfield won the round
+    nodes : list[int]
+        Truth values (1 = condition true, 0 = false) for the inner nodes
+        in the order they are evaluated.
+    """
+
+    # ----- inner node evaluations ------------------------------------------------
+    # node 0 : Judge is one of the three judges that favour Lewis
+    nodes = [None] * 3                     # we have three inner nodes
+    nodes[0] = int(X["Judge"] in (0, 1, 2))  # 1 if True, 0 if False
+
+    if nodes[0]:
+        # Judge ∈ {0,1,2} → Lewis
+        prediction = 1
+    else:
+        # node 1 : Is the judge an official judge?
+        nodes[1] = int(X["Official"] == 1)
+
+        if nodes[1]:
+            # Official judge → Holyfield
+            prediction = 0
+        else:
+            # node 2 : Round ≤ 6 ?
+            nodes[2] = int(X["Round"] <= 6)
+
+            if nodes[2]:
+                # Early rounds (1‑6) → Lewis
+                prediction = 1
+            else:
+                # Late rounds (7‑12) → Holyfield
+                prediction = 0
+
+    return prediction, nodes
+```

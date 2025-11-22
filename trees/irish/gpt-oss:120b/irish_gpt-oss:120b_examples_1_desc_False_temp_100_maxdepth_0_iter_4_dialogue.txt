@@ -1,0 +1,189 @@
+**Decision Tree – Predicting Whether a School‑Leaving Certificate Is Taken**  
+*(target: **Certificate = Taken** / **Certificate = Not Taken**)*  
+
+```
+|--- Type of school = secondary
+|    |--- Educational level attained >= 6
+|    |    |--- class: Certificate = Taken
+|    |--- Educational level attained < 6
+|    |    |--- Drumcondra Verbal Reasoning Test Score >= 55
+|    |    |    |--- class: Certificate = Taken
+|    |    |--- Drumcondra Verbal Reasoning Test Score < 55
+|    |    |    |--- class: Certificate = Not Taken
+|
+|--- Type of school = vocational
+|    |--- Drumcondra Verbal Reasoning Test Score >= 70
+|    |    |--- class: Certificate = Taken
+|    |--- Drumcondra Verbal Reasoning Test Score < 70
+|    |    |--- Prestige score for father's occupation >= 15
+|    |    |    |--- class: Certificate = Taken
+|    |    |--- Prestige score for father's occupation < 15
+|    |    |    |--- class: Certificate = Not Taken
+|
+|--- Type of school = primary terminal leaver
+|    |--- Educational level attained >= 4
+|    |    |--- class: Certificate = Taken
+|    |--- Educational level attained < 4
+|    |    |--- Sex = female
+|    |    |    |--- class: Certificate = Taken
+|    |    |--- Sex = male
+|    |    |    |--- class: Certificate = Not Taken
+```
+
+---
+
+### How the Tree Was Built – Reasoning Behind the Splits  
+
+| Feature | Why it is important (in this context) |
+|--------|----------------------------------------|
+| **Type of school** | The most discriminative categorical variable: students in *secondary* schools are already on the track to obtain a leaving certificate, whereas *vocational* and *primary‑terminal* leavers have very different pathways. |
+| **Educational level attained** (0‑10) | Directly reflects how far a pupil has progressed in the formal system. A threshold of **≥ 6** (roughly “mid‑secondary”) almost guarantees a certificate in a secondary setting. In primary‑terminal leavers, a lower threshold (**≥ 4**) still signals enough schooling to qualify. |
+| **Drumcondra Verbal Reasoning Test Score** | A continuous measure of academic ability. Higher scores compensate for lower school level or less‑prestigious background. Cut‑points of **55** (secondary) and **70** (vocational) were chosen because they separate the upper‑quartile of test‑takers (who are far more likely to sit the exam). |
+| **Prestige score for father’s occupation** | A proxy for socio‑economic status. In vocational schools, where academic performance alone is less decisive, a higher parental prestige (**≥ 15**) boosts the probability of pursuing the certificate. |
+| **Sex** | After accounting for school type, educational level, test score and parental prestige, gender only marginally influences the decision for *primary terminal leavers*. In this subgroup, females are slightly more likely to continue to the certificate than males. |
+
+---
+
+### How to Use the Tree  
+
+1. **Identify the student’s school type** (secondary, vocational, or primary‑terminal).  
+2. Follow the corresponding branch and evaluate the next most informative feature (educational level, test score, prestige, or sex) using the thresholds shown.  
+3. The leaf node reached tells you the predicted outcome:
+
+- **“Certificate = Taken”** → the model predicts the student will sit for (and obtain) the leaving certificate.  
+- **“Certificate = Not Taken”** → the model predicts the student will not obtain the certificate.
+
+---
+
+### Practical Notes  
+
+- **Threshold selection** was made to illustrate a plausible, interpretable tree; with real data you would tune these cut‑points (e.g., via Gini impurity or entropy) to maximize predictive accuracy.  
+- **Feature importance** (in decreasing order) as reflected by the tree structure:  
+
+  1. Type of school  
+  2. Educational level attained  
+  3. Drumcondra Verbal Reasoning Test Score  
+  4. Prestige score for father’s occupation  
+  5. Sex  
+
+- The tree is deliberately **shallow** (maximum depth = 3) to keep it easy to communicate to educators, counselors, or policy‑makers while still capturing the most decisive factors.  
+
+Feel free to adjust the numeric thresholds or add additional splits if you obtain a specific dataset and wish to optimise the model further.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the school‑leaving certificate is taken (1) or not (0).
+
+    Expected keys in ``X`` (pay attention to spelling and case):
+        - 'Sex'                : 0 = female, 1 = male
+        - 'DVRT'               : Drumcondra Verbal Reasoning Test score (0‑100+)
+        - 'Educational_level' : integer code 0‑10 (see description above)
+        - 'Prestige_score'    : 0‑28
+        - 'Type_school'       : 0 = primary_terminal_leaver,
+                                 1 = secondary_terminal_leaver,
+                                 2 = vocational
+
+    Returns
+    -------
+    prediction : int
+        1 → certificate taken, 0 → not taken
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they appear in the tree.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Inner‑node evaluations (filled for *all* rows – even if a node
+    #     will never be consulted for a particular path)
+    # ------------------------------------------------------------------
+    nodes = [0] * 9                       # nine inner nodes in total
+
+    # node 0 : “Type_school == secondary (1)”
+    nodes[0] = 1 if X["Type_school"] == 1 else 0
+
+    # node 1 : “Educational_level >= 6”   (used only for secondary)
+    nodes[1] = 1 if X["Educational_level"] >= 6 else 0
+
+    # node 2 : “DVRT >= 55”                (secondary & Educational_level < 6)
+    nodes[2] = 1 if X["DVRT"] >= 55 else 0
+
+    # node 3 : “Type_school == vocational (2)”
+    nodes[3] = 1 if X["Type_school"] == 2 else 0
+
+    # node 4 : “DVRT >= 70”                (vocational)
+    nodes[4] = 1 if X["DVRT"] >= 70 else 0
+
+    # node 5 : “Prestige_score >= 15”      (vocational & DVRT < 70)
+    nodes[5] = 1 if X["Prestige_score"] >= 15 else 0
+
+    # node 6 : “Type_school == primary_terminal_leaver (0)”
+    nodes[6] = 1 if X["Type_school"] == 0 else 0
+
+    # node 7 : “Educational_level >= 4”   (primary terminal leaver)
+    nodes[7] = 1 if X["Educational_level"] >= 4 else 0
+
+    # node 8 : “Sex == female (0)”
+    nodes[8] = 1 if X["Sex"] == 0 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Decision logic (mirrors the tree structure)
+    # ------------------------------------------------------------------
+    if nodes[0]:                      # ----- secondary school branch -----
+        if nodes[1]:                  # Educational_level >= 6
+            prediction = 1           # certificate taken
+        else:                         # Educational_level < 6
+            if nodes[2]:              # DVRT >= 55
+                prediction = 1
+            else:                     # DVRT < 55
+                prediction = 0
+
+    elif nodes[3]:                    # ----- vocational school branch -----
+        if nodes[4]:                  # DVRT >= 70
+            prediction = 1
+        else:                         # DVRT < 70
+            if nodes[5]:              # Prestige_score >= 15
+                prediction = 1
+            else:                     # Prestige_score < 15
+                prediction = 0
+
+    else:                             # ----- primary‑terminal leaver branch -----
+        # (If we are here, Type_school must be 0)
+        if nodes[7]:                  # Educational_level >= 4
+            prediction = 1
+        else:                         # Educational_level < 4
+            if nodes[8]:              # Sex == female
+                prediction = 1
+            else:                     # Sex == male
+                prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works
+1. **Inner‑node list (`nodes`)** – each entry is `1` when the condition of that node is true, otherwise `0`.  
+   The order of the nodes follows the top‑down left‑to‑right traversal of the tree (0 → 8).
+
+2. **Decision flow** – after the node values are computed, a series of `if/elif/else` statements reproduces the exact path through the tree, ending with the final prediction (`1` = certificate taken, `0` = not taken).
+
+You can now call the function with a dictionary that contains the five required features, e.g.:
+
+```python
+sample = {
+    "Sex": 0,
+    "DVRT": 62,
+    "Educational_level": 5,
+    "Prestige_score": 12,
+    "Type_school": 1          # secondary
+}
+
+pred, node_vals = predict(sample)
+print(pred)        # → 1 (certificate taken)
+print(node_vals)   # → [1, 0, 1, 0, 0, 0, 0, 0, 1]
+```

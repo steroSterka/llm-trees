@@ -1,0 +1,125 @@
+To build the decision tree for whether an application for credit is accepted or not based on the provided features, we'll follow a logical process to select the most influential features. The features given are:
+
+1. Age (years)
+2. Income per dependent (range: 1.5 to 10)
+3. Monthly credit card expenses ($)
+4. Owning a home (yes/no)
+5. Self-employed (yes/no)
+6. Number of derogatory reports
+
+Given the nature of these features and their potential impact on creditworthiness, we'll construct a decision tree that logically classifies applications as accepted or not based on these criteria.
+
+### Decision Tree:
+
+1. **Number of Derogatory Reports** is often a critical factor in credit decisions because it directly reflects an individual's past credit behavior.
+   - If the number of derogatory reports is **0**, this suggests good credit history, so we proceed to evaluate other factors for a more nuanced assessment.
+     - If **Income per dependent** is greater than **5**, indicating a relatively stable financial situation, and considering the applicant has no derogatory reports, their application is likely to be **accepted**.
+       - However, if **Monthly credit card expenses** are high (e.g., > $1000), it might indicate over-reliance on credit, so we should further scrutinize the application. In such cases, if the applicant is **not self-employed**, implying a more stable income source, their application could still be **accepted**.
+       - For those with lower monthly credit card expenses or without this high expense flag, and owning a home (**yes**), it's an additional indicator of stability, leading to **acceptance**.
+     - If **Income per dependent** is 5 or less, we look at **Age**: applicants above **30 years** might have had more time to establish credit and demonstrate responsibility, potentially leading to **acceptance**, especially if they own a home (**yes**).
+   - If the number of derogatory reports is greater than **0**, it indicates some level of risk. For those with only **1** derogatory report and who are **not self-employed**, and considering other factors like moderate income per dependent (> 3) and lower monthly credit card expenses (< $500), their application might still be **accepted** due to otherwise stable financial indicators.
+   - For applicants with more than **1** derogatory report, or those who are self-employed with any derogatory reports, the risk is higher. If such an applicant also has high monthly credit card expenses (> $1000) and does not own a home (**no**), their application would likely be **rejected** due to significant financial risk indicators.
+
+2. For simplicity and clarity in decision-making based on these features, we prioritize factors that directly impact creditworthiness and stability:
+   - **Owning a Home (yes/no)** can indicate long-term financial stability.
+   - **Self-employed (yes/no)** may introduce uncertainty regarding income stability.
+   - **Monthly Credit Card Expenses** reflects current financial management practices.
+
+### Simplified Decision Tree:
+
+|--- Number of Derogatory Reports <= 0
+||--- Income per dependent > 5 AND Monthly credit card expenses <= $1000
+|||--- class: Accepted
+||--- Income per dependent > 5 AND Monthly credit card expenses > $1000 AND Not Self-employed
+|||--- class: Accepted
+||--- Age > 30 AND Owns a Home (yes)
+|||--- class: Accepted
+||--- Number of Derogatory Reports = 1 AND Not Self-employed AND Income per dependent > 3 AND Monthly credit card expenses < $500
+|||--- class: Accepted
+|--- Number of Derogatory Reports > 0 OR (Number of Derogatory Reports = 1 AND Self-employed) OR High Monthly Credit Card Expenses AND Does not own a home
+|||--- class: Rejected
+
+This decision tree is constructed based on logical deductions about how these features might influence creditworthiness. Real-world applications would typically involve more complex algorithms, potentially including machine learning models trained on extensive datasets to make predictions.
+
+
+#########################
+
+
+Here's a Python function representing the decision tree for predicting whether an application for credit is accepted or not:
+
+```python
+def predict_credit_application(X: dict):
+    """
+    Predicts whether an application for credit is accepted or not based on the provided features.
+
+    Parameters:
+    X (dict): A dictionary containing the feature values.
+        - 'Age': age in years
+        - 'Income.per.dependent': income per dependent (range: 1.5 to 10)
+        - 'Monthly.credit.card.exp': monthly credit card expenses ($)
+        - 'Own.home': owning a home (1 = yes, 0 = no)
+        - 'Self.employed': self employed (1 = yes, 0 = no)
+        - 'Derogatory.reports': number of derogatory reports
+
+    Returns:
+    prediction (int): The predicted target variable (0 = application not accepted, 1 = application accepted).
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+    nodes = 6 * [None]
+
+    # Check if the number of derogatory reports is 0
+    nodes[0] = X['Derogatory.reports'] == 0
+
+    # If no derogatory reports, check income per dependent and monthly credit card expenses
+    nodes[1] = X['Income.per.dependent'] > 5 and X['Monthly.credit.card.exp'] <= 1000
+
+    # Check if the applicant owns a home and is not self-employed
+    nodes[2] = X['Own.home'] == 1 and X['Self.employed'] == 0
+
+    # Check age and income per dependent for applicants with no derogatory reports
+    nodes[3] = X['Age'] > 30 and X['Income.per.dependent'] > 3
+
+    # Check if the applicant has only one derogatory report and is not self-employed
+    nodes[4] = X['Derogatory.reports'] == 1 and X['Self.employed'] == 0
+
+    # Check monthly credit card expenses for applicants with one derogatory report
+    nodes[5] = X['Monthly.credit.card.exp'] < 500
+
+    if nodes[0]:
+        if nodes[1]:
+            prediction = 1  # Application accepted
+        else:
+            if nodes[2]:
+                prediction = 1  # Application accepted
+            elif nodes[3]:
+                prediction = 1  # Application accepted
+            else:
+                prediction = 0  # Application not accepted
+    else:
+        if nodes[4] and nodes[5]:
+            prediction = 1  # Application accepted
+        else:
+            prediction = 0  # Application not accepted
+
+    return prediction, [int(node) for node in nodes]
+
+# Example usage
+X = {
+    'Age': 35,
+    'Income.per.dependent': 6.5,
+    'Monthly.credit.card.exp': 800,
+    'Own.home': 1,
+    'Self.employed': 0,
+    'Derogatory.reports': 0
+}
+
+prediction, nodes = predict_credit_application(X)
+print(f"Prediction: {prediction}")
+print(f"Nodes: {nodes}")
+```
+
+In this implementation, we define a function `predict_credit_application` that takes a dictionary `X` containing the feature values as input and returns the predicted target variable (`prediction`) along with a list representing the truth values of the inner nodes (`nodes`). We use integer values (0 or 1) to represent the truth values of the nodes.
+
+The decision tree logic is implemented using if-else statements, where each condition corresponds to a node in the tree. The `nodes` list stores the truth values of these conditions, which can be used for further analysis or visualization.
+
+Note that we use the `int()` function to convert the boolean values of the nodes to integers (0 or 1) before returning them as a list. This is because the problem statement requires the nodes to be represented as a list of integers.

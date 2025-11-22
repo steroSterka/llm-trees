@@ -1,0 +1,113 @@
+**Decision Tree – Party Affiliation (Democrat vs Republican)**  
+
+*Each split uses a “yes / no” vote. The leaf nodes give the predicted party.*
+
+```
+|--- Vote on MX missile = yes
+||--- class: Republican
+|--- Vote on MX missile = no
+||--- Vote on aid to Nicaraguan contras = yes
+|||--- class: Republican
+|||--- Vote on aid to Nicaraguan contras = no
+||||--- Vote on immigration = yes
+|||||||--- class: Democrat
+|||||||--- Vote on immigration = no
+||||||||--- Vote on superfund right to sue = yes
+|||||||||||--- class: Democrat
+|||||||||||--- Vote on superfund right to sue = no
+||||||||||||--- class: Republican
+```
+
+### Rationale for the chosen splits  
+
+| Feature | Typical partisan pattern (based on historic roll‑call data) | Why it is high‑information |
+|---------|--------------------------------------------------------------|----------------------------|
+| **MX missile** | Republicans overwhelmingly voted *yes*; Democrats overwhelmingly voted *no*. | Near‑perfect separation – first split. |
+| **Aid to Nicaraguan contras** | Strong Republican support for funding the Contras; Democrats almost uniformly opposed. | Second‑best separator among the remaining votes. |
+| **Immigration** | Democrats tended to support more liberal immigration measures; Republicans more often opposed. | Helps split the “no‑Contras‑no‑MX” group. |
+| **Superfund right‑to‑sue** | Democrats favored giving citizens the right to sue polluters; Republicans were less supportive. | Final discriminating feature for the remaining ambiguous cases. |
+
+All other votes (handicapped infants, water‑project cost‑sharing, budget resolution, physician‑fee freeze, aid to El Salvador, religious groups in schools, anti‑satellite test ban, aid to Nicaraguan contras, MX missile, immigration, synfuels cutback, education spending, crime, duty‑free exports, Export Administration Act‑South Africa) are either highly correlated with the four features above or provide little additional gain in purity, so they are omitted to keep the tree concise and focused on the most informative splits.
+
+
+#########################
+
+
+**Python function – decision‑tree classifier for party affiliation**  
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (1 = Republican, 0 = Democrat) from roll‑call votes.
+
+    Expected keys in ``X`` (exact spelling, case and spaces):
+        'handicapped infants', 'water project cost sharing',
+        'adoption of the budget resolution', 'physician fee freeze',
+        'el salvador aid', 'religious groups in schools',
+        'anti satellite test ban', 'aid to nicaraguan contras',
+        'mx missile', 'immigration', 'synfuels corporation cutback',
+        'education spending', 'superfund right to sue',
+        'crime', 'duty free exports',
+        'export administration act south africa'
+
+    Each vote is encoded as:
+        2 = yes , 1 = no
+
+    Returns
+    -------
+    prediction : int
+        1 → Republican, 0 → Democrat
+    nodes : list[int]
+        Truth values of the inner‑node tests in the order they appear in the tree.
+        1 means the condition is satisfied, 0 otherwise.
+    """
+    # ------------------------------------------------------------------
+    # 1️⃣  First split – MX missile
+    # ------------------------------------------------------------------
+    nodes = [None] * 4                     # we have four inner nodes
+    nodes[0] = 1 if X["mx missile"] == 2 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Second split – aid to Nicaraguan contras
+    # ------------------------------------------------------------------
+    nodes[1] = 1 if X["aid to nicaraguan contras"] == 2 else 0
+
+    # ------------------------------------------------------------------
+    # 3️⃣  Third split – immigration
+    # ------------------------------------------------------------------
+    nodes[2] = 1 if X["immigration"] == 2 else 0
+
+    # ------------------------------------------------------------------
+    # 4️⃣  Fourth split – superfund right to sue
+    # ------------------------------------------------------------------
+    nodes[3] = 1 if X["superfund right to sue"] == 2 else 0
+
+    # ------------------------------------------------------------------
+    # Decision logic (mirrors the tree shown in the previous answer)
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # mx missile = yes → Republican
+        prediction = 1
+    else:                            # mx missile = no
+        if nodes[1]:                 # aid to contras = yes → Republican
+            prediction = 1
+        else:                        # aid to contras = no
+            if nodes[2]:             # immigration = yes → Democrat
+                prediction = 0
+            else:                    # immigration = no
+                if nodes[3]:         # superfund right to sue = yes → Democrat
+                    prediction = 0
+                else:                # superfund right to sue = no → Republican
+                    prediction = 1
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition (inner node)                              | Meaning in the tree |
+|------------|-----------------------------------------------------|----------------------|
+| `0`        | `mx missile == 2` (yes)                             | First split – if **yes**, the leaf is *Republican*. |
+| `1`        | `aid to nicaraguan contras == 2` (yes)              | Second split – examined only when `mx missile` is *no*. |
+| `2`        | `immigration == 2` (yes)                            | Third split – examined when the first two conditions are *no*. |
+| `3`        | `superfund right to sue == 2` (yes)                 | Fourth split – examined when the first three conditions are *no*. |
+
+The returned `nodes` list (e.g., `[1, 0, 0, 1]`) tells you which inner‑node tests evaluated to *True* (`1`) or *False* (`0`) for the supplied record, while `prediction` gives the final party classification.

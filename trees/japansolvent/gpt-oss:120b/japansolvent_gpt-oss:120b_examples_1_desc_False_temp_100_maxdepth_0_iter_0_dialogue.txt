@@ -1,0 +1,233 @@
+Below is a **sample decision‑tree model** that could be used to predict whether a company is **Solvent** or **Insolvent** on the basis of the eight financial ratios you supplied.  
+
+Because I don’t have a concrete training set, the splits and thresholds are **illustrative** – they are chosen to reflect the usual economic intuition (leverage, liquidity, and profitability) and to show how a tree built with a standard impurity‑based algorithm (e.g., CART‑Gini) would look when it is forced to use the most “important” variables first.
+
+---
+
+## Decision‑Tree (textual representation)
+
+```
+|--- Equity / Total Liabilities >= 0.55
+|    |--- Working Capital / Total Assets >= 0.12
+|    |    |--- class: Solvent
+|    |
+|    |--- Working Capital / Total Assets < 0.12
+|         |--- EBIT / Total Assets >= 0.06
+|         |    |--- class: Solvent
+|         |
+|         |--- EBIT / Total Assets < 0.06
+|              |--- class: Insolvent
+|
+|--- Equity / Total Liabilities < 0.55
+     |--- Net Income / Total Capital < 0.018
+     |    |--- class: Insolvent
+     |
+     |--- Net Income / Total Capital >= 0.018
+          |--- Sales / Total Assets >= 0.28
+          |    |--- class: Solvent
+          |
+          |--- Sales / Total Assets < 0.28
+               |--- Net Income / Sales >= 0.045
+               |    |--- class: Solvent
+               |
+               |--- Net Income / Sales < 0.045
+                    |--- class: Insolvent
+```
+
+### How the tree was built (conceptually)
+
+| Step | What the algorithm does | Why the variable is chosen |
+|------|--------------------------|----------------------------|
+| **1** | Compute the Gini impurity (or information gain) for every possible split on each of the eight ratios. | **Equity / Total Liabilities** gives the biggest reduction in impurity → strongest leverage signal. |
+| **2** | Within the “high‑equity” branch, test all remaining ratios again. | **Working Capital / Total Assets** (a liquidity measure) is the next most discriminative. |
+| **3** | In the low‑equity branch, the algorithm again searches the remaining features. | **Net Income / Total Capital** (overall profitability relative to financing) is the best split here. |
+| **4** | Continue recursively until a stopping rule is met (e.g., minimum leaf size, maximum depth, or no further impurity gain). | The final leaves are pure or close‑to‑pure, giving a clear “Solvent/​Insolvent” label. |
+
+### Interpretation of the key splits  
+
+| Split | Economic meaning | Typical implication |
+|-------|-------------------|----------------------|
+| **Equity / Total Liabilities ≥ 0.55** | Capital structure is equity‑heavy; the firm has a strong buffer against creditors. | Mostly **Solvent** (except when liquidity is extremely weak). |
+| **Working Capital / Total Assets ≥ 0.12** | ≥ 12 % of assets are financed by net current assets → good short‑term liquidity. | **Solvent** regardless of profitability. |
+| **EBIT / Total Assets ≥ 0.06** | Operating profit generates at least 6 % of the asset base each period. | Sufficient earnings to cover fixed costs → **Solvent**. |
+| **Net Income / Total Capital < 0.018** | Returns on total capital are below 1.8 % → poor overall profitability. | **Insolvent** (high risk of value erosion). |
+| **Sales / Total Assets ≥ 0.28** | Asset turnover of ≥ 0.28 (i.e., each €1 of assets produces €0.28 of sales). | Indicates efficient use of assets → **Solvent**. |
+| **Net Income / Sales ≥ 0.045** | Net profit margin of ≥ 4.5 % – a healthy margin for many industries. | **Solvent** even if turnover is modest. |
+
+---
+
+## How to use the tree in practice  
+
+1. **Calculate** each of the eight ratios for the company you want to evaluate.  
+2. **Follow the branches** from the top down, comparing the computed ratio with the threshold shown at each node.  
+3. **Stop** when you reach a leaf node – the label there (“Solvent” or “Insolvent”) is the model’s prediction.  
+
+---
+
+### Quick‑reference pseudo‑code (Python‑like)
+
+```python
+def predict_solvent(ratios):
+    # ratios is a dict with the eight keys
+    if ratios['Equity/TotalLiabilities'] >= 0.55:
+        if ratios['WorkingCap/TotalAssets'] >= 0.12:
+            return 'Solvent'
+        else:
+            if ratios['EBIT/TotalAssets'] >= 0.06:
+                return 'Solvent'
+            else:
+                return 'Insolvent'
+    else:                                   # Equity/TotalLiabilities < 0.55
+        if ratios['NetIncome/TotalCapital'] < 0.018:
+            return 'Insolvent'
+        else:
+            if ratios['Sales/TotalAssets'] >= 0.28:
+                return 'Solvent'
+            else:
+                if ratios['NetIncome/Sales'] >= 0.045:
+                    return 'Solvent'
+                else:
+                    return 'Insolvent'
+```
+
+---
+
+### What to do next  
+
+* **Train on real data** – feed a labeled dataset (solvent / insolvent) into a CART implementation (e.g., `sklearn.tree.DecisionTreeClassifier`). The algorithm will automatically discover the optimal thresholds and may produce a slightly different tree structure.  
+* **Validate** – use cross‑validation or a hold‑out test set to assess accuracy, precision, recall, and the ROC‑AUC.  
+* **Prune** – if the tree grows too deep, apply cost‑complexity pruning (`ccp_alpha` in scikit‑learn) to improve generalisation.  
+
+Feel free to provide a sample dataset, and I can run the actual training and give you the exact numerical thresholds that maximise predictive performance.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree classifier**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company is solvent (1) or insolvent (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the eight financial‑ratio keys
+        exactly as they appear in the dataset:
+
+        - "EBIT/TA"   : Earnings Before Interest and Taxes / Total Assets
+        - "NI/TC"    : Net Income / Total Capital
+        - "Sales/TA" : Sales / Total Assets
+        - "EBIT/Sales"
+        - "NI/Sales"
+        - "WC/TA"    : Working Capital / Total Assets
+        - "Equity/TL": Equity / Total Liabilities
+        - "Equity/TA"
+
+    Returns
+    -------
+    prediction : int
+        1 = solvent, 0 = insolvent
+    nodes : list[int]
+        Truth values (1 = condition satisfied, 0 = not satisfied) for each
+        inner node of the tree, in the order shown below.
+
+        nodes[0] – Equity/TL >= 0.55  
+        nodes[1] – WC/TA    >= 0.12   (evaluated only if nodes[0] is True)  
+        nodes[2] – EBIT/TA  >= 0.06   (evaluated only if nodes[0] is True
+                                        and nodes[1] is False)  
+        nodes[3] – NI/TC    < 0.018   (evaluated only if nodes[0] is False)  
+        nodes[4] – Sales/TA >= 0.28   (evaluated only if nodes[0] is False
+                                        and nodes[3] is False)  
+        nodes[5] – NI/Sales >= 0.045  (evaluated only if nodes[0] is False,
+                                        nodes[3] is False and nodes[4] is False)
+    """
+    # ------------------------------------------------------------------
+    # 1️⃣  Compute the inner‑node conditions (store as 1/0 integers)
+    # ------------------------------------------------------------------
+    nodes = [0] * 6                               # initialise list
+
+    # node 0 : Equity/TL >= 0.55
+    nodes[0] = 1 if X["Equity/TL"] >= 0.55 else 0
+
+    # node 1 : WC/TA >= 0.12   (only relevant when node0 == 1)
+    if nodes[0]:
+        nodes[1] = 1 if X["WC/TA"] >= 0.12 else 0
+
+    # node 2 : EBIT/TA >= 0.06 (only when node0 == 1 and node1 == 0)
+    if nodes[0] and not nodes[1]:
+        nodes[2] = 1 if X["EBIT/TA"] >= 0.06 else 0
+
+    # node 3 : NI/TC < 0.018   (only when node0 == 0)
+    if not nodes[0]:
+        nodes[3] = 1 if X["NI/TC"] < 0.018 else 0
+
+    # node 4 : Sales/TA >= 0.28 (only when node0 == 0 and node3 == 0)
+    if not nodes[0] and not nodes[3]:
+        nodes[4] = 1 if X["Sales/TA"] >= 0.28 else 0
+
+    # node 5 : NI/Sales >= 0.045 (only when node0 == 0, node3 == 0, node4 == 0)
+    if not nodes[0] and not nodes[3] and not nodes[4]:
+        nodes[5] = 1 if X["NI/Sales"] >= 0.045 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the tree to obtain the final prediction
+    # ------------------------------------------------------------------
+    # High equity branch
+    if nodes[0]:                                 # Equity/TL >= 0.55
+        if nodes[1]:                             # WC/TA >= 0.12
+            prediction = 1                       # solvent
+        else:                                    # WC/TA < 0.12
+            if nodes[2]:                         # EBIT/TA >= 0.06
+                prediction = 1                   # solvent
+            else:
+                prediction = 0                   # insolvent
+
+    # Low equity branch
+    else:                                        # Equity/TL < 0.55
+        if nodes[3]:                             # NI/TC < 0.018
+            prediction = 0                       # insolvent
+        else:                                    # NI/TC >= 0.018
+            if nodes[4]:                         # Sales/TA >= 0.28
+                prediction = 1                   # solvent
+            else:                                # Sales/TA < 0.28
+                if nodes[5]:                     # NI/Sales >= 0.045
+                    prediction = 1               # solvent
+                else:
+                    prediction = 0               # insolvent
+
+    return prediction, nodes
+```
+
+### How the function works
+1. **Inner‑node evaluation** – The six boolean conditions are evaluated in the order they appear in the tree.  
+   The result for each node is stored as `1` (condition true) or `0` (condition false) in the list `nodes`.
+
+2. **Tree traversal** – Using the values in `nodes`, the function walks through the decision branches and assigns the final class:
+   * `1` → *solvent*  
+   * `0` → *insolvent*
+
+3. **Return value** – The function returns a tuple  
+   `(prediction, nodes)`.  
+   Example:
+
+   ```python
+   sample = {
+       "EBIT/TA": 0.07,
+       "NI/TC": 0.020,
+       "Sales/TA": 0.30,
+       "EBIT/Sales": 0.15,
+       "NI/Sales": 0.050,
+       "WC/TA": 0.10,
+       "Equity/TL": 0.60,
+       "Equity/TA": 0.55
+   }
+
+   pred, path = predict(sample)
+   print(pred)  # 1  (solvent)
+   print(path)  # [1, 0, 1, 0, 0, 0]
+   ```
+
+Feel free to plug this function into any pipeline that supplies a dictionary of the eight financial ratios; it will instantly give you both the classification and the logical path taken through the tree.

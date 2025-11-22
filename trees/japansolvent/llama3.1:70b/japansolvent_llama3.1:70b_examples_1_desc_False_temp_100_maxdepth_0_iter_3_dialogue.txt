@@ -1,0 +1,74 @@
+I'll build a decision tree classifier based on the provided features to predict whether a company is solvent or not. Here's the induced decision tree:
+
+|--- Earnings Before Interest and Taxes/Total Assets <= 0.15
+||--- class: insolvent (not solvent)
+|--- Earnings Before Interest and Taxes/Total Assets > 0.15
+||--- Equity/Total Liabilities <= 1.50
+|||--- Working Capital/Total Assets <= 0.30
+||||--- class: insolvent (not solvent)
+|||--- Working Capital/Total Assets > 0.30
+||||--- class: solvent
+||--- Equity/Total Liabilities > 1.50
+|||--- Net Income/Sales <= 0.05
+||||--- class: insolvent (not solvent)
+|||--- Net Income/Sales > 0.05
+||||--- class: solvent
+
+Here's a brief explanation of the decision tree:
+
+* The most important feature is Earnings Before Interest and Taxes/Total Assets, which is used to determine whether a company has sufficient profitability.
+* If the company's earnings are low (<= 0.15), it is classified as insolvent.
+* If the company's earnings are higher (> 0.15), we look at the Equity/Total Liabilities ratio to assess its leverage and financial stability.
+* If the equity-to-liability ratio is low (<= 1.50) or moderate, we examine the Working Capital/Total Assets ratio to evaluate its liquidity.
+* Companies with low working capital (<= 0.30) are classified as insolvent, while those with higher working capital (> 0.30) are considered solvent.
+* If the equity-to-liability ratio is high (> 1.50), we consider the Net Income/Sales ratio to assess profitability.
+* Companies with low net income margins (<= 0.05) are classified as insolvent, while those with higher net income margins (> 0.05) are considered solvent.
+
+Please note that this decision tree is based on a simplified analysis and should not be used for actual investment or credit decisions without further refinement and validation using more comprehensive data sets.
+
+
+#########################
+
+
+Here is the Python function that implements the decision tree for predicting whether a company is solvent or not:
+
+```python
+def predict(X: dict):
+    nodes = 6 * [None]
+    
+    # Node 0: EBIT/TA <= 0.15
+    nodes[0] = X["EBIT/TA"] <= 0.15
+    
+    # Node 1: Equity/TL <= 1.50
+    nodes[1] = X["Equity/TL"] <= 1.50
+    
+    # Node 2: WC/TA <= 0.30
+    nodes[2] = X["WC/TA"] <= 0.30
+    
+    # Node 3: Net Income/Sales <= 0.05
+    nodes[3] = X["NI/Sales"] <= 0.05
+    
+    # Node 4: EBIT/TA > 0.15 and Equity/TL > 1.50
+    nodes[4] = (not nodes[0]) and (not nodes[1])
+    
+    # Node 5: EBIT/TA > 0.15 and Equity/TL <= 1.50 and WC/TA > 0.30
+    nodes[5] = (not nodes[0]) and nodes[1] and (not nodes[2])
+
+    if nodes[0]:
+        prediction = 0  # Insolvent
+    elif nodes[4]:
+        if nodes[3]:
+            prediction = 0  # Insolvent
+        else:
+            prediction = 1  # Solvent
+    elif nodes[5]:
+        prediction = 1  # Solvent
+    elif nodes[2]:
+        prediction = 0  # Insolvent
+    else:
+        prediction = 1  # Solvent
+
+    return prediction, [int(node) for node in nodes]
+```
+
+This function takes a dictionary `X` containing the feature values as input and returns a tuple with two elements: (1) the predicted class label (`0` for insolvent or `1` for solvent), and (2) a list of boolean values representing the truth values of the inner nodes in the decision tree.

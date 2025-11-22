@@ -1,0 +1,135 @@
+Below is a **sample decision‑tree classifier** that uses the eight financial‑ratio features you listed to predict whether a company is **Solvent** (able to meet its long‑term obligations) or **Insolvent** (at risk of default).  
+
+The tree is written in the same ASCII style you showed for the Iris example.  
+All split‑points (the “≤ value” thresholds) are **illustrative** – they are based on common‑sense ranges that appear frequently in the finance literature (e.g., equity‑to‑assets ≈ 30 % is often taken as a rough “minimum” buffer). In a real‑world project you would train the tree on a labelled data set and let an algorithm (e.g., CART) choose the optimal thresholds and the exact ordering of the variables.
+
+```
+|--- Equity/Total Assets <= 0.30
+|    |--- Working Capital/Total Assets <= 0.05
+|    |    |--- class: Insolvent
+|    |--- Working Capital/Total Assets > 0.05
+|    |    |--- EBIT/Total Assets <= 0.02
+|    |    |    |--- class: Insolvent
+|    |    |--- EBIT/Total Assets > 0.02
+|    |    |    |--- class: Solvent
+|--- Equity/Total Assets > 0.30
+|    |--- Net Income/Total Capital <= 0.04
+|    |    |--- class: Insolvent
+|    |--- Net Income/Total Capital > 0.04
+|    |    |--- Sales/Total Assets <= 0.20
+|    |    |    |--- class: Insolvent
+|    |    |--- Sales/Total Assets > 0.20
+|    |    |    |--- EBIT/Sales <= 0.08
+|    |    |    |    |--- class: Insolvent
+|    |    |    |--- EBIT/Sales > 0.08
+|    |    |    |    |--- class: Solvent
+```
+
+### How the tree works (interpretation)
+
+| Split (node)                              | Why it matters (financial intuition)                                                                 |
+|-------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| **Equity/Total Assets** (E/A)             | A core solvency measure – higher equity means a larger cushion against asset‑side losses.            |
+| **Working Capital/Total Assets** (WC/TA)  | Captures short‑term liquidity relative to the size of the firm; a very low ratio signals cash‑flow stress. |
+| **EBIT/Total Assets** (EBIT/TA)            | Operating profitability per unit of assets; low values suggest the business cannot generate enough earnings to service debt. |
+| **Net Income/Total Capital** (NI/TC)      | Return on the total capital employed; a low return indicates the firm is not earning enough on its financing base. |
+| **Sales/Total Assets** (S/TA)             | Asset turnover – if sales are too low relative to the asset base, the firm may be “asset‑heavy” and inefficient. |
+| **EBIT/Sales** (EBIT% of sales)           | Operating margin; a margin under ~8 % is often a red flag for companies in many industries.            |
+
+### What to do next
+
+1. **Gather data** – Assemble a historical data set with these eight ratios for a sizable sample of firms, each labelled “Solvent” / “Insolvent” (e.g., based on eventual bankruptcy, default, or a credit‑rating threshold).  
+2. **Train** – Run a CART (Classification And Regression Tree) algorithm (e.g., `DecisionTreeClassifier` in scikit‑learn) on the data. The algorithm will automatically pick the most informative splits and the exact numeric thresholds that minimise mis‑classification.  
+3. **Validate** – Use cross‑validation or a hold‑out test set to evaluate accuracy, precision, recall, and especially the false‑negative rate (predicting “Solvent” when the firm actually defaults).  
+4. **Prune** – If the tree becomes too deep (over‑fitting), prune it (e.g., set `max_depth`, `min_samples_leaf`, or use cost‑complexity pruning) to improve generalisation.  
+5. **Deploy** – Translate the final tree into production code (the ASCII representation above works as a quick reference) and integrate it into your credit‑risk workflow.
+
+Feel free to ask for a more detailed walkthrough (e.g., Python code to train and visualise the tree) or to tweak the thresholds for a particular industry!
+
+
+#########################
+
+
+**Python function that implements the decision‑tree classifier**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company is solvent (1) or insolvent (0) using the
+    handcrafted decision‑tree described in the prompt.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the following keys (exact spelling):
+        'EBIT/TA', 'NI/TC', 'Sales/TA', 'EBIT/Sales',
+        'NI/Sales', 'WC/TA', 'Equity/TL', 'Equity/TA'.
+
+        The values are the numeric ratios for the company.
+
+    Returns
+    -------
+    prediction : int
+        1 → solvent, 0 → insolvent
+    nodes : list[int]
+        Truth values (1 = condition satisfied, 0 = not satisfied) for each
+        inner node of the tree, in the order they are evaluated.
+    """
+
+    # --------------------------------------------------------------
+    # 1️⃣  Compute the Boolean result of every inner‑node condition.
+    # --------------------------------------------------------------
+    # The order of the entries in the list corresponds to the order
+    # used later in the branching logic.
+    nodes = [None] * 6                     # we have 6 inner nodes
+    nodes[0] = X["Equity/TA"]   <= 0.30    # Node 0
+    nodes[1] = X["WC/TA"]       <= 0.05    # Node 1
+    nodes[2] = X["EBIT/TA"]     <= 0.02    # Node 2
+    nodes[3] = X["NI/TC"]       <= 0.04    # Node 3
+    nodes[4] = X["Sales/TA"]    <= 0.20    # Node 4
+    nodes[5] = X["EBIT/Sales"]  <= 0.08    # Node 5
+
+    # --------------------------------------------------------------
+    # 2️⃣  Follow the tree using the Boolean values above.
+    # --------------------------------------------------------------
+    if nodes[0]:                     # Equity/TA ≤ 0.30
+        if nodes[1]:                 # WC/TA ≤ 0.05
+            prediction = 0           # Insolvent
+        else:                        # WC/TA  > 0.05
+            if nodes[2]:             # EBIT/TA ≤ 0.02
+                prediction = 0       # Insolvent
+            else:                    # EBIT/TA  > 0.02
+                prediction = 1       # Solvent
+    else:                            # Equity/TA  > 0.30
+        if nodes[3]:                 # NI/TC ≤ 0.04
+            prediction = 0           # Insolvent
+        else:                        # NI/TC  > 0.04
+            if nodes[4]:             # Sales/TA ≤ 0.20
+                prediction = 0       # Insolvent
+            else:                    # Sales/TA  > 0.20
+                if nodes[5]:         # EBIT/Sales ≤ 0.08
+                    prediction = 0   # Insolvent
+                else:                # EBIT/Sales  > 0.08
+                    prediction = 1   # Solvent
+
+    # --------------------------------------------------------------
+    # 3️⃣  Return the prediction together with the node‑truth list.
+    # --------------------------------------------------------------
+    # Convert the Boolean values to 0/1 as requested.
+    nodes_int = [int(b) for b in nodes]
+
+    return prediction, nodes_int
+```
+
+### How the function works
+
+| Index | Condition (inner node)                              | Meaning in finance                                                                 |
+|------|------------------------------------------------------|-------------------------------------------------------------------------------------|
+| 0    | `Equity/TA ≤ 0.30`                                   | Low equity cushion → higher risk.                                                   |
+| 1    | `WC/TA ≤ 0.05`                                       | Very thin working‑capital buffer.                                                   |
+| 2    | `EBIT/TA ≤ 0.02`                                     | Poor operating profitability per asset.                                            |
+| 3    | `NI/TC ≤ 0.04`                                       | Low return on total capital.                                                        |
+| 4    | `Sales/TA ≤ 0.20`                                    | Weak asset turnover.                                                                |
+| 5    | `EBIT/Sales ≤ 0.08`                                  | Thin operating margin.                                                              |
+
+The function evaluates **all six conditions** first (so the returned `nodes` list always has length 6), then follows the tree to produce a single binary prediction (`1 = solvent`, `0 = insolvent`).

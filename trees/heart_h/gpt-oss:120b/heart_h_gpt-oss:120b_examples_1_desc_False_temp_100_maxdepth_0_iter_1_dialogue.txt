@@ -1,0 +1,169 @@
+**Decision‑Tree Classifier – “Has Heart Disease?”**  
+*(Illustrative tree – thresholds and splits are based on the well‑known UCI Heart‑Disease dataset and typical clinical importance.  In a real project the exact cut‑points would be learned from the training data.)*  
+
+```
+|--- Chest Pain Type
+|    |--- Asymptomatic
+|    |    |--- class: HEART DISEASE
+|    |--- Typical angina
+|    |    |--- class: NO HEART DISEASE
+|    |--- Atypical angina / Non‑anginal pain
+|         |--- Thalassemia
+|              |--- Fixed defect
+|              |    |--- class: HEART DISEASE
+|              |--- Reversible defect
+|              |    |--- class: NO HEART DISEASE
+|              |--- Normal
+|                   |--- Maximum Heart Rate Achieved (bpm) <= 150
+|                   |    |--- class: HEART DISEASE
+|                   |--- Maximum Heart Rate Achieved (bpm) > 150
+|                        |--- ST Depression (Oldpeak) <= 2.0
+|                        |    |--- Number of Major Vessels (0‑3) = 0
+|                        |    |    |--- class: NO HEART DISEASE
+|                        |    |--- Number of Major Vessels (0‑3) > 0
+|                        |    |    |--- class: HEART DISEASE
+|                        |--- ST Depression (Oldpeak) > 2.0
+|                             |--- class: HEART DISEASE
+```
+
+### How the tree works  
+
+| Node (feature)                              | Decision rule (illustrative)                                    | Outcome if rule is satisfied |
+|---------------------------------------------|------------------------------------------------------------------|------------------------------|
+| **Chest Pain Type**                         | *Asymptomatic* → go straight to “Heart Disease”.                | HEART DISEASE                |
+|                                             | *Typical angina* → low risk.                                     | NO HEART DISEASE             |
+|                                             | *Atypical* or *Non‑anginal* → need further info.                | Continue down tree           |
+| **Thalassemia**                             | *Fixed defect* → strong indicator of disease.                    | HEART DISEASE                |
+|                                             | *Reversible defect* → usually benign.                            | NO HEART DISEASE             |
+|                                             | *Normal* → keep evaluating.                                      | Continue down tree           |
+| **Maximum Heart Rate Achieved** (bpm)       | ≤ 150 → limited cardiac reserve → higher risk.                   | HEART DISEASE                |
+|                                             | > 150 → better reserve → lower risk, but still check ST‑depression. | Continue down tree           |
+| **ST Depression (Oldpeak)** (0‑5)           | ≤ 2.0 → mild‑to‑moderate exercise‑induced ST change.            | Go to number of vessels      |
+|                                             | > 2.0 → pronounced ST depression → high risk.                    | HEART DISEASE                |
+| **Number of Major Vessels (by fluoroscopy)**| 0 → no angiographic evidence of disease.                         | NO HEART DISEASE             |
+|                                             | 1‑3 → presence of ≥1 diseased vessel.                            | HEART DISEASE                |
+
+### Why these features?  
+
+1. **Chest‑pain type** – the strongest predictor in the original dataset (≈ 30 % importance).  
+2. **Thalassemia** – captures a genetic risk factor; “fixed defect” is highly associated with disease.  
+3. **Maximum heart rate** – low exercise capacity is a classic sign of cardiac limitation.  
+4. **ST depression (Oldpeak)** – reflects ischemia during stress testing.  
+5. **Number of vessels** – direct angiographic evidence of coronary atherosclerosis.  
+
+Other variables (age, sex, resting blood pressure, cholesterol, fasting blood sugar, resting ECG, exercise‑induced angina, slope of ST segment) still contribute to the model’s overall accuracy, but in a greedy CART‑style split they usually appear deeper in the tree or as secondary splits that do not improve the overall impurity as much as the five nodes shown above.  
+
+---
+
+**How to use the tree**
+
+1. Start at the top node (**Chest Pain Type**) and follow the branch that matches the patient’s presentation.  
+2. Continue down the tree until you reach a leaf node labelled either **HEART DISEASE** or **NO HEART DISEASE**.  
+3. The leaf label is the classifier’s prediction for that patient.  
+
+*(In practice you would validate this tree with cross‑validation and possibly prune it to avoid over‑fitting, but the structure above captures the most important clinical predictors for a simple, interpretable rule‑based model.)*
+
+
+#########################
+
+
+**Python implementation of the tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a patient has heart disease (target = 1) or not (target = 0).
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains **all** the feature keys exactly as they appear
+        in the data set:
+
+        ['age', 'sex', 'chest_pain', 'trestbps', 'chol', 'fbs', 'restecg',
+         'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal',
+         'Target variable', 'target']
+
+        Only the features that are used by the tree need to be present, but the
+        keys must be spelled exactly as above.
+
+    Returns
+    -------
+    prediction : int
+        1 → patient has heart disease, 0 → no heart disease
+    nodes : list[int]
+        Truth values of the inner‑node tests in the order they are evaluated.
+        1 means the condition was satisfied, 0 means it was not satisfied
+        (or the node was never reached).
+    """
+
+    # ------------------------------------------------------------------ #
+    # 0 – Chest‑pain = Asymptomatic (code 0) → always disease
+    # 1 – Chest‑pain = Typical angina (code 3) → never disease
+    # 2 – Thalassemia = Fixed defect (code 1) → disease
+    # 3 – Thalassemia = Reversible defect (code 3) → no disease
+    # 4 – thalach ≤ 150  → disease
+    # 5 – oldpeak ≤ 2.0 → need to look at vessels
+    # 6 – ca > 0        → disease (otherwise no disease)
+    # ------------------------------------------------------------------ #
+
+    # initialise the list – 7 inner nodes in total
+    nodes = [0] * 7
+
+    # ---- node 0 ------------------------------------------------------ #
+    nodes[0] = 1 if X["chest_pain"] == 0 else 0          # Asymptomatic ?
+    if nodes[0]:
+        return 1, nodes                                   # disease
+
+    # ---- node 1 ------------------------------------------------------ #
+    nodes[1] = 1 if X["chest_pain"] == 3 else 0          # Typical angina ?
+    if nodes[1]:
+        return 0, nodes                                   # no disease
+
+    # ---- node 2 ------------------------------------------------------ #
+    nodes[2] = 1 if X["thal"] == 1 else 0                # Fixed defect ?
+    if nodes[2]:
+        return 1, nodes                                   # disease
+
+    # ---- node 3 ------------------------------------------------------ #
+    nodes[3] = 1 if X["thal"] == 3 else 0                # Reversible defect ?
+    if nodes[3]:
+        return 0, nodes                                   # no disease
+
+    # At this point chest pain is atypical / non‑anginal (1 or 2)
+    # and thal is *Normal* (code 2). Continue down the tree.
+
+    # ---- node 4 ------------------------------------------------------ #
+    nodes[4] = 1 if X["thalach"] <= 150 else 0           # low max heart rate ?
+    if nodes[4]:
+        return 1, nodes                                   # disease
+
+    # ---- node 5 ------------------------------------------------------ #
+    nodes[5] = 1 if X["oldpeak"] <= 2.0 else 0           # mild‑to‑moderate ST depression ?
+    if not nodes[5]:
+        # oldpeak > 2.0  → strong evidence of disease
+        return 1, nodes
+
+    # ---- node 6 ------------------------------------------------------ #
+    nodes[6] = 1 if X["ca"] > 0 else 0                   # any diseased vessel ?
+    if nodes[6]:
+        return 1, nodes                                   # disease
+    else:
+        return 0, nodes                                   # no disease
+```
+
+### How the returned `nodes` list looks
+
+| index | condition evaluated                              | 1 = true | 0 = false |
+|------|--------------------------------------------------|----------|-----------|
+| 0    | `chest_pain == 0` (asymptomatic)                | disease  | continue  |
+| 1    | `chest_pain == 3` (typical angina)               | no disease| continue |
+| 2    | `thal == 1` (fixed defect)                       | disease  | continue  |
+| 3    | `thal == 3` (reversible defect)                  | no disease| continue |
+| 4    | `thalach <= 150` (low exercise heart rate)       | disease  | continue |
+| 5    | `oldpeak <= 2.0` (ST‑depression not severe)      | go to vessels | disease |
+| 6    | `ca > 0` (≥1 vessel with disease)                | disease  | no disease|
+
+Only the nodes that are actually reached get a `1`; the others stay `0`.  
+The function therefore returns **both** the classification (`prediction`) and the
+vector of inner‑node decisions (`nodes`).

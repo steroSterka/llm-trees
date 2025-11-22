@@ -1,0 +1,97 @@
+Based on the provided features, I will induce a decision tree classifier to predict which boxer won each round. Here is the decision tree:
+
+|--- Judge: HBO-Lederman
+||--- class: Lewis
+|--- Judge: E. Williams / L. O'Connell / S. Christodoulu / Sportsticker / Boxing Times / Sportsline / Associated Press / ESPN / Boxing Monthly-Leach
+||--- Offical judge: yes
+|||--- Round <= 6
+||||--- class: Holyfield
+|||--- Round > 6
+||||--- class: Lewis
+||--- Offical judge: no
+|||--- Judge: E. Williams / L. O'Connell
+||||--- class: Holyfield
+|||--- Judge: S. Christodoulu / Sportsticker / Boxing Times / Sportsline / Associated Press / ESPN / Boxing Monthly-Leach
+||||--- Round <= 3
+|||||--- class: Holyfield
+||||--- Round > 3
+|||||--- class: Lewis
+
+Note that this decision tree is based on the assumption that the judges' scores are the most important features in determining the winner of each round. The tree uses a combination of the judge's identity, official judge status, and round number to make predictions.
+
+Here's a brief explanation of the decision tree:
+
+* If the judge is HBO-Lederman, Lewis is predicted to win.
+* For other judges, if they are an official judge, Holyfield is predicted to win in the early rounds (1-6), while Lewis is predicted to win in the later rounds (7-12).
+* If the judge is not an official judge, the decision tree splits based on the judge's identity. E. Williams and L. O'Connell are predicted to score in favor of Holyfield, while other judges are predicted to score in favor of Lewis, especially in the later rounds.
+* For non-official judges, the decision tree also considers the round number. In the early rounds (1-3), Holyfield is predicted to win, while in the later rounds (4-12), Lewis is predicted to win.
+
+Keep in mind that this decision tree is a simplified model and may not accurately reflect the complexities of real-world boxing judging.
+
+
+#########################
+
+
+Here's a Python function that represents the decision tree for predicting which boxer won each round:
+
+```python
+def predict(X: dict):
+    """
+    Predicts which boxer won each round based on the given features.
+
+    Args:
+        X (dict): A dictionary containing the features.
+            - 'Judge': The judge's ID (0 = E. Williams, 1 = L. O'Connell, 2 = S. Christodoulu, 3 = HBO-Lederman, 4 = Sportsticker, 5 = Boxing Times, 6 = Sportsline, 7 = Associated Press, 8 = ESPN, 9 = Boxing Monthly-Leach)
+            - 'Official': Whether the judge is an official judge (1 = Yes, 0 = No)
+            - 'Round': The round number (1 to 12)
+
+    Returns:
+        tuple: A tuple containing the predicted winner (1 = Lewis, 0 = Holyfield) and a list of truth values for the inner nodes.
+    """
+
+    # Initialize the list of inner node truth values
+    nodes = 5 * [None]
+
+    # Node 0: Check if the judge is HBO-Lederman
+    nodes[0] = X["Judge"] == 3
+
+    # Node 1: Check if the official judge is yes and the round number is less than or equal to 6
+    nodes[1] = X["Official"] == 1 and X["Round"] <= 6
+
+    # Node 2: Check if the judge is not HBO-Lederman, the official judge is no, and the judge is E. Williams or L. O'Connell
+    nodes[2] = X["Judge"] != 3 and X["Official"] == 0 and (X["Judge"] == 0 or X["Judge"] == 1)
+
+    # Node 3: Check if the round number is less than or equal to 3
+    nodes[3] = X["Round"] <= 3
+
+    # Node 4: Check if the judge is not HBO-Lederman, the official judge is no, and the judge is not E. Williams or L. O'Connell
+    nodes[4] = X["Judge"] != 3 and X["Official"] == 0 and (X["Judge"] > 1)
+
+    # Make predictions based on the inner node truth values
+    if nodes[0]:
+        prediction = 1  # Lewis wins if the judge is HBO-Lederman
+    elif nodes[1]:
+        prediction = 0  # Holyfield wins if the official judge is yes and the round number is less than or equal to 6
+    elif nodes[2]:
+        prediction = 0  # Holyfield wins if the judge is not HBO-Lederman, the official judge is no, and the judge is E. Williams or L. O'Connell
+    elif nodes[4] and nodes[3]:
+        prediction = 0  # Holyfield wins if the round number is less than or equal to 3 and the judge is not HBO-Lederman, the official judge is no, and the judge is not E. Williams or L. O'Connell
+    else:
+        prediction = 1  # Lewis wins otherwise
+
+    return prediction, [int(node) for node in nodes]
+
+# Example usage
+X = {
+    "Judge": 3,
+    "Official": 0,
+    "Round": 5
+}
+prediction, nodes = predict(X)
+print(f"Prediction: {prediction}")
+print(f"Inner Node Truth Values: {nodes}")
+```
+
+This code defines a function `predict` that takes in a dictionary `X` containing the features and returns a tuple with the predicted winner (1 for Lewis or 0 for Holyfield) and a list of truth values for the inner nodes. The inner node truth values are represented as integers, where 1 indicates True and 0 indicates False.
+
+You can modify the example usage to test different input scenarios by changing the values in the `X` dictionary.

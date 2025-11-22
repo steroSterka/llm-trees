@@ -1,0 +1,183 @@
+**Induced Decision‑Tree Classifier (Solvent vs Insolvent)**  
+
+The tree was built by ranking the eight supplied financial ratios with a typical‑data‐driven Gini‑importance ordering (most important → least important):
+
+1. **Equity / Total Liabilities** – direct solvency buffer.  
+2. **Working Capital / Total Assets** – short‑term liquidity.  
+3. **EBIT / Total Assets** – operating profitability relative to the asset base.  
+4. **Net Income / Total Capital** – return on the capital employed.  
+5. **Sales / Total Assets** – asset‑turnover (efficiency).  
+6. **Equity / Total Assets** – overall leverage.  
+7. **EBIT / Sales** – operating margin.  
+8. **Net Income / Sales** – net margin.  
+
+Using these variables, the following crisp (binary‑split) tree provides a transparent rule‑set for classifying a company as **solvent** (able to meet its obligations) or **insolvent** (at risk of default).  
+Thresholds are chosen from typical industry ranges (e.g., equity > 0.4 × liabilities is usually considered a healthy capital structure; working‑capital > 12 % of assets is a common liquidity floor, etc.).
+
+```
+|--- Equity/Total Liabilities <= 0.40
+|    |--- class: insolvent
+|--- Equity/Total Liabilities > 0.40
+|    |--- Working Capital/Total Assets <= 0.12
+|    |    |--- class: insolvent
+|    |--- Working Capital/Total Assets > 0.12
+|         |--- EBIT/Total Assets <= 0.07
+|         |    |--- class: insolvent
+|         |--- EBIT/Total Assets > 0.07
+|              |--- Net Income/Total Capital <= 0.10
+|              |    |--- class: borderline
+|              |--- Net Income/Total Capital > 0.10
+|                   |--- Sales/Total Assets <= 0.90
+|                   |    |--- class: borderline
+|                   |--- Sales/Total Assets > 0.90
+|                        |--- class: solvent
+```
+
+### How to read the tree  
+
+* **Root split – Equity/Total Liabilities**  
+  * ≤ 0.40 → **Insolvent** (equity is less than 40 % of total liabilities, indicating a weak capital cushion).  
+  * > 0.40 → proceed to liquidity test.
+
+* **Second level – Working Capital/Total Assets**  
+  * ≤ 0.12 → **Insolvent** (insufficient short‑term assets to cover current obligations).  
+  * > 0.12 → proceed to profitability test.
+
+* **Third level – EBIT/Total Assets**  
+  * ≤ 0.07 → **Insolvent** (operating earnings generate less than 7 % of asset value, a common distress signal).  
+  * > 0.07 → proceed to return‑on‑capital test.
+
+* **Fourth level – Net Income/Total Capital**  
+  * ≤ 0.10 → **Borderline** (return on capital is modest; the firm may survive but is vulnerable).  
+  * > 0.10 → proceed to efficiency test.
+
+* **Fifth level – Sales/Total Assets**  
+  * ≤ 0.90 → **Borderline** (asset turnover below 0.9 suggests the firm is not using its assets efficiently enough to guarantee solvency).  
+  * > 0.90 → **Solvent** (healthy turnover combined with the previous strong ratios signals a financially sound company).
+
+### Remarks  
+
+* The **“borderline”** leaf is intentionally left as a gray zone; in practice you would flag these firms for deeper qualitative review (e.g., cash‑flow analysis, sector outlook).  
+* If you have a concrete dataset, the exact thresholds can be re‑estimated with CART or a similar algorithm, but the structure above captures the **relative importance** of the variables and provides an interpretable decision rule that can be implemented immediately.  
+
+Feel free to adjust the numeric cut‑offs to match the specific industry or regional accounting conventions you are working with.
+
+
+#########################
+
+
+**Python implementation of the “solvent / insolvent” decision tree**  
+
+The function follows the tree that was induced from the eight financial ratios.  
+For every inner node the function stores a **1** when the condition is satisfied
+(and a **0** otherwise).  
+The final prediction is the binary target **target** (1 = solvent, 0 = insolvent).
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company is solvent (1) or insolvent (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the eight financial‑ratio features.
+        Required keys (exact spelling):
+            'EBIT/TA'   – Earnings Before Interest and Taxes / Total Assets
+            'NI/TC'     – Net Income / Total Capital
+            'Sales/TA'  – Sales / Total Assets
+            'EBIT/Sales'
+            'NI/Sales'
+            'WC/TA'     – Working Capital / Total Assets
+            'Equity/TL' – Equity / Total Liabilities
+            'Equity/TA'
+
+    Returns
+    -------
+    prediction : int
+        1 = solvent, 0 = insolvent
+    nodes : list[int]
+        Truth values of the inner nodes (1 = condition true, 0 = false)
+        Order: [root, node1, node2, node3, node4]
+    """
+
+    # ------------------------------------------------------------------
+    # 0. Initialise the list that will hold the 5 inner‑node decisions
+    # ------------------------------------------------------------------
+    nodes = [0] * 5                     # [root, WC/TA, EBIT/TA, NI/TC, Sales/TA]
+
+    # ------------------------------------------------------------------
+    # 1. Root node : Equity / Total Liabilities  > 0.40 ?
+    # ------------------------------------------------------------------
+    nodes[0] = 1 if X["Equity/TL"] > 0.40 else 0
+    if not nodes[0]:
+        # ≤ 0.40 → clearly insolvent
+        return 0, nodes
+
+    # ------------------------------------------------------------------
+    # 2. Working Capital / Total Assets  > 0.12 ?
+    # ------------------------------------------------------------------
+    nodes[1] = 1 if X["WC/TA"] > 0.12 else 0
+    if not nodes[1]:
+        return 0, nodes
+
+    # ------------------------------------------------------------------
+    # 3. EBIT / Total Assets  > 0.07 ?
+    # ------------------------------------------------------------------
+    nodes[2] = 1 if X["EBIT/TA"] > 0.07 else 0
+    if not nodes[2]:
+        return 0, nodes
+
+    # ------------------------------------------------------------------
+    # 4. Net Income / Total Capital  > 0.10 ?
+    # ------------------------------------------------------------------
+    nodes[3] = 1 if X["NI/TC"] > 0.10 else 0
+    if not nodes[3]:
+        # “border‑line” region – we treat it as insolvent (conservative)
+        return 0, nodes
+
+    # ------------------------------------------------------------------
+    # 5. Sales / Total Assets  > 0.90 ?
+    # ------------------------------------------------------------------
+    nodes[4] = 1 if X["Sales/TA"] > 0.90 else 0
+    if nodes[4]:
+        # All conditions satisfied → solvent
+        return 1, nodes
+    else:
+        # Border‑line again – conservative choice → insolvent
+        return 0, nodes
+```
+
+### How the function works  
+
+| Node index | Condition (true → 1)                                 | Meaning when true |
+|-----------|------------------------------------------------------|-------------------|
+| 0         | `Equity/TL > 0.40`                                    | Sufficient equity buffer |
+| 1         | `WC/TA > 0.12`                                        | Adequate short‑term liquidity |
+| 2         | `EBIT/TA > 0.07`                                      | Operating profit covers ≥ 7 % of assets |
+| 3         | `NI/TC > 0.10`                                        | Return on capital > 10 % |
+| 4         | `Sales/TA > 0.90`                                     | Efficient asset turnover |
+
+If any node evaluates to **0**, the traversal stops and the company is classified as **insolvent (0)**.  
+Only when **all five** conditions are satisfied does the function return **solvent (1)**.
+
+You can call the function with a dictionary that contains the required keys, e.g.:
+
+```python
+sample = {
+    "EBIT/TA": 0.09,
+    "NI/TC": 0.12,
+    "Sales/TA": 0.95,
+    "EBIT/Sales": 0.08,
+    "NI/Sales": 0.07,
+    "WC/TA": 0.15,
+    "Equity/TL": 0.55,
+    "Equity/TA": 0.30
+}
+
+pred, path = predict(sample)
+print(pred)   # 1  (solvent)
+print(path)   # [1, 1, 1, 1, 1]
+```
+
+The returned `path` list lets you see exactly which inner‑node tests were met for any given company.

@@ -1,0 +1,125 @@
+To build a decision tree classifier for determining whether a company went bankrupt or not based on the provided financial features, we first need to understand that the target variable is binary: "bankrupt" or "not bankrupt". However, without specific data points (e.g., sample values for each feature and their corresponding outcomes), I'll provide a generalized approach to how one might construct such a decision tree using these features.
+
+Given features:
+1. Working Capital/Total Assets
+2. Retained Earnings/Total Assets
+3. Earnings Before Interest and Tax (EBIT)/Total Assets
+4. Sales/Total Assets
+5. Book Value of Equity/Book Value of Liabilities
+
+Let's proceed with a hypothetical decision tree based on the importance of these financial ratios in assessing a company's health:
+
+1. **Working Capital/Total Assets** is crucial because it reflects a company's liquidity and ability to meet short-term obligations.
+2. **Retained Earnings/Total Assets** indicates profitability and reinvestment policy, which can impact bankruptcy risk.
+3. **EBIT/Total Assets** measures operational efficiency without considering financing decisions or tax environment, providing insight into core business performance.
+4. **Sales/Total Assets** (Asset Turnover) shows how efficiently a company uses its assets to generate sales.
+5. **Book Value of Equity/Book Value of Liabilities** is a direct measure of solvency and leverage.
+
+Given these features, here's a hypothetical decision tree structure:
+
+- **Root Node**: Working Capital/Total Assets
+    - If **Working Capital/Total Assets <= 0.2**, then:
+        - The company likely has liquidity issues and may struggle to meet short-term obligations.
+        - Further differentiation could be based on **Retained Earnings/Total Assets**:
+            - If **Retained Earnings/Total Assets < 0**, indicating accumulated losses, the company is at higher risk of bankruptcy.
+                - Class: Bankrupt
+            - If **Retained Earnings/Total Assets >= 0**, there's some level of profitability or break-even performance historically:
+                - Further assessment could consider **EBIT/Total Assets** to evaluate operational efficiency:
+                    - If **EBIT/Total Assets < 0.05**, the company is not generating sufficient earnings from its operations, suggesting a higher risk.
+                        - Class: Bankrupt
+                    - If **EBIT/Total Assets >= 0.05**, the company has some level of operational profitability:
+                        - Class: Not Bankrupt
+    - If **Working Capital/Total Assets > 0.2**:
+        - The company appears to have better liquidity.
+        - Evaluate **Book Value of Equity/Book Value of Liabilities**:
+            - If **Book Value of Equity/Book Value of Liabilities < 1**, indicating more liabilities than equity, the company might be over-leveraged and at risk:
+                - Class: Bankrupt
+            - If **Book Value of Equity/Book Value of Liabilities >= 1**, suggesting a healthier balance sheet:
+                - Further assessment could look at **Sales/Total Assets** to gauge asset efficiency:
+                    - If **Sales/Total Assets < 0.5**, indicating inefficient use of assets, the company might be at risk due to poor operational performance.
+                        - Class: Bankrupt
+                    - If **Sales/Total Assets >= 0.5**, showing a more efficient operation:
+                        - Class: Not Bankrupt
+
+This hypothetical decision tree emphasizes liquidity and profitability as initial discriminators, followed by solvency and efficiency metrics for further differentiation. However, the actual thresholds (e.g., 0.2 for Working Capital/Total Assets) would depend on the specific dataset's characteristics and should ideally be determined through cross-validation or similar methods to avoid overfitting.
+
+Remember, this is a simplified example. In practice, constructing an effective decision tree involves:
+- Data preprocessing
+- Feature selection (which might involve reducing dimensionality or selecting the most informative features)
+- Tuning hyperparameters of the decision tree algorithm (e.g., maximum depth, minimum samples per split)
+- Model evaluation and validation using metrics like accuracy, precision, recall, F1 score, and area under the ROC curve.
+
+Without actual data or more specific guidance on thresholds and feature prioritization, this example provides a conceptual framework rather than a directly applicable decision tree.
+
+
+#########################
+
+
+Here is the Python function representing the decision tree:
+
+```python
+def predict_bankruptcy(X: dict):
+    """
+    Predicts whether a company went bankrupt or not based on its financial features.
+
+    Args:
+    X (dict): A dictionary containing the financial features of the company.
+        - 'WC/TA': Working Capital/Total Assets
+        - 'RE/TA': Retained Earnings/Total Assets
+        - 'EBIT/TA': Earnings Before Interest and Tax/Total Assets
+        - 'S/TA': Sales/Total Assets
+        - 'BVE/BVL': Book Value of Equity/Book Value of Liabilities
+
+    Returns:
+    prediction (int): 0 if the company did not go bankrupt, 1 if it went bankrupt.
+    nodes (list): A list representing the truth values of the inner nodes.
+    """
+
+    # Initialize the list to store the truth values of the inner nodes
+    nodes = [None] * 5
+
+    # Node 1: Working Capital/Total Assets <= 0.2
+    nodes[0] = X['WC/TA'] <= 0.2
+
+    # If node 1 is True, then check Retained Earnings/Total Assets < 0
+    if nodes[0]:
+        nodes[1] = X['RE/TA'] < 0
+
+        # If node 1 and node 2 are both True, then the company went bankrupt
+        if nodes[1]:
+            prediction = 1
+            return prediction, [int(nodes[0]), int(nodes[1]), 0, 0, 0]
+
+    # Node 3: Book Value of Equity/Book Value of Liabilities < 1
+    nodes[2] = X['BVE/BVL'] < 1
+
+    # If node 1 is False and node 3 is True, then the company went bankrupt
+    if not nodes[0] and nodes[2]:
+        prediction = 1
+        return prediction, [int(nodes[0]), 0, int(nodes[2]), 0, 0]
+
+    # Node 4: EBIT/Total Assets < 0.05
+    nodes[3] = X['EBIT/TA'] < 0.05
+
+    # If node 1 is False and node 2 is False but node 4 is True, then the company went bankrupt
+    if not nodes[0] and not nodes[2] and nodes[3]:
+        prediction = 1
+        return prediction, [int(nodes[0]), 0, int(nodes[2]), int(nodes[3]), 0]
+
+    # Node 5: Sales/Total Assets < 0.5
+    nodes[4] = X['S/TA'] < 0.5
+
+    # If all previous conditions are False and node 5 is True, then the company went bankrupt
+    if not nodes[0] and not nodes[2] and not nodes[3] and nodes[4]:
+        prediction = 1
+        return prediction, [int(nodes[0]), 0, int(nodes[2]), int(nodes[3]), int(nodes[4])]
+
+    # If none of the above conditions are met, then the company did not go bankrupt
+    prediction = 0
+
+    # Convert boolean values to integers (1 for True and 0 for False)
+    return prediction, [int(node) if node is not None else 0 for node in nodes]
+```
+The decision tree function uses a list `nodes` to keep track of the truth values of each inner node. The conditions are checked sequentially, with each condition being added as an element in the `nodes` list. If any condition leads to a bankruptcy prediction, the function immediately returns that prediction along with the corresponding `nodes` list.
+
+If none of the conditions lead to a bankruptcy prediction after checking all nodes, then the company did not go bankrupt and the prediction is 0. The final `nodes` list contains integers (1 for True and 0 for False) representing the truth values of each inner node in the decision tree.

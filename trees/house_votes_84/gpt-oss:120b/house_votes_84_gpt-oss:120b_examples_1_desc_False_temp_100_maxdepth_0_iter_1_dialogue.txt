@@ -1,0 +1,174 @@
+Below is a **hand‑crafted decision‑tree** that classifies a member of Congress as **Democrat** or **Republican** using the 16 binary roll‑call votes you supplied.  
+The structure follows the same “ASCII‑art” style you used for the Iris example, with the most‑discriminating votes placed at the top of the tree.  
+
+> **How the splits were chosen**  
+> 1. **Historical voting patterns** (late‑1990s‑early‑2000s) show that the vote on **“Aid to Nicaraguan Contras”** cleanly separates the two parties – almost every Republican voted **YES**, while virtually all Democrats voted **NO**.  
+> 2. For the minority of legislators who break that pattern, the next strongest separator is the **“Vote on the MX Missile”** (defense‑spending / anti‑missile‑proliferation).  
+> 3. When the first two votes do not resolve the party, the tree looks at **“Vote on Education Spending”** – Democrats tend to support higher education spending.  
+> 4. If still ambiguous, the tree uses **“Vote on Aid to El Salvador”** (another foreign‑aid / anti‑communist vote) and finally **“Vote on Handicapped‑Infant Funding”** (a socially‑conservative issue).  
+
+Because we do not have a concrete training set, the tree is **a plausible rule‑based model** that captures the strongest partisan signals in the data you listed.  It can be refined automatically (e.g., with CART) once actual vote records are supplied.
+
+---
+
+### Decision Tree (Party = Democrat / Republican)
+
+```
+|--- Vote on aid to Nicaraguan contras = NO
+||--- class: Democrat
+|--- Vote on aid to Nicaraguan contras = YES
+||--- Vote on MX missile = NO
+|||--- class: Democrat
+||--- Vote on MX missile = YES
+|||--- Vote on education spending = NO
+||||--- class: Republican
+|||--- Vote on education spending = YES
+||||--- Vote on aid to El Salvador = NO
+|||||||--- class: Democrat
+||||--- Vote on aid to El Salvador = YES
+|||||||--- Vote on handicapped‑infant funding = NO
+||||||||--- class: Republican
+|||||||--- Vote on handicapped‑infant funding = YES
+||||||||--- class: Democrat
+```
+
+#### Explanation of each node
+
+| Node (split)                               | Typical partisan tendency |
+|--------------------------------------------|---------------------------|
+| **Aid to Nicaraguan Contras = NO**        | Almost exclusively **Democrats** (they opposed funding the anti‑Sandinista rebels). |
+| **Aid to Nicaraguan Contras = YES**       | Mostly **Republicans**; proceed to next split. |
+| **MX Missile = NO**                        | Republicans who **oppose** the MX missile (e.g., fiscal conservatives) tend to be more moderate; many of them are **Democrats** on this issue. |
+| **MX Missile = YES**                       | Strong **Republican** defense‑spending stance; continue down the tree. |
+| **Education Spending = NO**                | Republicans who vote **against** increased education spending. |
+| **Education Spending = YES**               | Democrats (or centrist Republicans) who support higher education spending; need further clues. |
+| **Aid to El Salvador = NO**                | Democrats who opposed additional foreign aid to the civil‑war‑torn country. |
+| **Aid to El Salvador = YES**               | Republicans (or some Democrats) who supported the aid; disambiguated by the next vote. |
+| **Handicapped‑Infant Funding = NO**       | Republicans who voted **against** a socially‑conservative “handicapped‑infant” bill (often tied to abortion/health‑care funding). |
+| **Handicapped‑Infant Funding = YES**      | Democrats (or moderate Republicans) who voted **yes**. |
+
+---
+
+### How to use the tree
+
+1. **Start at the top** with the vote on **Aid to Nicaraguan Contras**.  
+2. Follow the **YES/NO** branch that matches the legislator’s vote.  
+3. Continue down the tree until you reach a leaf node labelled **Democrat** or **Republican**.  
+
+If you later provide the actual voting matrix (one row per legislator, one column per vote), a standard CART implementation can be run to **verify** or **improve** this rule‑set automatically. The tree above should already achieve high accuracy because the chosen splits correspond to the most partisan‑polarized roll‑calls.
+
+
+#########################
+
+
+**Python function that implements the tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (0 = Democrat, 1 = Republican) from roll‑call votes.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains **exactly** the keys shown below
+        (the values must be the encoded votes: 2 = yes, 1 = no).
+
+        Keys used by the tree
+        ---------------------
+        'aid-to-nicaraguan-contras'      # 1 = no, 2 = yes
+        'mx-missile'                     # 1 = no, 2 = yes
+        'education-spending'             # 1 = no, 2 = yes
+        'el-salvador-adi'                # 1 = no, 2 = yes
+        'handicapped-infants'            # 1 = no, 2 = yes
+
+    Returns
+    -------
+    prediction : int
+        0 → Democrat, 1 → Republican
+    nodes : list[int]
+        Truth values of the five inner‑node conditions in the order they are
+        evaluated. 1 means the condition (the “NO” branch) is satisfied,
+        0 means the opposite (“YES”) branch is taken.
+    """
+
+    # ------------------------------------------------------------------ #
+    # 1️⃣  Root node – aid‑to‑nicaraguan‑contras = NO ?
+    # ------------------------------------------------------------------ #
+    nodes = [None] * 5                     # placeholder for the 5 inner nodes
+    nodes[0] = 1 if X['aid-to-nicaraguan-contras'] == 1 else 0
+
+    # ------------------------------------------------------------------ #
+    # 2️⃣  mx‑missile = NO ?
+    # ------------------------------------------------------------------ #
+    nodes[1] = 1 if X['mx-missile'] == 1 else 0
+
+    # ------------------------------------------------------------------ #
+    # 3️⃣  education‑spending = NO ?
+    # ------------------------------------------------------------------ #
+    nodes[2] = 1 if X['education-spending'] == 1 else 0
+
+    # ------------------------------------------------------------------ #
+    # 4️⃣  el‑salvador‑adi = NO ?
+    # ------------------------------------------------------------------ #
+    nodes[3] = 1 if X['el-salvador-adi'] == 1 else 0
+
+    # ------------------------------------------------------------------ #
+    # 5️⃣  handicapped‑infants = NO ?
+    # ------------------------------------------------------------------ #
+    nodes[4] = 1 if X['handicapped-infants'] == 1 else 0
+
+    # ------------------------------------------------------------------ #
+    # Follow the tree logic
+    # ------------------------------------------------------------------ #
+    if nodes[0]:                     # NO aid to Nicaraguan Contras → Democrat
+        prediction = 0
+    else:                            # YES aid to Nicaraguan Contras
+        if nodes[1]:                 # NO MX missile → Democrat
+            prediction = 0
+        else:                        # YES MX missile
+            if nodes[2]:             # NO education spending → Republican
+                prediction = 1
+            else:                    # YES education spending
+                if nodes[3]:         # NO aid to El Salvador → Democrat
+                    prediction = 0
+                else:                # YES aid to El Salvador
+                    if nodes[4]:     # NO handicapped‑infant funding → Republican
+                        prediction = 1
+                    else:            # YES handicapped‑infant funding → Democrat
+                        prediction = 0
+
+    return prediction, nodes
+```
+
+### How the output looks
+
+```python
+sample = {
+    'handicapped-infants':               2,
+    'water-project-cost-sharing':        1,
+    'adoption-of-the-budget-resolution':2,
+    'physician-fee-freeze':              1,
+    'el-salvador-adi':                   1,
+    'religious-groups-in-schools':       2,
+    'anti-satellite-test-ban':           2,
+    'aid-to-nicaraguan-contras':         2,
+    'mx-missile':                        2,
+    'immigration':                       1,
+    'synfuels-corporation-cutback':      1,
+    'education-spending':                2,
+    'superfund-right-to-sue':            1,
+    'crime':                             2,
+    'duty-free-exports':                 1,
+    'export-administration-act-south-africa':2,
+    'Target variable':                  None,   # not used here
+    'target':                            None    # not used here
+}
+
+pred, nodes = predict(sample)
+print(pred)   # → 0 (Democrat)
+print(nodes)  # → [0, 0, 0, 1, 0]   (conditions evaluated along the path)
+```
+
+* `nodes[i] = 1` means the *“NO”* side of that inner node was taken; `0` means the *“YES”* side was taken.  
+* The final `prediction` follows the party encoding you supplied (`1 = Republican`, `0 = Democrat`).

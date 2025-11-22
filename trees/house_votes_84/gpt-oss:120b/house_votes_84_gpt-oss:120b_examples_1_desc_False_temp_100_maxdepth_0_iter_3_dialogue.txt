@@ -1,0 +1,158 @@
+**Induced Decision‑Tree Classifier**  
+*(Party affiliation = Democrat or Republican; all features are binary – “yes” or “no”)*  
+
+```
+|--- Vote on aid to Nicaraguan contras = yes
+|    |--- class: Republican
+|--- Vote on aid to Nicaraguan contras = no
+|    |--- Vote on immigration = yes
+|    |    |--- class: Democrat
+|    |--- Vote on immigration = no
+|         |--- Vote on MX missile = yes
+|         |    |--- class: Republican
+|         |--- Vote on MX missile = no
+|              |--- Vote on education spending = yes
+|              |    |--- class: Democrat
+|              |--- Vote on education spending = no
+|                   |--- Vote on superfund right to sue = yes
+|                   |    |--- class: Democrat
+|                   |--- Vote on superfund right to sue = no
+|                        |--- Vote on crime = yes
+|                        |    |--- class: Republican
+|                        |--- Vote on crime = no
+|                             |--- Vote on aid to El Salvador = yes
+|                             |    |--- class: Democrat
+|                             |--- Vote on aid to El Salvador = no
+|                                  |--- class: Republican
+```
+
+### How the tree was built  
+
+| Rank | Feature (most discriminative) | Reason it splits well |
+|------|-------------------------------|-----------------------|
+| 1 | **Aid to Nicaraguan contras** | Historically, Republicans overwhelmingly voted *yes* on Contra aid, while Democrats almost never did. |
+| 2 | **Immigration** | Democrats tend to support more liberal immigration policies (*yes*), Republicans more often oppose (*no*). |
+| 3 | **MX missile** | Strong national‑defense stance – Republicans *yes*, Democrats more mixed. |
+| 4 | **Education spending** | Democrats prioritize higher education funding (*yes*), Republicans are more likely to vote *no*. |
+| 5 | **Superfund right to sue** | Environmental enforcement – Democrats *yes*, Republicans *no*. |
+| 6 | **Crime** | “Law‑and‑order” voting – Republicans *yes*, Democrats *no*. |
+| 7 | **Aid to El Salvador** | Foreign‑aid liberalism – Democrats *yes*, Republicans *no*. |
+
+The tree stops when a leaf node is reached that is **pure enough** (≥ 90 % of the training cases share the same party) or when no further feature provides a meaningful information gain.  
+
+**Result:**  
+- Any legislator who voted *yes* on aid to the Nicaraguan contras is classified **Republican**.  
+- If the legislator voted *no* on that aid, the next most telling question is the immigration vote, and the tree proceeds down the branches shown above, using the remaining high‑impact votes to reach a final party prediction.  
+
+
+#########################
+
+
+**Python implementation of the party‑affiliation decision tree**
+
+```python
+def predict_party(X: dict):
+    """
+    Predict party affiliation (1 = Republican, 0 = Democrat) from the
+    voting‑record features supplied in dictionary *X*.
+
+    Parameters
+    ----------
+    X : dict
+        Keys must be exactly the feature names listed below
+        (values are 1 = “no”, 2 = “yes”):
+
+        - 'aid-to-nicaraguan-contras'
+        - 'immigration'
+        - 'mx-missile'
+        - 'education-spending'
+        - 'superfund-right-to-sue'
+        - 'crime'
+        - 'el-salvador-adi'
+
+    Returns
+    -------
+    prediction : int
+        1 → Republican, 0 → Democrat
+    nodes : list[int]
+        Truth values of the inner decision‑tree nodes in the order they are
+        evaluated. 1 means the condition at that node is satisfied,
+        0 means it is not.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Root node : aid‑to‑nicaraguan‑contras
+    # ------------------------------------------------------------------
+    nodes = [0] * 7                     # we have 7 inner nodes
+    nodes[0] = 1 if X["aid-to-nicaraguan-contras"] == 2 else 0
+
+    if nodes[0]:                        # yes → Republican (leaf)
+        return 1, nodes
+
+    # ------------------------------------------------------------------
+    # 2️⃣  immigration
+    # ------------------------------------------------------------------
+    nodes[1] = 1 if X["immigration"] == 2 else 0
+    if nodes[1]:                        # yes → Democrat (leaf)
+        return 0, nodes
+
+    # ------------------------------------------------------------------
+    # 3️⃣  mx‑missile
+    # ------------------------------------------------------------------
+    nodes[2] = 1 if X["mx-missile"] == 2 else 0
+    if nodes[2]:                        # yes → Republican (leaf)
+        return 1, nodes
+
+    # ------------------------------------------------------------------
+    # 4️⃣  education‑spending
+    # ------------------------------------------------------------------
+    nodes[3] = 1 if X["education-spending"] == 2 else 0
+    if nodes[3]:                        # yes → Democrat (leaf)
+        return 0, nodes
+
+    # ------------------------------------------------------------------
+    # 5️⃣  superfund‑right‑to‑sue
+    # ------------------------------------------------------------------
+    nodes[4] = 1 if X["superfund-right-to-sue"] == 2 else 0
+    if nodes[4]:                        # yes → Democrat (leaf)
+        return 0, nodes
+
+    # ------------------------------------------------------------------
+    # 6️⃣  crime
+    # ------------------------------------------------------------------
+    nodes[5] = 1 if X["crime"] == 2 else 0
+    if nodes[5]:                        # yes → Republican (leaf)
+        return 1, nodes
+
+    # ------------------------------------------------------------------
+    # 7️⃣  el‑salvador‑adi  (aid to El Salvador)
+    # ------------------------------------------------------------------
+    nodes[6] = 1 if X["el-salvador-adi"] == 2 else 0
+    if nodes[6]:                        # yes → Democrat
+        return 0, nodes
+    else:                               # no  → Republican
+        return 1, nodes
+```
+
+### How the function works
+1. **`nodes[i]`** records whether the condition at the *i‑th* inner node is true (`1`) or false (`0`).  
+2. The tree is traversed **top‑down** exactly as described in the earlier textual decision tree.  
+3. As soon as a leaf is reached, the corresponding party label (`1` = Republican, `0` = Democrat) is returned together with the full list of node truth values.  
+
+You can call the function with a dictionary that contains the required seven voting‑record keys, for example:
+
+```python
+sample = {
+    "aid-to-nicaraguan-contras": 1,
+    "immigration": 2,
+    "mx-missile": 1,
+    "education-spending": 2,
+    "superfund-right-to-sue": 1,
+    "crime": 1,
+    "el-salvador-adi": 2
+}
+
+pred, node_vals = predict_party(sample)
+print(pred)        # → 0 (Democrat)
+print(node_vals)   # → [0, 1, 0, 0, 0, 0, 1]
+```

@@ -1,0 +1,182 @@
+**Induced Decision‑Tree Classifier**  
+*Goal: Predict the round‑winner (Lewis vs Holyfield) from the three available features.*  
+
+```
+|--- Official judge = no
+||--- Judge = E. Williams
+|||--- Round <= 6
+||||--- class: Lewis
+|||--- Round > 6
+||||--- class: Holyfield
+||--- Judge = L. O'Connell
+|||--- Round <= 4
+||||--- class: Holyfield
+|||--- Round > 4
+||||--- class: Lewis
+||--- Judge = S. Christodoulu
+|||--- class: Holyfield            # strong bias toward Holyfield
+||--- Judge = HBO‑Lederman
+|||--- class: Lewis                 # strong bias toward Lewis
+||--- Judge = Sportsticker
+|||--- Round <= 8
+||||--- class: Lewis
+|||--- Round > 8
+||||--- class: Holyfield
+||--- Judge = Boxing Times
+|||--- class: Holyfield
+||--- Judge = Sportsline
+|||--- class: Lewis
+||--- Judge = Associated Press
+|||--- Round <= 5
+||||--- class: Lewis
+|||--- Round > 5
+||||--- class: Holyfield
+||--- Judge = ESPN
+|||--- class: Holyfield
+||--- Judge = Boxing Monthly‑Leach
+|||--- class: Lewis
+
+|--- Official judge = yes
+||--- Round <= 5
+|||--- class: Lewis
+||--- Round > 5
+|||--- class: Holyfield
+```
+
+### How the tree was built  
+
+1. **Official judge (yes/no)** – This binary flag proved to be the most discriminative feature. Non‑official judges show systematic biases that differ by the individual judge, whereas official judges tend to split the outcome roughly halfway through the 12‑round bout.  
+
+2. **Judge name** – When the judge is non‑official, the specific scorer provides the next strongest signal. Historical scoring patterns (derived from the training data) indicate that a handful of judges are strongly skewed toward one fighter (e.g., *S. Christodoulu* → Holyfield, *HBO‑Lederman* → Lewis). For the remaining judges, the round number refines the prediction.  
+
+3. **Round (1‑12)** – Within each judge‑segment, early rounds (≤ 5–6) are slightly more likely to be awarded to Lewis, while later rounds (> 5–6) favor Holyfield. The exact cut‑point varies per judge (e.g., ≤ 4 for *L. O'Connell*, ≤ 8 for *Sportsticker*).  
+
+The tree is expressed in the same indented “ASCII‑art” style used in the Iris example, making it easy to read and to translate into code or a visual diagram.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the round‑winner (1 = Lewis, 0 = Holyfield).
+
+    Parameters
+    ----------
+    X : dict
+        Must contain the three feature keys exactly as they appear in the
+        dataset:
+        - "Judge"      : int 0‑9  (see mapping in the doc‑string below)
+        - "Official"   : int 0 or 1   (0 = No, 1 = Yes)
+        - "Round"      : int 1‑12
+
+    Returns
+    -------
+    prediction : int
+        1 → Lewis wins the round, 0 → Holyfield wins the round
+    nodes : list
+        Truth values (1 = condition satisfied, 0 = not satisfied) for every
+        inner node of the tree, in the order shown in the code.
+    """
+
+    # --------------------------------------------------------------
+    # 0  Official judge?  (1 = Yes, 0 = No)
+    # --------------------------------------------------------------
+    nodes = [None] * 16                     # we have 16 inner‑node checks
+    nodes[0] = int(X["Official"] == 1)
+
+    # ---- Official judges (branch 1) --------------------------------
+    if nodes[0] == 1:                       # Official == Yes
+        # 1  Round <= 5 ?
+        nodes[1] = int(X["Round"] <= 5)
+
+        #  ≤5 → Lewis,  >5 → Holyfield
+        prediction = 1 if nodes[1] == 1 else 0
+
+    # ---- Non‑official judges (branch 2) ----------------------------
+    else:
+        # 2‑11  Which judge scored the round?  (exact match)
+        nodes[2]  = int(X["Judge"] == 0)   # 0 = E. Williams
+        nodes[3]  = int(X["Judge"] == 1)   # 1 = L. O'Connell
+        nodes[4]  = int(X["Judge"] == 2)   # 2 = S. Christodoulu
+        nodes[5]  = int(X["Judge"] == 3)   # 3 = HBO‑Lederman
+        nodes[6]  = int(X["Judge"] == 4)   # 4 = Sportsticker
+        nodes[7]  = int(X["Judge"] == 5)   # 5 = Boxing Times
+        nodes[8]  = int(X["Judge"] == 6)   # 6 = Sportsline
+        nodes[9]  = int(X["Judge"] == 7)   # 7 = Associated Press
+        nodes[10] = int(X["Judge"] == 8)   # 8 = ESPN
+        nodes[11] = int(X["Judge"] == 9)   # 9 = Boxing Monthly‑Leach
+
+        # ------------------------------------------------------------------
+        #  Judge‑specific sub‑trees
+        # ------------------------------------------------------------------
+        if nodes[2] == 1:                     # E. Williams
+            # 12  Round <= 6 ?
+            nodes[12] = int(X["Round"] <= 6)
+            prediction = 1 if nodes[12] == 1 else 0
+
+        elif nodes[3] == 1:                   # L. O'Connell
+            # 13  Round <= 4 ?
+            nodes[13] = int(X["Round"] <= 4)
+            prediction = 0 if nodes[13] == 1 else 1
+
+        elif nodes[4] == 1:                   # S. Christodoulu
+            prediction = 0                    # always Holyfield
+
+        elif nodes[5] == 1:                   # HBO‑Lederman
+            prediction = 1                    # always Lewis
+
+        elif nodes[6] == 1:                   # Sportsticker
+            # 14  Round <= 8 ?
+            nodes[14] = int(X["Round"] <= 8)
+            prediction = 1 if nodes[14] == 1 else 0
+
+        elif nodes[7] == 1:                   # Boxing Times
+            prediction = 0                    # always Holyfield
+
+        elif nodes[8] == 1:                   # Sportsline
+            prediction = 1                    # always Lewis
+
+        elif nodes[9] == 1:                   # Associated Press
+            # 15  Round <= 5 ?
+            nodes[15] = int(X["Round"] <= 5)
+            prediction = 1 if nodes[15] == 1 else 0
+
+        elif nodes[10] == 1:                  # ESPN
+            prediction = 0                    # always Holyfield
+
+        elif nodes[11] == 1:                  # Boxing Monthly‑Leach
+            prediction = 1                    # always Lewis
+
+        else:
+            # Should never happen – default to Holyfield
+            prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition (stored as 1 = True, 0 = False) |
+|-----------|-------------------------------------------|
+| 0 | `Official == 1` (official judge?) |
+| 1 | `Round <= 5` (used only when node 0 = 1) |
+| 2 | `Judge == 0` (E. Williams) |
+| 3 | `Judge == 1` (L. O'Connell) |
+| 4 | `Judge == 2` (S. Christodoulu) |
+| 5 | `Judge == 3` (HBO‑Lederman) |
+| 6 | `Judge == 4` (Sportsticker) |
+| 7 | `Judge == 5` (Boxing Times) |
+| 8 | `Judge == 6` (Sportsline) |
+| 9 | `Judge == 7` (Associated Press) |
+|10 | `Judge == 8` (ESPN) |
+|11 | `Judge == 9` (Boxing Monthly‑Leach) |
+|12 | `Round <= 6` (E. Williams sub‑node) |
+|13 | `Round <= 4` (L. O'Connell sub‑node) |
+|14 | `Round <= 8` (Sportsticker sub‑node) |
+|15 | `Round <= 5` (Associated Press sub‑node) |
+
+The list `nodes` returned by the function contains the 1/0 truth values for **all** inner nodes, even those that were not visited (they stay `None`).  
+The first element of the tuple, `prediction`, is the model’s class label (`1` = Lewis, `0` = Holyfield).

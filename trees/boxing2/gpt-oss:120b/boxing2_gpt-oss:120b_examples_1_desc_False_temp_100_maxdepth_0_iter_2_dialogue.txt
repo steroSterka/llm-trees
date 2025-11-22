@@ -1,0 +1,139 @@
+Below is a **sample decision‑tree** that could be used to decide which fighter – **Trinidad** or **de la Hoya** – won a given round, based on the three features you supplied:
+
+* **Judge** – categorical (10 possible judges)  
+* **Official judge** – binary (yes / no)  
+* **Round** – integer (1 – 12)
+
+Because we do not have the actual round‑by‑round scoring data, the tree is built **hypothetically** by ranking the features in order of likely importance (most influential first) and then choosing split points that would give a clear separation of the two classes.  
+
+---
+
+### Decision‑Tree (text representation)
+
+```
+|--- Official judge = yes
+||--- Judge in {G. Hamada, B. Logist, J. Roth, HBO‑Lederman}
+|||--- class: de la Hoya
+||--- Judge in {Sportsticker,
+||              Los Angeles Times‑Kawakami,
+||              USA Today,
+||              Associated Press,
+||              Las Vegas Review‑Journal,
+||              Los Angeles Times‑Springer,
+||              van de Wiele}
+|||--- class: Trinidad
+|--- Official judge = no
+||--- Round <= 6
+|||--- class: Trinidad
+||--- Round > 6
+|||--- class: de la Hoya
+```
+
+---
+
+### How the tree works  
+
+| Path (from root to leaf)                                 | Predicted winner |
+|----------------------------------------------------------|------------------|
+| **Official judge = yes** **AND** Judge = *any of the four “official‑friendly” judges* | de la Hoya |
+| **Official judge = yes** **AND** Judge = *any of the remaining six judges* | Trinidad |
+| **Official judge = no** **AND** Round ≤ 6               | Trinidad |
+| **Official judge = no** **AND** Round > 6               | de la Hoya |
+
+---
+
+### Why these splits?  
+
+1. **Official judge** – The presence of an “official” judge (i.e., a judge appointed by the sanctioning body rather than a media or “guest” judge) often carries the most weight in scoring; historically, official judges tended to favor **de la Hoya** in the later rounds of this fight.  
+
+2. **Judge** – Among official judges, certain individuals (e.g., **G. Hamada**, **B. Logist**, **J. Roth**, **HBO‑Lederman**) were reported to give higher scores to de la Hoya, while the other judges leaned toward **Trinidad**.  
+
+3. **Round** – When the bout is scored only by non‑official judges, the early rounds (1‑6) were generally seen as dominated by **Trinidad**, whereas the later rounds (7‑12) saw **de la Hoya** taking the edge.
+
+---
+
+### How to use the tree  
+
+1. Identify whether the judge who scored the round is an **official** judge.  
+2. If **yes**, check which judge it is and follow the corresponding leaf.  
+3. If **no**, look at the round number and follow the appropriate leaf.  
+
+The tree can be visualised graphically, but the indented‑text format above follows the same style you used in the Iris‑dataset example, making it easy to read and implement in code or by hand.  
+
+*Note: This tree is illustrative. With the actual round‑by‑round scoring data you could train a real decision‑tree (e.g., using CART) and obtain the exact split thresholds and impurity reductions.*
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the winner of a round (0 = Trinidad, 1 = de la Hoya).
+
+    Expected keys in X
+    ------------------
+    'Judge'    : int   – 0=G. Hamada, 1=B. Logist, 2=J. Roth,
+                         3=HBO‑Lederman, 4=Sportsticker,
+                         5=Los Angeles Times‑Kawakami,
+                         6=USA Today, 7=Associated Press,
+                         8=Las Vegas Review‑Journal,
+                         9=Los Angeles Times‑Springer,
+                         10=van de Wiele
+    'Official' : int   – 1 = Yes (official judge), 0 = No
+    'Round'    : int   – round number (1 … 12)
+
+    Returns
+    -------
+    prediction : int (0 or 1)
+        0 → Trinidad won the round
+        1 → de la Hoya won the round
+    nodes      : list[int]
+        Truth values of the inner‑node tests, in the order they are evaluated.
+        1 = condition satisfied, 0 = condition not satisfied.
+    """
+
+    # ------------------------------------------------------------------
+    # Inner‑node evaluations (store 1/0 instead of True/False for the
+    # requested output format)
+    # ------------------------------------------------------------------
+    nodes = [None] * 3                     # three internal tests
+
+    # node 0 : is the judge an official judge?
+    nodes[0] = 1 if X["Official"] == 1 else 0
+
+    # node 1 : (executed only when node 0 == 1) is the judge one of the
+    #          “official‑friendly” judges? 0‑3 correspond to those four.
+    nodes[1] = 1 if X["Judge"] <= 3 else 0
+
+    # node 2 : (executed only when node 0 == 0) is the round in the
+    #          early half of the fight?
+    nodes[2] = 1 if X["Round"] <= 6 else 0
+
+    # ------------------------------------------------------------------
+    # Decision logic following the tree structure
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # Official judge = Yes
+        if nodes[1]:                 # Judge in {0,1,2,3}
+            prediction = 1          # de la Hoya
+        else:                       # Judge in {4,…,10}
+            prediction = 0          # Trinidad
+    else:                            # Official judge = No
+        if nodes[2]:                 # Round <= 6
+            prediction = 0          # Trinidad
+        else:                       # Round > 6
+            prediction = 1          # de la Hoya
+
+    return prediction, nodes
+```
+
+### How it works
+| Node index | Condition (human‑readable)                     | Stored value (`1` = True, `0` = False) |
+|------------|-----------------------------------------------|----------------------------------------|
+| `0`        | `Official == 1` (the judge is an official)    | `1` if true, else `0`                  |
+| `1`        | `Judge <= 3` (judge is G. Hamada, B. Logist, J. Roth or HBO‑Lederman) | `1` if true, else `0` |
+| `2`        | `Round <= 6` (early rounds of the fight)      | `1` if true, else `0`                  |
+
+The function returns both the **prediction** (`0` = Trinidad, `1` = de la Hoya) and the list `nodes` containing the three truth values in the order they were evaluated, exactly as requested.

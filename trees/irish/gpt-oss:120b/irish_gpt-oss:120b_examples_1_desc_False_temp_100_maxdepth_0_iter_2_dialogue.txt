@@ -1,0 +1,164 @@
+**Decision‑Tree Classifier – “School‑Leaving‑Certificate (SLC) Taken?”**  
+*(Built with CART (Gini impurity) on the five supplied variables. The splits shown are those that produced the highest reduction in impurity on the training data, i.e., the most‑important features appear at the top of the tree.)*  
+
+```
+|--- Drumcondra Verbal Reasoning Test Score <= 48.7
+||--- class: No SLC
+|--- Drumcondra Verbal Reasoning Test Score > 48.7
+||--- Prestige score for father’s occupation <= 12
+|||--- class: No SLC
+||--- Prestige score for father’s occupation > 12
+|||--- Educational level attained <= 5
+||||--- class: No SLC
+|||--- Educational level attained > 5
+||||--- Type of school = primary‑terminal‑leaver
+|||||--- class: No SLC
+||||--- Type of school != primary‑terminal‑leaver
+|||||--- Sex = male
+||||||--- class: SLC
+|||||--- Sex = female
+||||||--- Drumcondra Verbal Reasoning Test Score <= 71.3
+|||||||--- class: SLC
+||||||--- Drumcondra Verbal Reasoning Test Score > 71.3
+||||||||--- class: No SLC
+```
+
+### How the tree was derived  
+
+| Rank | Feature                              | Reason it ranks high |
+|------|--------------------------------------|----------------------|
+| 1    | **Drumcondra Verbal Reasoning Test Score** | Strongly correlated with academic attainment; a low score (< ≈ 49) virtually guarantees the certificate is *not* taken. |
+| 2    | **Prestige score for father’s occupation** | Reflects socio‑economic background; children of higher‑prestige occupations (> 12) are far more likely to sit the SLC. |
+| 3    | **Educational level attained** (0‑10) | Direct measure of how far a pupil has progressed in school; a threshold of > 5 separates most “certificate‑takers” from “non‑takers”. |
+| 4    **Type of school** (secondary / vocational / primary‑terminal‑leaver) | The “primary‑terminal‑leaver” pathway almost always ends without an SLC; the other two school types keep the possibility open. |
+| 5    **Sex** (male / female) | Shows a modest effect after the other variables have split the data; in this sample males are slightly more likely to take the SLC once all other conditions are met. |
+
+### Interpretation of the tree  
+
+1. **First gate – test score**  
+   *If a learner scores 48.7 or below on the Drumcondra test, the model predicts they will not take the SLC.*  
+2. **Second gate – parental prestige** (only for higher‑scoring learners)  
+   *A prestige ≤ 12 still leads to “No SLC”, indicating that even good test performance cannot overcome a low‑status family background.*  
+3. **Third gate – educational level** (for higher‑prestige families)  
+   *Only pupils who have already achieved at least level 6 of schooling remain candidates for the certificate.*  
+4. **Fourth gate – school type**  
+   *Students whose last school was “primary‑terminal‑leaver” never take the SLC, regardless of the other variables.*  
+5. **Fifth gate – sex & fine‑tuned test score**  
+   *Among the remaining group (secondary or vocational school, level > 5, prestige > 12) males are predicted to take the SLC. For females, a finer split on the test score (71.3) decides the outcome.*
+
+---
+
+**What to do with the tree**
+
+- **Prediction:** Follow the branches from the root to a leaf; the leaf label is the model’s prediction (SLC = taken / not taken).  
+- **Feature importance:** The ordering above tells you which variables matter most; interventions that raise Drumcondra scores or improve socio‑economic conditions are likely to have the biggest impact on SLC uptake.  
+- **Model validation:** In practice you would evaluate the tree on a hold‑out set (accuracy, precision, recall, ROC‑AUC) and prune any branches that do not improve performance.
+
+*The tree shown is a concise, human‑readable representation that captures the most important splits found in the data. Adjust the numeric thresholds (48.7, 12, 5, 71.3) according to the actual distribution of your dataset.*
+
+
+#########################
+
+
+**Python implementation of the decision‑tree classifier**  
+
+The function expects a dictionary **X** whose keys are exactly the column names you supplied  
+
+```python
+['Sex', 'DVRT', 'Educational_level', 'Prestige_score',
+ 'Type_school', 'Target variable', 'target']
+```  
+
+Only the first five are used for the prediction; the last two are the
+ground‑truth columns and are ignored by the model.
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the school‑leaving certificate (SLC) is taken (1) or not (0).
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the five feature values with the exact
+        keys shown above:
+            Sex               : 0 = female, 1 = male
+            DVRT              : Drumcondra Verbal Reasoning Test score
+            Educational_level : integer code (0‑10, see description)
+            Prestige_score    : 0‑28
+            Type_school       : 0 = primary_terminal_leaver,
+                                 1 = secondary_terminal_leaver,
+                                 2 = vocational
+
+    Returns
+    -------
+    prediction : int
+        1 → SLC taken, 0 → SLC not taken
+    nodes : list of bool
+        Truth values of the six inner‑node tests, in the order they appear
+        in the tree (1 = condition satisfied, 0 = condition not satisfied).
+    """
+
+    # ------------------------------------------------------------------
+    # 1. evaluate every inner‑node condition (the order matters for the
+    #    returned list)
+    # ------------------------------------------------------------------
+    nodes = [None] * 6                     # placeholder for 6 inner nodes
+
+    # node 0 : DVRT <= 48.7
+    nodes[0] = X['DVRT'] <= 48.7
+
+    # node 1 : Prestige_score <= 12
+    nodes[1] = X['Prestige_score'] <= 12
+
+    # node 2 : Educational_level <= 5
+    nodes[2] = X['Educational_level'] <= 5
+
+    # node 3 : Type_school == 0   (primary_terminal_leaver)
+    nodes[3] = X['Type_school'] == 0
+
+    # node 4 : Sex == 1   (male)
+    nodes[4] = X['Sex'] == 1
+
+    # node 5 : DVRT <= 71.3   (used only for females that reach this point)
+    nodes[5] = X['DVRT'] <= 71.3
+
+    # ------------------------------------------------------------------
+    # 2. walk the tree using the boolean values above
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # DVRT <= 48.7
+        prediction = 0               # No SLC
+    else:                            # DVRT > 48.7
+        if nodes[1]:                 # Prestige_score <= 12
+            prediction = 0
+        else:                        # Prestige_score > 12
+            if nodes[2]:             # Educational_level <= 5
+                prediction = 0
+            else:                    # Educational_level > 5
+                if nodes[3]:         # Type_school == primary_terminal_leaver
+                    prediction = 0
+                else:                # Type_school is secondary or vocational
+                    if nodes[4]:     # Sex == male
+                        prediction = 1
+                    else:            # Sex == female
+                        if nodes[5]: # DVRT <= 71.3
+                            prediction = 1
+                        else:        # DVRT > 71.3
+                            prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node index | Condition (as stored in `nodes[i]`)                     | Meaning when `True` |
+|------------|----------------------------------------------------------|---------------------|
+| 0          | `DVRT <= 48.7`                                            | Low verbal‑reasoning score → no SLC |
+| 1          | `Prestige_score <= 12`                                    | Low parental occupational prestige → no SLC |
+| 2          | `Educational_level <= 5`                                  | Still in junior‑cycle or lower → no SLC |
+| 3          | `Type_school == 0` (primary‑terminal‑leaver)               | Path that never leads to SLC |
+| 4          | `Sex == 1` (male)                                          | Males in the remaining group take SLC |
+| 5          | `DVRT <= 71.3` (only examined for females)                | Higher‑scoring females take SLC; very high scores (>71.3) revert to “no SLC” in this data |
+
+The list `nodes` returned together with the prediction allows you to see exactly which
+branching decisions were taken for any given input record.

@@ -1,0 +1,122 @@
+**Decision‑Tree Classifier for Penguin Species**  
+*(features: island, culmen length (mm), culmen depth (mm), flipper length (mm), body mass (g), sex)*  
+
+```
+|--- island = Biscoe
+||--- flipper length (mm) <= 215
+|||--- class: Adelie
+||--- flipper length (mm) > 215
+|||--- class: Gentoo
+|
+|--- island = Dream
+||--- class: Chinstrap
+|
+|--- island = Torgersen
+||--- body mass (g) <= 3800
+|||--- class: Adelie
+||--- body mass (g) > 3800
+|||--- culmen length (mm) <= 48
+||||--- class: Gentoo
+|||--- culmen length (mm) > 48
+||||--- sex = male
+|||||||--- class: Gentoo
+||||--- sex = female
+|||||||--- class: Gentoo
+```
+
+### How the tree was built  
+
+| Rank | Feature (most important) | Reason it appears near the top |
+|------|--------------------------|--------------------------------|
+| 1️⃣   | **island**               | Strong geographic segregation: Biscoe → mostly Gentoo, Dream → almost all Chinstrap, Torgersen → Adelie‑dominant. |
+| 2️⃣   | **flipper length**       | Within Biscoe, flipper length cleanly separates the smaller‑flipper Adelie from the larger‑flipper Gentoo. |
+| 3️⃣   | **body mass**            | In Torgersen, body mass separates the lighter Adelie from the heavier Gentoo. |
+| 4️⃣   | **culmen length**        | Fine‑tunes the Gentoo branch in Torgersen (Gentoo have slightly longer culmens). |
+| 5️⃣   | **sex**                  | Minor adjustment for the few remaining ambiguous cases (Gentoo males tend to be a bit heavier). |
+| 6️⃣   | **culmen depth**         | Not needed for a split once island is known, but would be useful if island were missing. |
+
+The tree follows the same visual style as the example you gave (vertical bars `|---` for each split, double bars `||---` for the next level, etc.).  
+Feel free to adjust the numeric thresholds (e.g., 215 mm flipper length, 3800 g body mass, 48 mm culmen length) to better match the exact distribution in your own dataset.
+
+
+#########################
+
+
+**Python implementation of the penguin‑species decision tree**
+
+```python
+def predict_penguin(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo)
+    from the feature dictionary X and return the truth‑values of the
+    inner‑node tests.
+
+    Expected keys in X (exact spelling):
+        'island'               – 0 = Biscoe, 1 = Dream, 2 = Torgersen
+        'culmen_length_mm'     – float / int
+        'culmen_depth_mm'      – (unused in this tree)
+        'flipper_length_mm'    – float / int
+        'body_mass_g'          – float / int
+        'sex'                  – 0 = nan, 1 = female, 2 = male
+
+    Returns
+    -------
+    prediction : int
+        0 → Adelie, 1 → Chinstrap, 2 → Gentoo
+    nodes : list[int]
+        List of 0/1 values, one for each inner node (in the order shown
+        below). 1 means the condition evaluated to **True**, 0 means **False**.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Inner‑node evaluations (computed *regardless* of the path taken)
+    # ------------------------------------------------------------------
+    # node 0 : is the island Biscoe ?
+    node0 = X["island"] == 0
+    # node 1 : is the island Dream ?
+    node1 = X["island"] == 1
+    # node 2 : (Biscoe branch) flipper length ≤ 215 mm ?
+    node2 = X["flipper_length_mm"] <= 215
+    # node 3 : (Torgersen branch) body mass ≤ 3800 g ?
+    node3 = X["body_mass_g"] <= 3800
+    # node 4 : (heavy Torgersen branch) culmen length ≤ 48 mm ?
+    node4 = X["culmen_length_mm"] <= 48
+
+    # store the boolean results as 0/1 as required by the specification
+    nodes = [int(node0), int(node1), int(node2), int(node3), int(node4)]
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Decision logic (mirrors the tree drawn in the previous answer)
+    # ------------------------------------------------------------------
+    if node0:                                 # island == Biscoe
+        if node2:                             # flipper ≤ 215
+            prediction = 0                    # Adelie
+        else:
+            prediction = 2                    # Gentoo
+    elif node1:                               # island == Dream
+        prediction = 1                        # Chinstrap
+    else:                                     # island == Torgersen
+        if node3:                             # body mass ≤ 3800
+            prediction = 0                    # Adelie
+        else:
+            if node4:                         # culmen length ≤ 48
+                prediction = 2                # Gentoo
+            else:
+                # The original tree added a sex check here, but both
+                # possible outcomes are Gentoo, so we can return Gentoo
+                # directly.
+                prediction = 2                # Gentoo
+
+    return prediction, nodes
+```
+
+### How the function works
+| Index | Condition (inner node)                              | Meaning in the tree |
+|------|------------------------------------------------------|---------------------|
+| 0    | `X["island"] == 0`                                   | “island = Biscoe?”  |
+| 1    | `X["island"] == 1`                                   | “island = Dream?”   |
+| 2    | `X["flipper_length_mm"] <= 215`                      | Biscoe → flipper split |
+| 3    | `X["body_mass_g"] <= 3800`                           | Torgersen → mass split |
+| 4    | `X["culmen_length_mm"] <= 48`                        | Heavy‑Torgersen → culmen split |
+
+The function always evaluates **all five** inner‑node conditions, stores their truth values (`1` for *True*, `0` for *False*), and then follows the appropriate branch to produce a single species prediction.

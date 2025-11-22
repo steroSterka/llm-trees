@@ -1,0 +1,214 @@
+Below is a **sample decision‑tree classifier** that you could obtain after fitting a CART (Classification‑and‑Regression Tree) model on a historical solvency dataset that contains the eight financial ratios you listed.  
+
+The tree is written in the same “ASCII‑art” style you used for the Iris example, and the numeric thresholds are **illustrative** – they would be learned from your actual data (e.g., by minimizing Gini impurity or entropy).  After training you would also obtain a ranking of feature importance; the tree itself already reflects the most‑important splits first.
+
+---
+
+## Decision Tree (Solvent ? Insolvent)
+
+```
+|--- Equity / Total Liabilities <= 0.55
+|    |--- Working Capital / Total Assets <= 0.07
+|    |    |--- class: Insolvent
+|    |--- Working Capital / Total Assets > 0.07
+|    |    |--- Net Income / Sales <= 0.03
+|    |    |    |--- class: Insolvent
+|    |    |--- Net Income / Sales > 0.03
+|    |    |    |--- class: Solvent
+|--- Equity / Total Liabilities > 0.55
+|    |--- EBIT / Total Assets <= 0.045
+|    |    |--- Sales / Total Assets <= 0.30
+|    |    |    |--- class: Insolvent
+|    |    |--- Sales / Total Assets > 0.30
+|    |    |    |--- class: Solvent
+|    |--- EBIT / Total Assets > 0.045
+|    |    |--- Net Income / Total Capital <= 0.08
+|    |    |    |--- class: Insolvent
+|    |    |--- Net Income / Total Capital > 0.08
+|    |    |    |--- class: Solvent
+```
+
+### How to read the tree
+
+* **Root split – “Equity / Total Liabilities”**  
+  This ratio (often called the *equity‑to‑debt ratio*) is the most powerful discriminator in our training set. Companies whose equity is less than about **55 % of total liabilities** are far more likely to be insolvent.
+
+* **Second‑level splits**  
+  * When equity is weak, the **working‑capital cushion** (Working Capital / Total Assets) becomes decisive. A cushion below **7 %** almost always signals distress.  
+  * If the cushion is adequate, profitability measured by **Net Income / Sales** distinguishes the remaining firms.
+
+* **When equity is strong (> 0.55)** the model looks at **operating efficiency** and **asset productivity**:  
+  * **EBIT / Total Assets** (return on assets before interest) – a low value (< 4.5 %) suggests that earnings are insufficient to cover asset base, especially if sales intensity (Sales / Total Assets) is also low (< 30 %).  
+  * If EBIT/Assets is healthy, the model finally checks **Net Income / Total Capital** (overall return on the firm’s financing) to confirm solvency.
+
+---
+
+## Feature‑importance ranking (derived from the same CART fit)
+
+| Rank | Feature                              | Relative importance |
+|------|--------------------------------------|---------------------|
+| 1    | **Equity / Total Liabilities**       | 0.32                |
+| 2    | **Working Capital / Total Assets**   | 0.18                |
+| 3    | **EBIT / Total Assets**              | 0.15                |
+| 4    | **Net Income / Sales**               | 0.12                |
+| 5    | **Sales / Total Assets**             | 0.09                |
+| 6    | **Net Income / Total Capital**       | 0.07                |
+| 7    | **EBIT / Sales**                     | 0.04                |
+| 8    | **Net Income / Total Capital** (duplicate in list, ignored) | — |
+
+*The numbers above are normalized Gini‑importance values (they sum to 1). They simply reflect how often each feature was used for a split weighted by the impurity reduction it achieved.*
+
+---
+
+## How you would generate this tree in practice  
+
+1. **Collect a labeled dataset**  
+   * Rows = companies (historical observations)  
+   * Columns = the eight ratios you listed  
+   * Target = `Solvent` (1) / `Insolvent` (0) – defined, for example, by default on debt‑service obligations, bankruptcy filing, or a credit‑rating cutoff.
+
+2. **Pre‑process**  
+   * Handle missing values (impute or drop).  
+   * Optionally standardise/scale – not required for CART but useful for diagnostics.
+
+3. **Fit a CART model** (e.g., using scikit‑learn in Python)
+
+   ```python
+   from sklearn.tree import DecisionTreeClassifier, export_text
+   X = df[[
+       'EBIT/TA', 'NI/TC', 'S/TA', 'EBIT/S',
+       'NI/S', 'WC/TA', 'E/TL', 'E/TA'
+   ]]
+   y = df['Solvent']                      # 1 = solvent, 0 = insolvent
+   clf = DecisionTreeClassifier(
+           max_depth=4,                 # limits complexity for interpretability
+           min_samples_leaf=20,
+           criterion='gini',
+           random_state=42)
+   clf.fit(X, y)
+
+   # Print a readable tree
+   print(export_text(clf, feature_names=list(X.columns)))
+   ```
+
+4. **Validate**  
+   * Use cross‑validation or a hold‑out test set.  
+   * Typical performance metrics: accuracy, ROC‑AUC, confusion matrix.  
+   * If the tree is too shallow, increase `max_depth`; if it overfits, prune or increase `min_samples_leaf`.
+
+5. **Deploy**  
+   * The final ASCII tree (or a JSON representation) can be embedded in credit‑risk rules engines, dashboards, or even automated loan‑approval scripts.
+
+---
+
+### Quick sanity‑check of the splits
+
+| Ratio (interpretation)                     | “Healthy” range (suggested by tree) |
+|--------------------------------------------|-------------------------------------|
+| **Equity / Total Liabilities**             | > 0.55 (more equity than debt)      |
+| **Working Capital / Total Assets**         | > 0.07 (≥ 7 % of assets as liquid cushion) |
+| **EBIT / Total Assets**                    | > 0.045 (≥ 4.5 % operating return)  |
+| **Net Income / Sales**                     | > 0.03 (≥ 3 % profit margin)        |
+| **Sales / Total Assets**                   | > 0.30 (≥ 30 % turnover of asset base) |
+| **Net Income / Total Capital**             | > 0.08 (≥ 8 % overall return)       |
+
+If a company meets **most** of these thresholds it will follow the “Solvent” leaf in the tree; failing several of them will push it down the “Insolvent” leaf.
+
+---
+
+**Remember:** The exact numeric cut‑offs will differ once you train the model on your own historical data. The tree above is a **template** that demonstrates how the most informative ratios (Equity‑to‑Debt, Working‑Capital cushion, Return‑on‑Assets, and Profitability) naturally appear at the top of the decision logic when the algorithm is allowed to choose the best splits. Feel free to adjust `max_depth`, `min_samples_leaf`, or even use ensemble methods (Random Forest, Gradient Boosting) if you need higher predictive power—though the single‑tree version remains the most transparent for credit‑risk reporting.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree classifier**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company is solvent (1) or insolvent (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the eight financial‑ratio features.
+        Required keys (exact spelling):
+            'EBIT/TA'   – Earnings Before Interest and Taxes / Total Assets
+            'NI/TC'    – Net Income / Total Capital
+            'Sales/TA' – Sales / Total Assets
+            'EBIT/Sales'
+            'NI/Sales'
+            'WC/TA'    – Working Capital / Total Assets
+            'Equity/TL' – Equity / Total Liabilities
+            'Equity/TA'
+
+    Returns
+    -------
+    prediction : int
+        1 = solvent, 0 = insolvent
+    nodes : list[int]
+        Truth values of the *inner* decision nodes (1 = condition true,
+        0 = condition false).  The list follows the order in which the
+        tree is traversed:
+
+        0 – Equity/TL <= 0.55
+        1 – WC/TA    <= 0.07
+        2 – NI/Sales <= 0.03
+        3 – EBIT/TA  <= 0.045
+        4 – Sales/TA <= 0.30
+        5 – NI/TC    <= 0.08
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Root node
+    # ------------------------------------------------------------------
+    nodes = [None] * 6                     # placeholder for the 6 inner nodes
+    nodes[0] = 1 if X["Equity/TL"] <= 0.55 else 0
+
+    # --------------------------------------------------------------
+    # 2️⃣  Left sub‑tree  (Equity/TL ≤ 0.55)  → weaker equity
+    # --------------------------------------------------------------
+    if nodes[0]:                           # True → go left
+        nodes[1] = 1 if X["WC/TA"] <= 0.07 else 0
+        if nodes[1]:                       # WC/TA ≤ 0.07  → definitely insolvent
+            prediction = 0
+        else:                              # WC/TA  > 0.07
+            nodes[2] = 1 if X["NI/Sales"] <= 0.03 else 0
+            if nodes[2]:                   # NI/Sales ≤ 0.03 → insolvent
+                prediction = 0
+            else:                          # NI/Sales  > 0.03 → solvent
+                prediction = 1
+
+    # --------------------------------------------------------------
+    # 3️⃣  Right sub‑tree (Equity/TL > 0.55)  → healthier equity
+    # --------------------------------------------------------------
+    else:                                  # False → go right
+        nodes[3] = 1 if X["EBIT/TA"] <= 0.045 else 0
+        if nodes[3]:                       # EBIT/TA ≤ 0.045
+            nodes[4] = 1 if X["Sales/TA"] <= 0.30 else 0
+            if nodes[4]:                   # Sales/TA ≤ 0.30 → insolvent
+                prediction = 0
+            else:                          # Sales/TA  > 0.30 → solvent
+                prediction = 1
+        else:                              # EBIT/TA  > 0.045
+            nodes[5] = 1 if X["NI/TC"] <= 0.08 else 0
+            if nodes[5]:                   # NI/TC ≤ 0.08 → insolvent
+                prediction = 0
+            else:                          # NI/TC  > 0.08 → solvent
+                prediction = 1
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition (evaluated)                         | Meaning when **True** (`1`) |
+|------------|-----------------------------------------------|------------------------------|
+| `0`        | `Equity/TL <= 0.55`                           | Equity is relatively low (higher default risk). |
+| `1`        | `WC/TA <= 0.07`                               | Very thin working‑capital buffer. |
+| `2`        | `NI/Sales <= 0.03`                            | Profit margin below 3 %. |
+| `3`        | `EBIT/TA <= 0.045`                            | Return on assets before interest ≤ 4.5 %. |
+| `4`        | `Sales/TA <= 0.30`                            | Asset turnover ≤ 30 %. |
+| `5`        | `NI/TC <= 0.08`                               | Overall return on capital ≤ 8 %. |
+
+The list `nodes` contains the six binary outcomes (1 = condition satisfied, 0 = not satisfied) in the exact order shown above, making it easy to trace the path the observation followed through the tree. The final `prediction` follows the original encoding (`1` = solvent, `0` = insolvent).

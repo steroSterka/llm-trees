@@ -1,0 +1,150 @@
+**Decision Tree – Outcome of Labor Negotiations (Good / Bad)**  
+
+```
+|--- wage increase – 1st year (2‑7) >= 5
+||--- cost‑of‑living adjustment
+|||--- cost‑of‑living adjustment = none
+||||--- standby pay (2‑25) >= 10
+||||||||--- class: Good
+||||--- standby pay < 10
+||||||||--- class: Bad
+|||--- cost‑of‑living adjustment ≠ none
+||||--- employer contributions to pension plan
+|||||||--- employer contributions to pension plan = full 
+||||||||||||--- class: Good
+|||||||--- employer contributions to pension plan = retirement allowance included
+||||||||||||--- class: Good
+|||||||--- employer contributions to pension plan = none
+||||||||||||--- class: Bad
+|--- wage increase – 1st year (2‑7) < 5
+||--- duration of agreement (1‑7) >= 4
+|||--- employer contribution towards health plan
+||||--- employer contribution towards health plan = full
+||||||||--- class: Good
+||||--- employer contribution towards health plan ≠ full
+||||||||--- class: Bad
+||--- duration of agreement < 4
+|||--- education allowance
+||||--- education allowance = yes
+||||||||--- class: Good
+||||--- education allowance = no
+||||||||--- class: Bad
+```
+
+**Explanation of the most influential splits**
+
+1. **Wage increase in the first year** – A first‑year raise of 5 % or more is the strongest predictor of a *good* outcome.  
+2. **Cost‑of‑living adjustment (COLA)** – When a COLA is offered, the generosity of pension contributions becomes decisive.  
+3. **Stand‑by pay** – In the absence of a COLA, higher stand‑by pay (≥ 10 %) still drives a *good* result.  
+4. **Duration of the agreement** – For lower first‑year raises, longer contracts (≥ 4 years) improve the odds, especially when health‑plan contributions are full.  
+5. **Education allowance** – When the contract is short and the wage increase is modest, the presence of an education allowance can tip the balance toward a *good* outcome.  
+
+All other variables (wage increases in years 2‑3, shift differentials, statutory holidays, vacation generosity, disability help, dental/bereavement contributions, etc.) are incorporated implicitly in the branches above but did not emerge as primary split points in this simplified model.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the outcome of the labour‑negotiation settlement.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain **all** of the following keys
+        (exact spelling, case‑sensitive):
+
+        'duration',
+        'wage increase first year',
+        'wage increase second year',
+        'wage increase third year',
+        'cost of living adjustment',
+        'working hours',
+        'pension',
+        'standby pay',
+        'shift differential',
+        'education allowance',
+        'statutory holidays',
+        'vacation',
+        'longterm disability assistance',
+        'contribution to dental plan',
+        'bereavement assistance',
+        'contribution to health plan'
+
+    Returns
+    -------
+    prediction : int
+        1 = **good** settlement, 0 = **bad** settlement
+    nodes : list[int]
+        Truth values of the inner‑node tests (1 = condition satisfied,
+        0 = condition NOT satisfied).  The list follows the order in which
+        the tree is traversed:
+
+        0 – wage increase first year ≥ 5
+        1 – cost‑of‑living adjustment == 'none'
+        2 – standby pay ≥ 10
+        3 – pension == 'ret_allw'          (retirement allowance included)
+        4 – duration ≥ 4
+        5 – contribution to health plan == 'full'
+        6 – education allowance == True
+    """
+
+    # ------------------------------------------------------------------
+    # 0 – root split : first‑year wage increase
+    # ------------------------------------------------------------------
+    nodes = [0] * 7                # initialise the list of node results
+    nodes[0] = 1 if X["wage increase first year"] >= 5.0 else 0
+
+    # --------------------------------------------------------------
+    # Branch where first‑year increase is HIGH (≥ 5)
+    # --------------------------------------------------------------
+    if nodes[0]:
+        # 1 – does the contract contain any COLA ?
+        nodes[1] = 1 if X["cost of living adjustment"] == "none" else 0
+
+        if nodes[1]:
+            # 2 – stand‑by pay (only relevant when COLA is absent)
+            nodes[2] = 1 if X["standby pay"] >= 10 else 0
+            prediction = 1 if nodes[2] else 0          # Good / Bad
+        else:
+            # 3 – pension generosity (when a COLA is offered)
+            nodes[3] = 1 if X["pension"] == "ret_allw" else 0
+            # “ret_allw” (retirement allowance included) is treated as good.
+            prediction = 1 if nodes[3] else 0          # Good / Bad
+
+    # --------------------------------------------------------------
+    # Branch where first‑year increase is LOW (< 5)
+    # --------------------------------------------------------------
+    else:
+        # 4 – length of the agreement
+        nodes[4] = 1 if X["duration"] >= 4 else 0
+
+        if nodes[4]:
+            # 5 – health‑plan contribution (only for longer contracts)
+            nodes[5] = 1 if X["contribution to health plan"] == "full" else 0
+            prediction = 1 if nodes[5] else 0          # Good / Bad
+        else:
+            # 6 – education allowance (only for short contracts)
+            nodes[6] = 1 if X["education allowance"] is True else 0
+            prediction = 1 if nodes[6] else 0          # Good / Bad
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node | Test (stored in `nodes[i]`) | Meaning when `1` | Meaning when `0` |
+|------|-----------------------------|------------------|------------------|
+| 0 | `wage increase first year` ≥ 5 | **High** first‑year raise (goes to COLA / pension branch) | **Low** first‑year raise (goes to duration branch) |
+| 1 | `cost of living adjustment` == 'none' | No COLA – we look at standby pay | COLA present – we look at pension |
+| 2 | `standby pay` ≥ 10 | Good settlement | Bad settlement |
+| 3 | `pension` == 'ret_allw' | Good settlement (retirement allowance included) | Bad settlement |
+| 4 | `duration` ≥ 4 | Long contract – we look at health‑plan contribution | Short contract – we look at education allowance |
+| 5 | `contribution to health plan` == 'full' | Good settlement | Bad settlement |
+| 6 | `education allowance` == True | Good settlement | Bad settlement |
+
+The function returns **both** the binary prediction (`0 = bad`, `1 = good`) and the list `nodes` that tells you exactly which internal conditions were satisfied for the given input record.

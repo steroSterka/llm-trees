@@ -1,0 +1,191 @@
+Below is a **sample CART‑style decision‑tree** (illustrated in the same text‑tree format you used for the Iris example).  
+The splits and thresholds are those that most often appear as the “top‑ranked” predictors in the classic UCI **Heart Disease** data set when a tree is grown (Gini impurity, max depth ≈ 5).  
+
+> **Goal:** Predict **Heart‑Disease = {Yes, No}**  
+> **Features used (in order of importance):**  
+> 1. Chest‑Pain Type (cp)  
+> 2. Thalassemia (thal)  
+> 3. ST‑Depression (oldpeak)  
+> 4. Maximum Heart Rate Achieved (maxHR)  
+> 5. Number of Major Vessels by Fluoroscopy (ca)  
+> 6. Age (age)  
+> 7. Sex (sex)  
+
+```
+|--- Chest Pain Type (cp) <= 1                     # 0=typical, 1=atypical
+|    |--- Thalassemia (thal) = Normal
+|    |    |--- class: No Heart Disease
+|    |
+|    |--- Thalassemia (thal) != Normal
+|         |--- Maximum Heart Rate (maxHR) <= 150
+|         |    |--- class: No Heart Disease
+|         |
+|         |--- Maximum Heart Rate (maxHR) > 150
+|              |--- class: Heart Disease
+|
+|--- Chest Pain Type (cp) > 1                      # 2=non‑anginal, 3=asymptomatic
+     |--- ST Depression (oldpeak) <= 1.0
+     |    |--- Number of Vessels (ca) = 0
+     |    |    |--- Age <= 55
+     |    |    |    |--- class: No Heart Disease
+     |    |    |--- Age > 55
+     |    |    |    |--- class: Heart Disease
+     |    |
+     |    |--- Number of Vessels (ca) > 0
+     |         |--- class: Heart Disease
+     |
+     |--- ST Depression (oldpeak) > 1.0
+          |--- Sex = Male
+          |    |--- class: Heart Disease
+          |
+          |--- Sex = Female
+               |--- class: Heart Disease
+```
+
+### How the tree was “induced”
+
+| Rank | Feature | Why it appears early |
+|------|---------|----------------------|
+| 1 | **Chest Pain Type (cp)** | Strongest univariate association with disease (typical/atypical angina → lower risk). |
+| 2 | **Thalassemia (thal)** | Presence of a defect (fixed or reversible) dramatically raises risk. |
+| 3 | **ST‑Depression (oldpeak)** | Reflects exercise‑induced ischemia; values > 1.0 almost always indicate disease. |
+| 4 | **Maximum Heart Rate (maxHR)** | Lower achievable HR (≤ 150 bpm) is protective; higher values often seen in patients with coronary blockage. |
+| 5 | **Number of Vessels (ca)** | The more vessels with fluoroscopic defects, the higher the likelihood of disease. |
+| 6 | **Age** | After the previous splits, age refines risk especially when other factors are borderline. |
+| 7 | **Sex** | Men have a slightly higher baseline prevalence; in the high‑ST‑depression branch it adds a small boost. |
+
+### Using the tree
+
+1. **Start at the root** – look at the patient’s chest‑pain type.  
+2. Follow the “yes / no” (≤ 1 or > 1) branch.  
+3. At each subsequent node compare the patient’s value with the threshold shown.  
+4. When you reach a “class” leaf, that is the model’s prediction (Yes = Heart Disease, No = No Heart Disease).
+
+> **Note:** This tree is illustrative. If you have a concrete data set, you can run `DecisionTreeClassifier` (e.g., scikit‑learn) to obtain the exact split values and leaf labels. The structure above captures the **most commonly‑selected** features and typical split points found in many published analyses of the UCI heart‑disease data.
+
+
+#########################
+
+
+**Python function that implements the tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict heart‑disease (1 = yes, 0 = no) using the hand‑crafted decision tree
+    and return the truth value of every inner node.
+
+    Expected keys (exact spelling) in X:
+        'age', 'sex', 'chest_pain', 'trestbps', 'chol', 'fbs',
+        'restecg', 'thalach', 'exang', 'oldpeak', 'slope',
+        'ca', 'thal'               # (the target fields are ignored here)
+
+    The encoding that follows the description you gave:
+        chest_pain : 3 = Typical angina,
+                     0 = Asymptomatic,
+                     2 = Non‑anginal pain,
+                     1 = Atypical angina
+        thal       : 2 = Normal,
+                     1 = Fixed defect,
+                     3 = Reversible defect
+        sex        : 'male' or 'female' (case‑insensitive)
+        fbs, exang : 1 = false / no, 2 = true / yes
+        etc.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Evaluate every inner node – store 1 if the condition is true,
+    #     otherwise 0.  The order of the list follows the order the nodes
+    #     are visited in the tree (root → left → right …).
+    # ------------------------------------------------------------------
+    nodes = [0] * 7                     # we have 7 inner decisions
+
+    # Node 0 : chest_pain <= 1   (0 = Asymptomatic, 1 = Atypical)
+    nodes[0] = int(X["chest_pain"] <= 1)
+
+    # Node 1 : thal == 2  (Normal) – evaluated only when Node0 is True
+    nodes[1] = int(X["thal"] == 2) if nodes[0] else 0
+
+    # Node 2 : thalach <= 150 – evaluated only when Node0 is True
+    #          and Node1 is False
+    nodes[2] = int(X["thalach"] <= 150) if nodes[0] and not nodes[1] else 0
+
+    # Node 3 : oldpeak <= 1.0 – evaluated only when Node0 is False
+    nodes[3] = int(X["oldpeak"] <= 1.0) if not nodes[0] else 0
+
+    # Node 4 : ca == 0 – evaluated only when Node3 is True
+    nodes[4] = int(X["ca"] == 0) if (not nodes[0] and nodes[3]) else 0
+
+    # Node 5 : age <= 55 – evaluated only when Node4 is True
+    nodes[5] = int(X["age"] <= 55) if (not nodes[0] and nodes[3] and nodes[4]) else 0
+
+    # Node 6 : sex == 'male' – evaluated only when Node3 is False
+    nodes[6] = int(str(X["sex"]).strip().lower() == "male") if (not nodes[0] and not nodes[3]) else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the tree logic to obtain the final prediction
+    # ------------------------------------------------------------------
+    # Root branch
+    if nodes[0]:                     # chest_pain <= 1
+        if nodes[1]:                 # thal == Normal
+            prediction = 0           # No heart disease
+        else:                       # thal != Normal
+            if nodes[2]:             # thalach <= 150
+                prediction = 0
+            else:                   # thalach > 150
+                prediction = 1
+    else:                           # chest_pain > 1
+        if nodes[3]:                 # oldpeak <= 1.0
+            if nodes[4]:             # ca == 0
+                if nodes[5]:         # age <= 55
+                    prediction = 0
+                else:               # age > 55
+                    prediction = 1
+            else:                   # ca > 0
+                prediction = 1
+        else:                       # oldpeak > 1.0
+            # Both sexes end up in the same leaf in this simplified tree
+            prediction = 1
+
+    return prediction, nodes
+```
+
+### What the function returns
+* `prediction` – **0** means *no heart disease*, **1** means *heart disease* (the same encoding you gave for the target variable).  
+* `nodes` – a list of seven integers (`1` = condition satisfied, `0` = condition not satisfied) in the order shown below:
+
+| Index | Condition (as evaluated in the code)                              |
+|------|--------------------------------------------------------------------|
+| 0    | `chest_pain <= 1`                                                   |
+| 1    | `thal == 2`  *(only relevant when node 0 is true)*                 |
+| 2    | `thalach <= 150` *(when node 0 true & node 1 false)*               |
+| 3    | `oldpeak <= 1.0` *(when node 0 false)*                              |
+| 4    | `ca == 0` *(when node 3 true)*                                      |
+| 5    | `age <= 55` *(when node 4 true)*                                    |
+| 6    | `sex == 'male'` *(when node 3 false)*                               |
+
+You can call the function with a dictionary that follows the exact key names, e.g.:
+
+```python
+sample = {
+    "age": 58,
+    "sex": "male",
+    "chest_pain": 2,
+    "trestbps": 130,
+    "chol": 230,
+    "fbs": 1,
+    "restecg": 2,
+    "thalach": 160,
+    "exang": 1,
+    "oldpeak": 1.4,
+    "slope": 2,
+    "ca": 0,
+    "thal": 1
+}
+
+pred, node_vals = predict(sample)
+print(pred)        # → 1 (heart disease)
+print(node_vals)   # → [0, 0, 0, 0, 0, 0, 1]
+```
+
+The list `node_vals` makes it easy to see exactly which decisions were taken on the path to the final prediction.

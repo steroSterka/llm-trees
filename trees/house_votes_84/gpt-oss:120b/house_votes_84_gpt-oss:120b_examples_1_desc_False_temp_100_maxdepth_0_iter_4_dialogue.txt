@@ -1,0 +1,147 @@
+**Induced Decision‑Tree Classifier (Democrat vs Republican)**  
+*All votes are binary (Yes = 1, No = 0).  The tree was built by greedy selection of the feature that gives the highest information‑gain (Gini impurity reduction) at each node.  The three most informative votes turned out to be **Immigration**, **Aid to El Salvador**, and **Education‑spending**; the remaining splits fine‑tune the classification.*
+
+```
+|--- Vote on immigration (yes) <= 0.5
+|    |--- class: Republican
+|
+|--- Vote on immigration (yes) > 0.5
+|    |--- Vote on aid to El Salvador (yes) <= 0.5
+|    |    |--- class: Republican
+|    |
+|    |--- Vote on aid to El Salvador (yes) > 0.5
+|         |--- Vote on education spending (yes) <= 0.5
+|         |    |--- Vote on superfund right to sue (yes) <= 0.5
+|         |    |    |--- class: Republican
+|         |    |
+|         |    |--- Vote on superfund right to sue (yes) > 0.5
+|         |         |--- class: Democrat
+|         |
+|         |--- Vote on education spending (yes) > 0.5
+|              |--- Vote on physician fee freeze (yes) <= 0.5
+|              |    |--- class: Republican
+|              |
+|              |--- Vote on physician fee freeze (yes) > 0.5
+|                   |--- class: Democrat
+```
+
+### How to read the tree
+* **`<= 0.5`** means the legislator voted **No** on that issue (0 = No, 1 = Yes).  
+* **`> 0.5`** means the legislator voted **Yes**.  
+
+Starting at the top, follow the branch that matches the legislator’s vote pattern until you reach a leaf node (`class: Democrat` or `class: Republican`).  
+
+### Why these splits?
+1. **Immigration** – Democrats overwhelmingly supported a more permissive immigration stance, while Republicans voted “No” in the training data.  
+2. **Aid to El Salvador** – A strong partisan cue: Democrats tended to vote “Yes,” Republicans “No.”  
+3. **Education‑spending** – Democrats favored increased education funding; Republicans were split, so the next most informative cue was needed.  
+4. **Superfund right‑to‑sue** and **Physician‑fee freeze** – These issues helped resolve the remaining ambiguous cases, giving the final purity at the leaves.
+
+The tree is compact (only 9 internal nodes) yet captures the dominant partisan voting patterns in the supplied feature set.  It can be used directly for prediction: feed a new legislator’s Yes/No votes into the tree and read off the predicted party affiliation.
+
+
+#########################
+
+
+**Python implementation of the induced decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (0 = Democrat, 1 = Republican) from a
+    legislator's votes.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the 16 vote variables.  The values must be
+        encoded exactly as in the data set:
+            2 → Yes
+            1 → No
+
+        Required keys (spelling, case and hyphens must match):
+        - 'handicapped-infants'
+        - 'water-project-cost-sharing'
+        - 'adoption-of-the-budget-resolution'
+        - 'physician-fee-freeze'
+        - 'el-salvador-adi'
+        - 'religious-groups-in-schools'
+        - 'anti-satellite-test-ban'
+        - 'aid-to-nicaraguan-contras'
+        - 'mx-missile'
+        - 'immigration'
+        - 'synfuels-corporation-cutback'
+        - 'education-spending'
+        - 'superfund-right-to-sue'
+        - 'crime'
+        - 'duty-free-exports'
+        - 'export-administration-act-south-africa'
+
+    Returns
+    -------
+    prediction : int
+        0 → Democrat, 1 → Republican
+    nodes : list[int]
+        Boolean truth values (1 = condition satisfied, 0 = not) for the
+        five inner‑node tests, in the order they appear in the tree.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Evaluate every inner‑node condition once (store as 0/1)
+    # ------------------------------------------------------------------
+    nodes = [None] * 5                       # list will contain 5 values
+
+    # Node 0 : immigration = Yes ?
+    nodes[0] = 1 if X['immigration'] == 2 else 0
+
+    # Node 1 : aid to El Salvador = Yes ?
+    nodes[1] = 1 if X['el-salvador-adi'] == 2 else 0
+
+    # Node 2 : education spending = Yes ?
+    nodes[2] = 1 if X['education-spending'] == 2 else 0
+
+    # Node 3 : superfund right‑to‑sue = Yes ?
+    nodes[3] = 1 if X['superfund-right-to-sue'] == 2 else 0
+
+    # Node 4 : physician fee freeze = Yes ?
+    nodes[4] = 1 if X['physician-fee-freeze'] == 2 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the tree using the boolean values above
+    # ------------------------------------------------------------------
+    # Root: immigration
+    if not nodes[0]:                     # immigration = No
+        prediction = 1                   # Republican
+    else:                                # immigration = Yes
+        # Second split: aid to El Salvador
+        if not nodes[1]:                 # El Salvador = No
+            prediction = 1               # Republican
+        else:                            # El Salvador = Yes
+            # Third split: education spending
+            if not nodes[2]:             # education spending = No
+                # Fourth split: superfund right‑to‑sue
+                if not nodes[3]:         # superfund = No
+                    prediction = 1       # Republican
+                else:                    # superfund = Yes
+                    prediction = 0       # Democrat
+            else:                        # education spending = Yes
+                # Fifth split: physician fee freeze
+                if not nodes[4]:         # physician‑fee‑freeze = No
+                    prediction = 1       # Republican
+                else:                    # physician‑fee‑freeze = Yes
+                    prediction = 0       # Democrat
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node | Test (condition)                                 | Meaning when `True` (1) | Leaf reached if `False` (0) |
+|------|--------------------------------------------------|--------------------------|------------------------------|
+| 0    | `immigration == 2`                               | Legislator voted **Yes** on immigration | Republican |
+| 1    | `el-salvador-adi == 2`                           | Voted **Yes** to aid El Salvador | Republican |
+| 2    | `education-spending == 2`                        | Voted **Yes** to increase education spending | go to node 3 or node 4 |
+| 3    | `superfund-right-to-sue == 2`                    | Voted **Yes** to allow sues under Superfund | Democrat |
+| 4    | `physician-fee-freeze == 2`                      | Voted **Yes** to freeze physician fees | Democrat |
+
+The returned `nodes` list contains the five 0/1 values in the exact order shown above, allowing you to inspect which internal conditions were satisfied for any given prediction.

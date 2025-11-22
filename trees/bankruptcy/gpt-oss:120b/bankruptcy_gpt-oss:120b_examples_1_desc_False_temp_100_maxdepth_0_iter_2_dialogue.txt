@@ -1,0 +1,148 @@
+**Decision Tree – Bankruptcy Prediction**  
+*(Built on the five financial ratios you supplied.  The split thresholds are illustrative – they follow the same logic as the classic Altman Z‑Score, where higher ratios generally signal a healthier firm.  In a real implementation the thresholds would be learned from a labelled data set.)*  
+
+```
+|--- Book Value of Equity / Book Value of Liabilities <= 0.48
+|    |--- class: BANKRUPT
+|--- Book Value of Equity / Book Value of Liabilities > 0.48
+|    |--- Working Capital / Total Assets <= 0.12
+|    |    |--- class: BANKRUPT
+|    |--- Working Capital / Total Assets > 0.12
+|    |    |--- Earnings Before Interest and Tax / Total Assets <= 0.018
+|    |    |    |--- class: BANKRUPT
+|    |    |--- Earnings Before Interest and Tax / Total Assets > 0.018
+|    |    |    |--- Retained Earnings / Total Assets <= 0.03
+|    |    |    |    |--- class: BANKRUPT
+|    |    |    |--- Retained Earnings / Total Assets > 0.03
+|    |    |    |    |--- Sales / Total Assets <= 0.28
+|    |    |    |    |    |--- class: BANKRUPT
+|    |    |    |    |--- Sales / Total Assets > 0.28
+|    |    |    |    |    |--- class: NOT BANKRUPT
+```
+
+### How the tree was derived (conceptually)
+
+| Feature | Why it’s important | Typical “healthy” range |
+|---------|-------------------|------------------------|
+| **Book Value of Equity / Book Value of Liabilities** | Direct measure of solvency; firms with equity far below liabilities are often in distress. | > 0.5 (more equity than debt) |
+| **Working Capital / Total Assets** | Indicates short‑term liquidity. Low values mean the firm may not meet near‑term obligations. | > 0.10 |
+| **EBIT / Total Assets** | Operating profitability relative to asset base. Very low or negative EBIT signals poor core earnings. | > 0.02 (2 % of assets) |
+| **Retained Earnings / Total Assets** | Accumulated profit that can be used as a cushion. Negative or very low retained earnings are a red flag. | > 0.03 |
+| **Sales / Total Assets** | Asset turnover – a proxy for how efficiently assets generate revenue. Low turnover often accompanies financial trouble. | > 0.30 |
+
+The tree first checks the strongest discriminator – **equity vs. liabilities**. If that ratio is comfortably above 0.48, the model then looks at liquidity (**working‑capital ratio**). When liquidity is also acceptable, the next most telling signal is **operating profitability** (EBIT/TA). If profitability passes the cut‑off, the algorithm inspects the depth of accumulated earnings and finally the firm’s **asset turnover**.  
+
+Only when **all** of these financial health indicators are above their respective thresholds does the model label the company **“NOT BANKRUPT.”** Any failure at an earlier split results in a **“BANKRUPT”** classification.
+
+> **Note:** To turn this sketch into a production‑ready classifier you would:
+> 1. Assemble a labelled dataset of firms (bankrupt vs. non‑bankrupt).  
+> 2. Compute the five ratios for every firm.  
+> 3. Fit a CART decision‑tree (e.g., with `sklearn.tree.DecisionTreeClassifier`) using Gini impurity or entropy as the splitting criterion.  
+> 4. Prune the tree (or set `max_depth`) to avoid over‑fitting and to keep the model interpretable.  
+> 5. Validate performance (accuracy, precision/recall, ROC‑AUC) on a hold‑out test set.  
+
+The structure above captures the typical hierarchy of importance observed in many bankruptcy‑prediction studies, and it can serve as a starting point for your own data‑driven model.
+
+
+#########################
+
+
+**Python implementation of the bankruptcy decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company went bankrupt (target = 1) or not (target = 0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the five financial‑ratio keys
+        exactly as they appear in the data set:
+
+        * 'WC/TA'   – Working Capital / Total Assets
+        * 'RE/TA'   – Retained Earnings / Total Assets
+        * 'EBIT/TA' – Earnings Before Interest and Tax / Total Assets
+        * 'S/TA'    – Sales / Total Assets
+        * 'BVE/BVL' – Book Value of Equity / Book Value of Liabilities
+
+    Returns
+    -------
+    prediction : int
+        1 → bankrupt, 0 → not bankrupt
+    nodes : list[int]
+        Truth values (1 = condition satisfied, 0 = not) for the five
+        inner nodes, in the order they appear in the tree.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Inner‑node evaluations (store 1 if the condition is true,
+    #     0 otherwise).  The order follows the tree diagram below.
+    # ------------------------------------------------------------------
+    #  Node 0 : BVE/BVL <= 0.48
+    #  Node 1 : WC/TA  <= 0.12
+    #  Node 2 : EBIT/TA <= 0.018
+    #  Node 3 : RE/TA   <= 0.03
+    #  Node 4 : S/TA    <= 0.28
+    # ------------------------------------------------------------------
+    nodes = [
+        int(X["BVE/BVL"] <= 0.48),   # node 0
+        int(X["WC/TA"]   <= 0.12),   # node 1
+        int(X["EBIT/TA"] <= 0.018),  # node 2
+        int(X["RE/TA"]   <= 0.03),   # node 3
+        int(X["S/TA"]    <= 0.28)    # node 4
+    ]
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Decision logic – follow the same left‑branch / right‑branch
+    #     pattern used when the tree was drawn.
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # BVE/BVL <= 0.48  → bankrupt
+        prediction = 1
+    else:                            # BVE/BVL  > 0.48
+        if nodes[1]:                 # WC/TA <= 0.12   → bankrupt
+            prediction = 1
+        else:                        # WC/TA  > 0.12
+            if nodes[2]:             # EBIT/TA <= 0.018 → bankrupt
+                prediction = 1
+            else:                    # EBIT/TA > 0.018
+                if nodes[3]:         # RE/TA <= 0.03   → bankrupt
+                    prediction = 1
+                else:                # RE/TA  > 0.03
+                    if nodes[4]:     # S/TA <= 0.28    → bankrupt
+                        prediction = 1
+                    else:            # S/TA  > 0.28    → healthy
+                        prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node | Condition (stored as 1/0) | Meaning when **1** (True) | Branch taken |
+|------|---------------------------|---------------------------|--------------|
+| 0 | `BVE/BVL <= 0.48` | Equity is low relative to liabilities → **bankrupt** | left |
+| 1 | `WC/TA <= 0.12`   | Poor short‑term liquidity → **bankrupt** | left |
+| 2 | `EBIT/TA <= 0.018`| Operating profit very weak → **bankrupt** | left |
+| 3 | `RE/TA <= 0.03`   | Almost no retained earnings → **bankrupt** | left |
+| 4 | `S/TA <= 0.28`    | Low asset turnover → **bankrupt** | left |
+
+Only when **all five conditions are false** (i.e., every ratio exceeds its healthy threshold) does the model output `prediction = 0` (the firm is not bankrupt).  
+
+You can now call the function with a dictionary of the required ratios, e.g.:
+
+```python
+sample = {
+    "WC/TA": 0.15,
+    "RE/TA": 0.05,
+    "EBIT/TA": 0.03,
+    "S/TA": 0.35,
+    "BVE/BVL": 0.60
+}
+
+pred, path = predict(sample)
+print(pred)   # 0  → not bankrupt
+print(path)   # [0, 0, 0, 0, 0]
+```
+
+The `path` list tells you which inner‑node tests were satisfied (1) or not (0) for that particular observation.

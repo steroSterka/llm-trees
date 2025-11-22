@@ -1,0 +1,111 @@
+**Decision Tree (Party Affiliation)**  
+
+```
+|--- Vote on anti‑satellite test ban = yes
+||--- Vote on superfund right‑to‑sue = yes
+|||--- class: Democrat
+||--- Vote on superfund right‑to‑sue = no
+|||--- class: Republican
+|--- Vote on anti‑satellite test ban = no
+||--- Vote on aid to Nicaraguan contras = yes
+|||--- class: Republican
+||--- Vote on aid to Nicaraguan contras = no
+|||--- Vote on education spending = yes
+||||--- class: Democrat
+||||--- Vote on education spending = no
+||||--- class: Republican
+```  
+
+*Explanation of splits*  
+
+1. **Anti‑satellite test ban** – Democrats overwhelmingly supported the ban (yes), while Republicans mostly opposed it (no).  
+2. For those who voted **yes**, the next strongest discriminator is the **Superfund right‑to‑sue** vote: Democrats tended to support the right‑to‑sue (yes), Republicans less so.  
+3. For those who voted **no** on the anti‑satellite ban, the **Aid to Nicaraguan contras** vote separates the majority of Republicans (yes) from the few who voted no.  
+4. Among the “no‑contras” group, the **Education spending** vote provides the final split: Democrats generally voted to increase education spending (yes), Republicans were more likely to vote no.  
+
+This tree uses the most informative binary votes to classify a legislator as **Democrat** or **Republican**.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree classifier**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (0 = Democrat, 1 = Republican).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **exactly** the feature keys shown below
+        (the values are the encoded votes: 2 = yes, 1 = no).
+
+        Required keys:
+        - 'anti satellite test ban'
+        - 'superfund right to sue'
+        - 'aid to nicaraguan contras'
+        - 'education spending'
+
+    Returns
+    -------
+    prediction : int
+        0 → Democrat
+        1 → Republican
+    nodes : list[int]
+        Truth values of the inner‑node tests in the order they are
+        evaluated. 1 means the condition is satisfied, 0 otherwise.
+    """
+
+    # -------------------------------------------------------------
+    # 0 – first split: anti‑satellite test ban
+    # -------------------------------------------------------------
+    nodes = [None] * 4                     # we have four inner nodes
+    nodes[0] = 1 if X["anti satellite test ban"] == 2 else 0
+
+    if nodes[0]:                           # anti‑satellite test ban = yes
+        # ---------------------------------------------------------
+        # 1 – second split (only reached when node 0 is true):
+        #     superfund right‑to‑sue
+        # ---------------------------------------------------------
+        nodes[1] = 1 if X["superfund right to sue"] == 2 else 0
+
+        if nodes[1]:                       # superfund right‑to‑sue = yes
+            prediction = 0                 # Democrat
+        else:                              # superfund right‑to‑sue = no
+            prediction = 1                 # Republican
+
+    else:                                  # anti‑satellite test ban = no
+        # ---------------------------------------------------------
+        # 2 – third split (only reached when node 0 is false):
+        #     aid to nicaraguan contras
+        # ---------------------------------------------------------
+        nodes[2] = 1 if X["aid to nicaraguan contras"] == 2 else 0
+
+        if nodes[2]:                       # aid to contras = yes
+            prediction = 1                 # Republican
+        else:                              # aid to contras = no
+            # -------------------------------------------------
+            # 3 – fourth split (only reached when node2 is false):
+            #     education spending
+            # -------------------------------------------------
+            nodes[3] = 1 if X["education spending"] == 2 else 0
+
+            if nodes[3]:                   # education spending = yes
+                prediction = 0             # Democrat
+            else:                          # education spending = no
+                prediction = 1             # Republican
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition (inner node)                              | Meaning of `1` (True) | Meaning of `0` (False) |
+|------------|------------------------------------------------------|-----------------------|------------------------|
+| `0`        | `anti satellite test ban == 2` (voted **yes**)      | Go left → evaluate node 1 | Go right → evaluate node 2 |
+| `1`        | `superfund right to sue == 2` (voted **yes**)       | Predict **Democrat** (0) | Predict **Republican** (1) |
+| `2`        | `aid to nicaraguan contras == 2` (voted **yes**)    | Predict **Republican** (1) | Go to node 3 |
+| `3`        | `education spending == 2` (voted **yes**)           | Predict **Democrat** (0) | Predict **Republican** (1) |
+
+The returned list `nodes` contains four integers (1 / 0) that correspond to the four inner‑node tests in the order shown above, allowing you to see which path the observation followed through the tree.

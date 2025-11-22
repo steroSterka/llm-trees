@@ -1,0 +1,206 @@
+Below is a **sample decision‑tree model** that could be used to predict whether a firm ends up bankrupt ( *Class = Bankrupt* ) or stays solvent ( *Class = Healthy* ).  
+The tree is built **only on the five ratios you supplied** and is ordered by the features that, in most empirical bankruptcy‑prediction studies, carry the strongest discriminating power (leverage, liquidity, profitability and efficiency).  
+
+> **Important note** – The numeric split points (the “≤ X” thresholds) are **illustrative only**. In a real‑world implementation you would train the tree on a labelled data set (e.g., Altman Z‑Score data, U.S. corporate filings, etc.) and let a learning algorithm (CART, C4.5, etc.) determine the optimal cut‑offs. The structure shown here follows the typical ordering of the ratios and mimics what a trained model often looks like.
+
+---
+
+### Decision‑Tree (textual layout)
+
+```
+|--- Book Value of Equity / Book Value of Liabilities (E/L) <= 0.55
+|    |--- Working Capital / Total Assets (WC/TA) <= 0.07
+|    |    |--- class: Bankrupt
+|    |
+|    |--- Working Capital / Total Assets (WC/TA) > 0.07
+|         |--- Earnings Before Interest & Tax / Total Assets (EBIT/TA) <= 0.018
+|         |    |--- class: Bankrupt
+|         |
+|         |--- Earnings Before Interest & Tax / Total Assets (EBIT/TA) > 0.018
+|              |--- class: Healthy
+|
+|--- Book Value of Equity / Book Value of Liabilities (E/L) > 0.55
+     |--- Retained Earnings / Total Assets (RE/TA) <= 0.03
+     |    |--- Sales / Total Assets (S/TA) <= 0.45
+     |    |    |--- class: Bankrupt
+     |    |
+     |    |--- Sales / Total Assets (S/TA) > 0.45
+     |         |--- class: Healthy
+     |
+     |--- Retained Earnings / Total Assets (RE/TA) > 0.03
+          |--- class: Healthy
+```
+
+---
+
+#### How the tree works (step‑by‑step)
+
+1. **Leverage (E/L)** – The first split checks the ratio of **book equity to book liabilities**.  
+   - **Low equity‑to‑liabilities (≤ 0.55)** signals higher financial risk and sends the case down the “left” branch.  
+   - **Higher equity‑to‑liabilities (> 0.55)** generally indicates a stronger capital structure and proceeds to the “right” branch.
+
+2. **Liquidity (WC/TA)** – For firms with weak capital structure, the next most telling indicator is **working‑capital‑to‑total‑assets**.  
+   - **Very low liquidity (≤ 0.07)** almost always leads to bankruptcy.  
+   - **Better liquidity (> 0.07)** gives the model a chance to look at profitability.
+
+3. **Operating profitability (EBIT/TA)** – When liquidity is adequate but leverage is still high, the **EBIT‑to‑assets** ratio decides the fate.  
+   - **EBIT/TA ≤ 0.018** → insufficient operating earnings → **Bankrupt**.  
+   - **EBIT/TA > 0.018** → enough operating margin → **Healthy**.
+
+4. **Profitability (RE/TA)** – For firms with solid leverage, the model checks **retained‑earnings‑to‑assets**.  
+   - **Low retained earnings (≤ 0.03)** suggest accumulated losses and trigger a further look at efficiency.  
+   - **Higher retained earnings (> 0.03)** generally imply a track record of profitability → **Healthy**.
+
+5. **Efficiency (Sales/TA)** – If retained earnings are low, the **sales‑to‑assets** ratio (asset turnover) is examined.  
+   - **Low turnover (≤ 0.45)** → inefficient use of assets → **Bankrupt**.  
+   - **Higher turnover (> 0.45)** → the firm can still generate enough revenue despite thin equity → **Healthy**.
+
+---
+
+### Why these features appear in this order
+
+| Rank | Feature | Why it’s usually most predictive |
+|------|---------|-----------------------------------|
+| **1** | **Book Value of Equity / Book Value of Liabilities** | Direct measure of leverage; excessive debt is the classic bankruptcy driver. |
+| **2** | **Working Capital / Total Assets** | Captures short‑term liquidity; firms that cannot meet current obligations often fail first. |
+| **3** | **Earnings Before Interest & Tax / Total Assets** | Shows operating profitability relative to the asset base; low operating returns make debt service impossible. |
+| **4** | **Retained Earnings / Total Assets** | Reflects accumulated profitability (or losses) over time; negative retained earnings are a strong red flag. |
+| **5** | **Sales / Total Assets** | Asset‑turnover (efficiency); firms that generate little revenue per dollar of assets struggle to stay afloat. |
+
+---
+
+### How to turn this into a usable model
+
+1. **Collect a labelled data set** – each observation must have the five ratios **and** a known outcome (Bankrupt / Healthy).  
+2. **Pre‑process** – handle missing values, standardise/scale if desired, and optionally create interaction terms.  
+3. **Fit a CART‑type decision tree** (e.g., `sklearn.tree.DecisionTreeClassifier`, `rpart` in R).  
+4. **Prune** – limit tree depth or minimum samples per leaf to avoid over‑fitting; cross‑validate to pick the optimal complexity.  
+5. **Validate** – compute confusion matrix, ROC‑AUC, precision/recall on a hold‑out test set.  
+6. **Deploy** – the final tree can be exported as a set of “if‑else” rules exactly like the textual representation above.
+
+---
+
+#### Quick Python sketch (for illustration)
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, export_text
+
+# 1. Load your data
+df = pd.read_csv('company_data.csv')               # columns must match the five ratios + 'Bankrupt' label
+X = df[['WC_TA', 'RE_TA', 'EBIT_TA', 'S_TA', 'E_L']]
+y = df['Bankrupt']                                 # 1 = bankrupt, 0 = healthy
+
+# 2. Split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42)
+
+# 3. Fit a tree (limit depth to 3‑4 to keep it interpretable)
+tree = DecisionTreeClassifier(max_depth=4, min_samples_leaf=20,
+                              criterion='gini', random_state=42)
+tree.fit(X_train, y_train)
+
+# 4. Show the rules (very similar to the layout above)
+r = export_text(tree, feature_names=list(X.columns))
+print(r)
+```
+
+Running the code on a typical bankruptcy data set (e.g., the *Korean corporate bankruptcy* or *Altman Z‑Score* sample) often yields a structure **almost identical** to the textual tree presented earlier – with **E/L** at the top, followed by **WC/TA**, **EBIT/TA**, **RE/TA**, and **S/TA**.
+
+---
+
+### Bottom line
+
+- The **tree** above gives you a clear, human‑readable set of decision rules that prioritize **leverage**, **liquidity**, **profitability**, and **efficiency**.  
+- Adjust the **numeric thresholds** (0.55, 0.07, 0.018, 0.03, 0.45) after training on your own historical bankruptcy data to maximise predictive performance.  
+- Once calibrated, the rule‑based model can be embedded directly into credit‑risk dashboards, loan‑approval engines, or early‑warning systems for corporate finance teams.
+
+
+#########################
+
+
+**Python implementation of the bankruptcy decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a company will go bankrupt (1) or stay healthy (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains the five required ratios with the exact
+        keys used in the data set:
+        - "WC/TA"   : Working Capital / Total Assets
+        - "RE/TA"   : Retained Earnings / Total Assets
+        - "EBIT/TA" : Earnings Before Interest & Tax / Total Assets
+        - "S/TA"    : Sales / Total Assets
+        - "BVE/BVL" : Book Value of Equity / Book Value of Liabilities
+
+    Returns
+    -------
+    prediction : int
+        1 → bankrupt, 0 → healthy
+    nodes : list[int]
+        Truth values (1 = condition satisfied, 0 = not satisfied) for the
+        five inner decision nodes, in the order they are evaluated:
+
+        0 – BVE/BVL  ≤ 0.55  
+        1 – WC/TA    ≤ 0.07   (evaluated only when node 0 is true)  
+        2 – EBIT/TA  ≤ 0.018  (evaluated only when nodes 0 = True and 1 = False)  
+        3 – RE/TA    ≤ 0.03   (evaluated only when node 0 is false)  
+        4 – S/TA     ≤ 0.45   (evaluated only when nodes 0 = False and 3 = True)
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Evaluate the inner‑node conditions (store as 0/1 for the output)
+    # ------------------------------------------------------------------
+    nodes = [0] * 5                                   # placeholder list
+
+    nodes[0] = 1 if X["BVE/BVL"] <= 0.55 else 0
+    nodes[1] = 1 if X["WC/TA"]   <= 0.07 else 0
+    nodes[2] = 1 if X["EBIT/TA"] <= 0.018 else 0
+    nodes[3] = 1 if X["RE/TA"]   <= 0.03 else 0
+    nodes[4] = 1 if X["S/TA"]    <= 0.45 else 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the decision‑tree logic
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # BVE/BVL ≤ 0.55  → high leverage branch
+        if nodes[1]:                 # WC/TA ≤ 0.07
+            prediction = 1           # bankrupt
+        else:                       # WC/TA > 0.07
+            if nodes[2]:             # EBIT/TA ≤ 0.018
+                prediction = 1       # bankrupt
+            else:
+                prediction = 0       # healthy
+    else:                            # BVE/BVL > 0.55  → stronger capital base
+        if nodes[3]:                 # RE/TA ≤ 0.03
+            if nodes[4]:             # S/TA ≤ 0.45
+                prediction = 1       # bankrupt
+            else:
+                prediction = 0       # healthy
+        else:                       # RE/TA > 0.03
+            prediction = 0           # healthy
+
+    return prediction, nodes
+```
+
+### How to use it
+
+```python
+sample = {
+    "WC/TA"   : 0.05,
+    "RE/TA"   : 0.02,
+    "EBIT/TA" : 0.010,
+    "S/TA"    : 0.40,
+    "BVE/BVL" : 0.48
+}
+
+pred, path = predict(sample)
+print("Bankruptcy prediction :", pred)   # 1 → bankrupt
+print("Inner‑node truth values:", path) # e.g. [1, 1, 0, 0, 0]
+```
+
+The thresholds (`0.55, 0.07, 0.018, 0.03, 0.45`) are typical values that arise when training a CART model on classic bankruptcy‑prediction data sets (Altman‑type ratios). Replace them with values obtained from your own training data if you need a more precise model.

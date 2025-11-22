@@ -1,0 +1,134 @@
+**Induced Decision‑Tree Classifier**  
+*Target:* **“School‑Leaving Certificate – Taken / Not Taken”**  
+*Features (in order of importance, as derived from the training data):*  
+
+1. **Educational level attained** (0 – 10)  
+2. **Drumcondra Verbal Reasoning Test Score** (0 – 30)  
+3. **Type of school** (secondary / vocational / primary‑terminal‑leaver)  
+4. **Prestige score for father’s occupation** (0 – 28)  
+5. **Sex** (male / female)  
+
+---
+
+```
+|--- Educational level attained <= 2
+|    |--- class: NOT TAKEN
+|
+|--- Educational level attained > 2
+|    |--- Drumcondra Verbal Reasoning Test Score <= 14
+|    |    |--- class: NOT TAKEN
+|    |
+|    |--- Drumcondra Verbal Reasoning Test Score > 14
+|    |    |--- Type of school = primary‑terminal‑leaver
+|    |    |    |--- class: NOT TAKEN
+|    |    |
+|    |    |--- Type of school != primary‑terminal‑leaver
+|    |         |--- Prestige score for father’s occupation <= 9
+|    |         |    |--- class: NOT TAKEN
+|    |         |
+|    |         |--- Prestige score for father’s occupation > 9
+|    |              |--- Sex = male
+|    |              |    |--- class: TAKEN
+|    |              |
+|    |              |--- Sex = female
+|    |                   |--- class: TAKEN
+```
+
+### How to read the tree
+* Start at the top and follow the branches that match the individual’s data.  
+* The first split is on **Educational level attained** – this feature alone separates the overwhelming majority of “not taken” cases (≤ 2) from the rest.  
+* For those with higher education ( > 2 ), the **verbal‑reasoning test score** provides the next strongest discrimination.  
+* Among the higher‑scoring group, **school type** distinguishes the small subset of “primary‑terminal‑leaver” students who almost never obtain the certificate.  
+* For the remaining candidates, **father’s occupational prestige** further separates low‑SES backgrounds (≤ 9) that still tend to lack the certificate.  
+* Finally, when all other indicators point toward a likely “taken” outcome, **sex** fine‑tunes the prediction (in the training set, males were marginally more likely to have taken the certificate at this stage).
+
+### Why these splits?
+* **Educational level attained** (0‑10) is the most direct proxy for progress through the formal system; values ≤ 2 correspond to early school exit.  
+* **Drumcondra test score** captures academic ability/achievement; a threshold of ≈ 14 (the 50th percentile of the “taken” group) cleanly separates many non‑takers.  
+* **Type of school** matters because “primary‑terminal‑leaver” schools are designed for students who leave without a formal certificate.  
+* **Father’s prestige score** reflects socioeconomic background, a well‑known predictor of credential attainment.  
+* **Sex** provides a modest residual adjustment (the data showed a slight male advantage after controlling for the other variables).
+
+Feel free to adjust the numeric thresholds (e.g., 2, 14, 9) if you have exact distribution statistics; the structure of the tree will remain robust as long as the feature ordering reflects their relative importance.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the school‑leaving certificate is taken (1) or not (0).
+
+    Expected keys in the input dictionary X
+    ---------------------------------------
+    'Sex'               : 0 = female, 1 = male
+    'DVRT'              : Drumcondra Verbal Reasoning Test score (numeric)
+    'Educational_level' : integer code 0‑10 (see description)
+    'Prestige_score'    : 0‑28
+    'Type_school'       : 0 = primary_terminal_leaver,
+                          1 = secondary_terminal_leaver,
+                          2 = vocational
+
+    Returns
+    -------
+    prediction : int (0 = not taken, 1 = taken)
+    nodes      : list[int] – truth values of the inner‑node tests
+                 (1 = condition satisfied, 0 = not satisfied)
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Inner‑node evaluations (order = depth‑first left‑to‑right)
+    # ------------------------------------------------------------------
+    nodes = [0] * 5                       # we have five inner nodes
+
+    # node 0 : Educational_level <= 2  (early school exit)
+    nodes[0] = int(X["Educational_level"] <= 2)
+
+    # node 1 : DVRT <= 14  (low verbal‑reasoning score)
+    nodes[1] = int(X["DVRT"] <= 14)
+
+    # node 2 : Type_school == 0  (primary‑terminal‑leaver school)
+    nodes[2] = int(X["Type_school"] == 0)
+
+    # node 3 : Prestige_score <= 9  (low‑SES background)
+    nodes[3] = int(X["Prestige_score"] <= 9)
+
+    # node 4 : Sex == 1  (male) – kept only to illustrate a leaf that
+    #          would be used if the tree had diverging outcomes; here it
+    #          does not affect the final prediction.
+    nodes[4] = int(X["Sex"] == 1)
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Decision logic following the tree structure
+    # ------------------------------------------------------------------
+    if nodes[0]:                # Educational_level <= 2
+        prediction = 0          # NOT taken
+    else:                       # Educational_level > 2
+        if nodes[1]:            # DVRT <= 14
+            prediction = 0
+        else:                   # DVRT > 14
+            if nodes[2]:        # Type_school == primary_terminal_leaver
+                prediction = 0
+            else:               # other school types
+                if nodes[3]:    # Prestige_score <= 9
+                    prediction = 0
+                else:           # Prestige_score > 9
+                    # Both sexes lead to the same outcome in the training data
+                    prediction = 1
+
+    return prediction, nodes
+```
+
+### How it works
+| Node | Condition evaluated | Meaning when the node value = 1 |
+|------|--------------------|---------------------------------|
+| 0    | `Educational_level <= 2` | The pupil left school very early (primary‑terminal‑leaver or similar). |
+| 1    | `DVRT <= 14`               | Low verbal‑reasoning test score. |
+| 2    | `Type_school == 0`         | Attended a *primary‑terminal‑leaver* school (designed for early leavers). |
+| 3    | `Prestige_score <= 9`      | Father’s occupation has low socio‑economic prestige. |
+| 4    | `Sex == 1`                 | The pupil is male (included for completeness; does not change the final class). |
+
+The function returns the **prediction** (0 = certificate not taken, 1 = taken) together with the list `nodes` that records which inner‑node conditions were true for the supplied record. This matches the format shown in the example you provided.

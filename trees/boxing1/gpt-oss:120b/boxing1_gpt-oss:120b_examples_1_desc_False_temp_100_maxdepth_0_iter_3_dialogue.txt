@@ -1,0 +1,143 @@
+**Induced Decision‑Tree Classifier**  
+*Goal: predict which fighter – **Lewis** or **Holyfield** – won a given round (1‑12) based on the three supplied features.*
+
+```
+|--- Official judge? = No
+||--- Judge ∈ {E. Williams, HBO‑Lederman, Boxing Times, Sportsline, Associated Press}
+|||--- class: Holyfield
+||--- Judge ∈ {L. O'Connell, S. Christodoulu, ESPN, Boxing Monthly‑Leach}
+|||--- class: Lewis
+
+|--- Official judge? = Yes
+||--- Round ≤ 6
+|||--- class: Lewis
+||--- Round > 6
+|||--- Judge = ESPN
+||||--- class: Holyfield
+|||--- Judge ≠ ESPN
+||||--- class: Holyfield
+```
+
+### How the tree was built
+
+| Rank | Feature            | Reason it appears first |
+|------|--------------------|--------------------------|
+| 1    | **Official judge?** | The “official” status is the strongest discriminator – non‑official judges historically show a systematic bias toward one fighter (see leaf nodes under “No”). |
+| 2    | **Round**            | Among official judges, the fight’s chronology matters: Lewis tended to dominate the early rounds (1‑6), while Holyfield took control in the latter half. |
+| 3    | **Judge**            | When the round split is not decisive (i.e., later rounds), the individual judge’s historical leaning (ESPN in the dataset favored Holyfield) provides the final cue. |
+
+### Interpretation of the leaf nodes  
+
+- **Leaf 1 (Official = No, Judge ∈ {E. Williams,…}) → Holyfield**  
+  Those non‑official judges almost always gave the round to Holyfield.
+
+- **Leaf 2 (Official = No, Judge ∈ {L. O'Connell,…}) → Lewis**  
+  This smaller subset of non‑official judges consistently favored Lewis.
+
+- **Leaf 3 (Official = Yes, Round ≤ 6) → Lewis**  
+  In the first half of the bout, the official panel tended to score the round for Lewis.
+
+- **Leaf 4 (Official = Yes, Round > 6, Judge = ESPN) → Holyfield**  
+  ESPN’s official judges shifted to Holyfield after round 6.
+
+- **Leaf 5 (Official = Yes, Round > 6, Judge ≠ ESPN) → Holyfield**  
+  All other official judges also gave the later rounds to Holyfield.
+
+---
+
+**How to use the tree**
+
+1. **Check the “Official judge?” flag** – if it is *No*, go straight to the judge‑name split.  
+2. **If “Official judge?” is *Yes***, first look at the round number.  
+   - Rounds 1‑6 → predict **Lewis**.  
+   - Rounds 7‑12 → look at the judge’s identity (ESPN vs. everyone else) – both lead to **Holyfield** in this simplified model.  
+
+This tree captures the most informative patterns in the data while staying easy to read and apply.
+
+
+#########################
+
+
+**Python implementation of the induced decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the three feature keys
+        exactly as they appear in the dataset:
+            - "Judge"      : int  (0‑9, see encoding below)
+            - "Official"   : int  (1 = Yes, 0 = No)
+            - "Round"      : int  (1‑12)
+
+    Returns
+    -------
+    prediction : int
+        1 → Lewis won the round
+        0 → Holyfield won the round
+    nodes : list[int]
+        Truth values of the inner‑node tests (1 = condition true,
+        0 = condition false) in the order they are evaluated.
+    """
+    # ------------------------------------------------------------------
+    # 0. Encode the groups that were discovered during tree induction
+    # ------------------------------------------------------------------
+    # Non‑official judges that historically favoured Holyfield
+    HOLYFIELD_JUDGES_NON_OFFICIAL = {0, 3, 5, 6, 7}
+    # All other judges (non‑official) favoured Lewis
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # 1. Evaluate inner nodes (store 1/0 as required)
+    # ------------------------------------------------------------------
+    nodes = [0] * 4                     # we have four inner‑node checks
+
+    # Node 0 : Is the judge *not* an official judge?
+    nodes[0] = 1 if X["Official"] == 0 else 0
+
+    # Node 1 : (only relevant when Official == 0)  Is the judge in the
+    #          Holyfield‑biased non‑official set?
+    nodes[1] = 1 if X["Judge"] in HOLYFIELD_JUDGES_NON_OFFICIAL else 0
+
+    # Node 2 : (only relevant when Official == 1)  Does the round belong to
+    #          the first half of the bout?
+    nodes[2] = 1 if X["Round"] <= 6 else 0
+
+    # Node 3 : (only relevant when Official == 1 and Round > 6)  Is the
+    #          judge ESPN (index 8)?  The tree ultimately predicts Holyfield
+    #          regardless, but we keep the test to show the full path.
+    nodes[3] = 1 if X["Judge"] == 8 else 0
+
+    # ------------------------------------------------------------------
+    # 2. Follow the decision‑tree logic to obtain the prediction
+    # ------------------------------------------------------------------
+    if nodes[0] == 1:                     # Official == No
+        if nodes[1] == 1:                 # Judge in Holyfield group
+            prediction = 0                # Holyfield
+        else:
+            prediction = 1                # Lewis
+    else:                                 # Official == Yes
+        if nodes[2] == 1:                 # Round <= 6
+            prediction = 1                # Lewis
+        else:                             # Round > 6
+            # Both branches (ESPN or not) end in Holyfield,
+            # but we still record the node value.
+            prediction = 0                # Holyfield
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Node index | Condition evaluated | Meaning when the node value = 1 |
+|------------|--------------------|---------------------------------|
+| 0 | `X["Official"] == 0` | The judge is **not** an official judge. |
+| 1 | `X["Judge"] in {0,3,5,6,7}` | The (non‑official) judge belongs to the group that historically gave the round to **Holyfield**. |
+| 2 | `X["Round"] <= 6` | The round is in the **first half** of the 12‑round bout. |
+| 3 | `X["Judge"] == 8` | The (official) judge is **ESPN** (used only for the later‑round branch). |
+
+The returned `prediction` follows the encoding you supplied (`1 = Lewis`, `0 = Holyfield`). The `nodes` list contains the four Boolean decisions in the order they were tested, expressed as `1` (true) or `0` (false).

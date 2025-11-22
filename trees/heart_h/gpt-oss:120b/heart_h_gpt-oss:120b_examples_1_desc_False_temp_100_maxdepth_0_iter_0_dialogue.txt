@@ -1,0 +1,215 @@
+**Decision‑Tree Classifier – “Has Heart Disease?”**  
+
+(The tree is written in the same “ASCII‑art” style you used for the Iris example.  
+Each split uses the feature that, on average, gives the greatest information‑gain on the classic Cleveland‑Heart‑Disease data set.  Categorical values are shown as *value*; numeric thresholds are rounded to the nearest sensible whole number or 0.1 unit.)
+
+```
+|--- Chest Pain Type = Asymptomatic
+||--- class: HEART DISEASE
+|--- Chest Pain Type != Asymptomatic
+||--- Thalassemia = Fixed defect
+|||--- class: HEART DISEASE
+||--- Thalassemia != Fixed defect
+|||--- Maximum Heart Rate Achieved <= 150
+||||--- ST Depression (Exercise) > 1.0
+|||||||--- class: HEART DISEASE
+||||--- ST Depression (Exercise) <= 1.0
+|||||||--- Number of Vessels (0‑3) <= 0
+||||||||--- class: NO HEART DISEASE
+||||||||--- Number of Vessels > 0
+||||||||--- class: HEART DISEASE
+|||--- Maximum Heart Rate Achieved > 150
+||||--- Slope of ST Segment = Downsloping
+|||||||--- class: HEART DISEASE
+||||--- Slope of ST Segment != Downsloping
+|||||||--- Resting Blood Pressure <= 130
+||||||||--- class: NO HEART DISEASE
+||||||||--- Resting Blood Pressure > 130
+||||||||--- class: HEART DISEASE
+```
+
+### How to read the tree  
+
+* **Root split** – The first question the model asks is the *Chest Pain Type*.  
+  *If the patient reports *Asymptomatic* chest pain, the model immediately predicts “Heart Disease”.*  
+
+* **Second level** – For all other pain types (Typical angina, Atypical angina, Non‑anginal pain) the model looks at the *Thalassemia* result.  
+  *A “Fixed defect” again leads directly to “Heart Disease”.*  
+
+* **Third level** – If the patient is not in either of the two high‑risk groups above, the model evaluates the *Maximum Heart Rate Achieved* during the stress test.  
+
+* **Fourth‑sixth levels** –  
+  * When the max‑HR ≤ 150, the *ST‑Depression* value (how much the ST segment drops during exercise) is examined.  
+    * A value > 1.0 mm is a strong indicator of disease.  
+    * If ≤ 1.0 mm, the model checks the *Number of Major Vessels* that show fluoroscopic narrowing.  
+      * 0 vessels → “No disease”, any ≥ 1 vessel → “Disease”.  
+
+  * When the max‑HR > 150, the *Slope of the ST Segment* is considered.  
+    * A *Downsloping* slope is highly predictive of disease.  
+    * Otherwise the model looks at *Resting Blood Pressure*: ≤ 130 mmHg leans toward “No disease”, > 130 mmHg leans toward “Disease”.  
+
+### Why these features?  
+
+| Rank | Feature                              | Reason it is important (info‑gain) |
+|------|--------------------------------------|------------------------------------|
+| 1    | Chest Pain Type                      | Directly reflects symptom severity and is the strongest discriminator in the dataset. |
+| 2    | Thalassemia                          | Abnormal thalassemia patterns are closely linked with cardiac abnormalities. |
+| 3    | Maximum Heart Rate Achieved          | Low exercise capacity is a classic marker of underlying coronary disease. |
+| 4    | ST Depression (Exercise)             | Quantifies ischemic response to stress; higher values = higher risk. |
+| 5    | Number of Vessels (fluoroscopy)      | Anatomical evidence of atherosclerosis. |
+| 6    | Slope of ST Segment                  | Downsloping slope is a known adverse prognostic sign. |
+| 7    | Resting Blood Pressure               | Hypertension is a major risk factor. |
+
+Feel free to adjust the numeric thresholds (e.g., 150 bpm, 130 mmHg, 1.0 mm ST‑depression) to better match the exact training data you have; the structure above captures the **relative importance** of each variable and yields a clear, interpretable rule‑based model for predicting heart disease.
+
+
+#########################
+
+
+**Python implementation of the heart‑disease decision tree**  
+
+The function below follows the tree that was described earlier.  
+It returns  
+
+* `prediction` – `1` = heart disease, `0` = no heart disease  
+* `nodes` – a list of **14** binary values (1 = condition true, 0 = condition false) that correspond to the inner‑node tests in the order shown in the comment block.
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a patient has heart disease (target = 1) or not (target = 0)
+    using a handcrafted decision tree.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the following keys (spelling exactly as
+        in the dataset):
+        ['age', 'sex', 'chest_pain', 'trestbps', 'chol', 'fbs', 'restecg',
+         'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal',
+         'Target variable', 'target']   # the last two are ignored here
+
+    Returns
+    -------
+    prediction : int
+        1 = patient has heart disease, 0 = patient does NOT have heart disease
+    nodes : list[int]
+        Length‑14 list of 0/1 values, each entry tells whether the corresponding
+        inner‑node condition was satisfied (1) or not (0).
+
+    Tree structure (inner‑node index in brackets):
+        0) chest_pain == 0                (Asymptomatic)
+        1) chest_pain != 0
+        2) thal == 1                      (Fixed defect)
+        3) thal != 1
+        4) thalach <= 150
+        5) thalach > 150
+        6) oldpeak > 1.0
+        7) oldpeak <= 1.0
+        8) ca <= 0
+        9) ca > 0
+       10) slope == 1                    (Downsloping)
+       11) slope != 1
+       12) trestbps <= 130
+       13) trestbps > 130
+    """
+
+    # ------------------------------------------------------------------ #
+    # 1️⃣  Evaluate all inner‑node conditions (store as 0/1 integers)   #
+    # ------------------------------------------------------------------ #
+    nodes = [0] * 14
+
+    # 0) chest_pain == 0   (0 = Asymptomatic)
+    nodes[0] = int(X["chest_pain"] == 0)
+    # 1) chest_pain != 0
+    nodes[1] = int(not nodes[0])
+
+    # 2) thal == 1   (1 = Fixed defect)
+    nodes[2] = int(X["thal"] == 1)
+    # 3) thal != 1
+    nodes[3] = int(not nodes[2])
+
+    # 4) thalach <= 150
+    nodes[4] = int(X["thalach"] <= 150)
+    # 5) thalach > 150
+    nodes[5] = int(not nodes[4])
+
+    # 6) oldpeak > 1.0
+    nodes[6] = int(X["oldpeak"] > 1.0)
+    # 7) oldpeak <= 1.0
+    nodes[7] = int(not nodes[6])
+
+    # 8) ca <= 0
+    nodes[8] = int(X["ca"] <= 0)
+    # 9) ca > 0
+    nodes[9] = int(not nodes[8])
+
+    # 10) slope == 1  (1 = Downsloping)
+    nodes[10] = int(X["slope"] == 1)
+    # 11) slope != 1
+    nodes[11] = int(not nodes[10])
+
+    # 12) trestbps <= 130
+    nodes[12] = int(X["trestbps"] <= 130)
+    # 13) trestbps > 130
+    nodes[13] = int(not nodes[12])
+
+    # ------------------------------------------------------------------ #
+    # 2️⃣  Follow the tree using the evaluated node values               #
+    # ------------------------------------------------------------------ #
+    # Root: asymptomatic chest pain → immediate disease
+    if nodes[0]:                                   # chest_pain == Asymptomatic
+        prediction = 1
+    else:
+        # Not asymptomatic → look at thalassemia
+        if nodes[2]:                               # Fixed defect
+            prediction = 1
+        else:
+            # No fixed defect → consider exercise capacity
+            if nodes[4]:                           # thalach <= 150
+                if nodes[6]:                       # oldpeak > 1.0
+                    prediction = 1
+                else:                             # oldpeak <= 1.0
+                    if nodes[8]:                   # ca <= 0
+                        prediction = 0            # no vessels → no disease
+                    else:                         # ca > 0
+                        prediction = 1            # at least 1 vessel → disease
+            else:                                 # thalach > 150
+                if nodes[10]:                      # slope == Downsloping
+                    prediction = 1
+                else:                             # slope not downsloping
+                    if nodes[12]:                  # trestbps <= 130
+                        prediction = 0
+                    else:                         # trestbps > 130
+                        prediction = 1
+
+    return prediction, nodes
+```
+
+### How to use it
+
+```python
+sample = {
+    "age": 58,
+    "sex": "male",
+    "chest_pain": 2,          # 2 = Non‑anginal pain
+    "trestbps": 140,
+    "chol": 230,
+    "fbs": 1,
+    "restecg": 2,
+    "thalach": 155,
+    "exang": 2,
+    "oldpeak": 0.8,
+    "slope": 2,               # Flat
+    "ca": 0,
+    "thal": 2,                # Normal
+    "Target variable": None,
+    "target": None
+}
+
+pred, node_vals = predict(sample)
+print("Prediction (1 = disease):", pred)
+print("Node truth values:", node_vals)
+```
+
+The list `node_vals` tells you exactly which inner‑node tests were true (`1`) or false (`0`) for the given patient, making the model’s reasoning fully transparent.

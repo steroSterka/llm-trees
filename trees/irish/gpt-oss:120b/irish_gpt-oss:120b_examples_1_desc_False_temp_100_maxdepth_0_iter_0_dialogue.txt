@@ -1,0 +1,209 @@
+Below is a **sample decision‑tree** that could be used to predict **whether a student has taken the school‑leaving certificate** (‑ “taken” vs “not taken”) from the five variables you supplied.  
+
+Because no actual data set was provided, the splits are based on **common‑sense domain knowledge** and on the typical predictive power of each variable (see the short “Feature‑importance rationale” after the tree).  If you later feed a real training set into a CART‑style algorithm (e.g., `sklearn.tree.DecisionTreeClassifier`), the exact thresholds will be estimated from the data, but the overall structure shown here is a plausible “starting point”.
+
+---
+
+### Decision‑Tree (ASCII‑style)
+
+```
+|--- Educational level attained (0‑10) <= 4
+||--- class: NOT TAKEN
+|--- Educational level attained (0‑10) > 4
+||--- Drumcondra Verbal Reasoning Test Score <= 120
+|||--- class: NOT TAKEN
+||--- Drumcondra Verbal Reasoning Test Score > 120
+|||--- Type of school
+||||--- secondary
+|||||||--- class: TAKEN
+||||--- vocational
+|||||||--- Prestige score for father's occupation <= 10
+||||||||--- class: NOT TAKEN
+|||||||--- Prestige score for father's occupation > 10
+||||||||--- class: TAKEN
+||||--- primary‑terminal leaver
+|||||||--- class: NOT TAKEN
+```
+
+*The tree can be read from top to bottom: start at the root, follow the “yes” (≤) or “no” (> ) branch at each node, and stop when you reach a leaf (the “class” line).*
+
+---
+
+### Feature‑importance rationale (why these splits make sense)
+
+| Rank | Feature | Why it is likely the strongest predictor |
+|------|----------|------------------------------------------|
+| 1️⃣ | **Educational level attained** (0‑10) | This directly measures how far a pupil has progressed in the formal system; a low level (≤ 4) almost always means the certificate has not yet been earned. |
+| 2️⃣ | **Drumcondra Verbal Reasoning Test Score** | Among students who have progressed beyond the basic level, the cognitive‑ability test is a good proxy for academic readiness – scores > 120 (roughly the 70‑th percentile) sharply increase the odds of having taken the exam. |
+| 3️⃣ | **Type of school** | In many jurisdictions the curriculum differs: secondary schools normally prepare students for the leaving‑certificate, vocational tracks may offer optional routes, and primary‑terminal leavers usually exit before the exam is even offered. |
+| 4️⃣ | **Prestige score for father’s occupation** | Socio‑economic background often influences whether families push for formal qualifications; a higher prestige (≥ 11) raises the probability of taking the exam, especially within the vocational stream. |
+| 5️⃣ | **Sex (male / female)** | Gender differences are usually weaker than the other predictors for this outcome, so it appears only implicitly (e.g., could be added as a tie‑breaker at the bottom of the tree if needed). |
+
+---
+
+### How to turn this sketch into a real model
+
+1. **Collect a labelled data set**  
+   – Rows = individual students  
+   – Columns = the five features above + a binary target `certificate_taken` (1 = taken, 0 = not taken).
+
+2. **Pre‑process**  
+   – Encode categorical variables (`sex`, `type of school`) as integers or one‑hot vectors.  
+   – Optionally scale/standardise the numeric scores (though CART does not require it).
+
+3. **Fit a CART classifier** (example in Python):
+
+```python
+from sklearn.tree import DecisionTreeClassifier, export_text
+import pandas as pd
+
+# 1️⃣ Load data
+df = pd.read_csv('students.csv')          # <-- your file
+X = df[['sex','drumcondra_score','educ_level','father_prestige','school_type']]
+y = df['certificate_taken']
+
+# 2️⃣ Encode categoricals
+X = pd.get_dummies(X, columns=['sex','school_type'], drop_first=True)
+
+# 3️⃣ Train
+clf = DecisionTreeClassifier(max_depth=5, min_samples_leaf=30, random_state=42)
+clf.fit(X, y)
+
+# 4️⃣ Visualise (text)
+tree_rules = export_text(clf, feature_names=list(X.columns))
+print(tree_rules)
+```
+
+4. **Validate** – use cross‑validation or a held‑out test set to check accuracy, precision, recall, etc. Adjust `max_depth`, `min_samples_leaf`, or use pruning to avoid over‑fitting.
+
+5. **Deploy** – the resulting tree can be exported as plain‑text (as above), plotted with `sklearn.tree.plot_tree`, or translated into business‑rule code (e.g., in a decision‑support system).
+
+---
+
+### Quick “what‑if” extensions
+
+| Situation | Suggested modification |
+|-----------|------------------------|
+| **More granular age or grade information** | Add `age` or `current_grade` as an extra predictor; it will likely sit just below `educ_level`. |
+| **Missing test scores** | Use surrogate splits (CART does this automatically) or impute missing values with the median. |
+| **Desire for a simpler rule** | Limit `max_depth=3`; the resulting tree will probably keep only `educ_level`, `school_type`, and `drumcondra_score`. |
+| **Explainability for stakeholders** | Export the tree to a PDF/PNG or to a rule list (e.g., “IF educ_level > 4 AND test > 120 AND school = secondary → TAKEN”). |
+
+---
+
+**Bottom line:**  
+The tree above demonstrates how the five supplied features can be ordered by predictive importance to decide whether a pupil has taken the school‑leaving certificate. Feed your actual observations into a CART algorithm, and the exact numeric thresholds will be learned automatically – the structure will look very similar to the one shown.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the school‑leaving certificate has been taken (target = 1)
+    or not (target = 0) and return the truth values of every inner node.
+
+    Expected keys in ``X`` (exact spelling, case‑sensitive):
+        - 'Sex'                : 0 = female, 1 = male            (not used in the tree)
+        - 'DVRT'               : Drumcondra Verbal Reasoning Test score
+        - 'Educational_level' : integer 0‑10 (see description)
+        - 'Prestige_score'    : integer 0‑28
+        - 'Type_school'       : 0 = primary_terminal_leaver,
+                                 1 = secondary_terminal_leaver,
+                                 2 = vocational
+
+    Returns
+    -------
+    prediction : int
+        0 = certificate NOT taken
+        1 = certificate taken
+    nodes : list[int]
+        Length‑5 list.  ``nodes[i]`` is 1 if the *i‑th* inner‑node condition
+        is satisfied, otherwise 0.  The order of the nodes follows the
+        tree shown below.
+
+    Decision‑tree (inner‑node order)
+
+        node 0 : Educational_level <= 4
+        node 1 : DVRT > 120                (evaluated only if node 0 is False)
+        node 2 : Type_school == 1          (secondary)
+        node 3 : Type_school == 2          (vocational)
+        node 4 : Prestige_score <= 10      (evaluated only if node 3 is True)
+
+    """
+    # ------------------------------------------------------------------ #
+    # 1.  Evaluate the inner‑node conditions (store 1 = True, 0 = False) #
+    # ------------------------------------------------------------------ #
+    nodes = [None] * 5
+
+    # node 0 : Educational_level <= 4
+    nodes[0] = int(X["Educational_level"] <= 4)
+
+    # node 1 : DVRT > 120   (only matters when node 0 == 0)
+    nodes[1] = int(X["DVRT"] > 120)
+
+    # node 2 : Type_school == 1  (secondary)   (only matters when node1 == 1)
+    nodes[2] = int(X["Type_school"] == 1)
+
+    # node 3 : Type_school == 2  (vocational) (only matters when node2 == 0)
+    nodes[3] = int(X["Type_school"] == 2)
+
+    # node 4 : Prestige_score <= 10 (only matters when node3 == 1)
+    nodes[4] = int(X["Prestige_score"] <= 10)
+
+    # ---------------------------------------------------------- #
+    # 2.  Walk the tree using the evaluated node booleans       #
+    # ---------------------------------------------------------- #
+    # Root split
+    if nodes[0]:                      # Educational_level <= 4
+        prediction = 0                # certificate NOT taken
+    else:                             # Educational_level > 4
+        if not nodes[1]:              # DVRT <= 120
+            prediction = 0
+        else:                         # DVRT > 120
+            if nodes[2]:              # Type_school == secondary
+                prediction = 1
+            else:
+                if nodes[3]:          # Type_school == vocational
+                    # inside vocational branch – check prestige
+                    if nodes[4]:      # Prestige_score <= 10
+                        prediction = 0
+                    else:            # Prestige_score > 10
+                        prediction = 1
+                else:                # Type_school == primary_terminal_leaver
+                    prediction = 0
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Node index | Condition (human‑readable)                                 | Stored value (`nodes[i]`) |
+|------------|------------------------------------------------------------|---------------------------|
+| 0          | `Educational_level <= 4`                                   | 1 if true, else 0         |
+| 1          | `DVRT > 120`                                                | 1 if true, else 0         |
+| 2          | `Type_school == 1`  *(secondary terminal leaver)*          | 1 if true, else 0         |
+| 3          | `Type_school == 2`  *(vocational)*                         | 1 if true, else 0         |
+| 4          | `Prestige_score <= 10` (only evaluated for vocational)    | 1 if true, else 0         |
+
+The function first evaluates **all** five inner‑node conditions (so the `nodes` list is always populated) and then follows the tree logic to produce a single binary prediction (`0` = not taken, `1` = taken).  
+
+You can call the function with a dictionary that contains the exact keys shown above, e.g.:
+
+```python
+sample = {
+    "Sex": 1,
+    "DVRT": 135,
+    "Educational_level": 7,
+    "Prestige_score": 12,
+    "Type_school": 2          # vocational
+}
+pred, path = predict(sample)
+print(pred)   # → 1 (certificate taken)
+print(path)   # → [0, 1, 0, 1, 0]
+```
+
+The `path` list tells you which inner‑node tests were satisfied for that particular record.

@@ -1,0 +1,205 @@
+**Decision‑Tree Classifier – “Good vs Bad” Labor‑Negotiation Outcome**  
+*(Built from the most‑impactful variables that usually drive a favourable result.  Thresholds are illustrative – they reflect typical industry patterns rather than a fitted model.)*  
+
+```
+|--- wage increase 1st year (percentage points) >= 5
+||--- cost‑of‑living adjustment (COLA) != none
+|||--- employer contribution to pension plan = full
+||||--- class: GOOD
+|||--- employer contribution to pension plan = retirement allowance included
+||||--- class: GOOD
+|||--- employer contribution to pension plan = none
+||||--- class: BAD
+||--- cost‑of‑living adjustment = none
+|||--- duration of agreement (years) >= 5
+||||--- class: GOOD
+||||--- else
+||||--- class: BAD
+|--- wage increase 1st year < 5
+||--- employer contribution to health plan = full
+|||--- standby pay (per shift) >= 10
+||||--- class: GOOD
+||||--- else
+||||--- class: BAD
+||--- employer contribution to health plan = half
+|||--- shift differential (supplement) >= 15
+||||--- class: GOOD
+||||--- else
+||||--- class: BAD
+||--- employer contribution to health plan = none
+|||--- education allowance = yes
+||||--- class: GOOD
+||||--- else
+||||--- class: BAD
+```
+
+---
+
+### Why these splits? (Feature‑importance rationale)
+
+| Rank | Feature | Reason it drives the outcome |
+|------|---------|------------------------------|
+| 1 | **Wage increase 1st year** | Immediate pay boost is the strongest signal of a “good” deal. |
+| 2 | **Cost‑of‑living adjustment (COLA)** | Guarantees future‑proofed earnings; absence often flags a weaker agreement. |
+| 3 | **Employer pension contribution** | Full or “retirement‑allowance‑included” contributions are valued highly by workers. |
+| 4 | **Duration of agreement** | Longer contracts (≥ 5 years) provide stability → perceived as good. |
+| 5 | **Employer health‑plan contribution** | Full coverage is a major benefit; half or none drags the rating down. |
+| 6 | **Stand‑by pay** | Higher standby compensation (≥ 10 % of base) improves overall package. |
+| 7 | **Shift differential** | Large differentials (≥ 15 %) offset irregular hours, making the deal more attractive. |
+| 8 | **Education allowance** | Presence of a learning stipend can tip a marginal deal into the “good” category. |
+
+All remaining variables (wage increase 2nd/3rd year, number of statutory holidays, paid‑vacation generosity, disability help, dental/bereavement contributions, weekly hours, etc.) typically have **lower marginal impact** and therefore appear deeper in the tree or are omitted for brevity.
+
+---
+
+### How to read the tree  
+
+- Follow the branches from the top.  
+- At each node, check the condition; go to the “yes” (right‑hand) sub‑branch if it holds, otherwise follow the “no” (left‑hand) sub‑branch.  
+- When you hit a leaf node (`class: GOOD` or `class: BAD`) you have the predicted outcome for the negotiation based on the supplied feature values.  
+
+Feel free to adjust the numeric cut‑offs (e.g., “≥ 5 %” for wage increase) to match the exact scale of your data set, or to add further branches if you have more detailed historical observations.
+
+
+#########################
+
+
+**Python implementation of the “Good / Bad” labour‑negotiation decision tree**  
+
+The function expects a *dictionary* whose keys are **exactly** the feature names you listed
+(`'duration'`, `'wage increase first year'`, …, `'contribution to health plan'`).  
+Values must be of the same type/range described in the feature table:
+
+| Feature | Expected type / coding |
+|---------|------------------------|
+| `duration` | integer [1‑7] |
+| `wage increase first year` | float [2.0‑7.0] |
+| `cost of living adjustment` | `'none'`, `'tcf'`, `'tc'` |
+| `pension` | `'none'`, `'ret_allw'`, `'empl_contr'` |
+| `standby pay` | integer [2‑25] |
+| `shift differential` | integer [1‑25] |
+| `education allowance` | `True`/`False` (or `'true'`/`'false'`) |
+| `contribution to health plan` | `'none'`, `'half'`, `'full'` |
+| … (the remaining fields are **ignored** by the tree) |
+
+The function returns  
+
+* `prediction` – `1` = *good* settlement, `0` = *bad* settlement  
+* `nodes` – a list of **10** integers (`1` = condition satisfied, `0` = condition not satisfied) that records the truth value of every inner node **in the order they are evaluated**.
+
+```python
+def predict(X: dict):
+    """
+    Decision‑tree classifier for labour‑negotiation outcome.
+
+    Parameters
+    ----------
+    X : dict
+        Mapping from the exact feature names (see docstring) to their values.
+
+    Returns
+    -------
+    prediction : int
+        1 → good settlement, 0 → bad settlement
+    nodes : list[int]
+        Length‑10 list of 0/1 indicating whether each inner node condition was met.
+    """
+
+    # ------------------------------------------------------------------ #
+    # Helper: safe lower‑case conversion for categorical strings
+    # ------------------------------------------------------------------ #
+    def lc(val):
+        return str(val).lower().strip()
+
+    # ------------------------------------------------------------------ #
+    # 1. Evaluate every inner node (store 1/0)
+    # ------------------------------------------------------------------ #
+    nodes = [0] * 10
+
+    # node 0 : wage increase first year >= 5 (% points)
+    nodes[0] = 1 if X["wage increase first year"] >= 5.0 else 0
+
+    # node 1 : cost‑of‑living adjustment is NOT 'none'
+    nodes[1] = 1 if lc(X["cost of living adjustment"]) != "none" else 0
+
+    # node 2 : pension == 'empl_contr'   (full employer contribution)
+    nodes[2] = 1 if lc(X["pension"]) == "empl_contr" else 0
+
+    # node 3 : pension == 'ret_allw'    (retirement allowance included)
+    nodes[3] = 1 if lc(X["pension"]) == "ret_allw" else 0
+
+    # node 4 : duration >= 5 years
+    nodes[4] = 1 if X["duration"] >= 5 else 0
+
+    # node 5 : health‑plan contribution == 'full'
+    nodes[5] = 1 if lc(X["contribution to health plan"]) == "full" else 0
+
+    # node 6 : standby pay >= 10 (per shift)
+    nodes[6] = 1 if X["standby pay"] >= 10 else 0
+
+    # node 7 : health‑plan contribution == 'half'
+    nodes[7] = 1 if lc(X["contribution to health plan"]) == "half" else 0
+
+    # node 8 : shift differential >= 15
+    nodes[8] = 1 if X["shift differential"] >= 15 else 0
+
+    # node 9 : education allowance is True (or the string 'true')
+    edu_val = X["education allowance"]
+    nodes[9] = 1 if (edu_val is True) or (lc(edu_val) == "true") else 0
+
+    # ------------------------------------------------------------------ #
+    # 2. Follow the tree logic to produce the final prediction
+    # ------------------------------------------------------------------ #
+    if nodes[0]:                                 # wage increase first year >= 5
+        if nodes[1]:                             # COLA != none
+            if nodes[2]:                         # pension == full
+                prediction = 1                  # GOOD
+            else:
+                if nodes[3]:                     # pension == ret_allw
+                    prediction = 1              # GOOD
+                else:
+                    prediction = 0              # BAD
+        else:                                     # COLA == none
+            if nodes[4]:                         # duration >= 5
+                prediction = 1                  # GOOD
+            else:
+                prediction = 0                  # BAD
+    else:                                         # wage increase first year < 5
+        if nodes[5]:                             # health plan == full
+            if nodes[6]:                         # standby pay >= 10
+                prediction = 1                  # GOOD
+            else:
+                prediction = 0                  # BAD
+        else:
+            if nodes[7]:                         # health plan == half
+                if nodes[8]:                     # shift differential >= 15
+                    prediction = 1              # GOOD
+                else:
+                    prediction = 0              # BAD
+            else:                                 # health plan == none
+                if nodes[9]:                     # education allowance true
+                    prediction = 1              # GOOD
+                else:
+                    prediction = 0              # BAD
+
+    return prediction, nodes
+```
+
+### How it works – quick walk‑through
+
+| Step | Condition (node) | Meaning | Result if **True** |
+|------|------------------|---------|---------------------|
+| 0 | `wage increase first year ≥ 5` | Strong first‑year raise | go to the “high‑raise” branch |
+| 1 | `cost of living adjustment ≠ none` | Future‑proofed pay | continue inside high‑raise branch |
+| 2 | `pension == 'empl_contr'` | Full employer pension | **GOOD** |
+| 3 | `pension == 'ret_allw'` | Retirement allowance | **GOOD** |
+| 4 | `duration ≥ 5` | Long‑term contract | **GOOD** |
+| 5 | `health plan == 'full'` | Full health coverage (low‑raise branch) | check standby pay |
+| 6 | `standby pay ≥ 10` | Generous standby compensation | **GOOD** |
+| 7 | `health plan == 'half'` | Half health coverage | check shift differential |
+| 8 | `shift differential ≥ 15` | High shift premium | **GOOD** |
+| 9 | `education allowance == True` | Education stipend (when no health coverage) | **GOOD** |
+
+All other leaf outcomes are labelled **BAD** (`0`).  
+
+The returned `nodes` list lets you see exactly which tests fired for any given input, which is handy for debugging or for building explanations.

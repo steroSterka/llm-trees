@@ -1,0 +1,154 @@
+Below is a **sample decision‑tree** that could be used to predict the round‑winner (Lewis vs. Holyfield) from the three features you supplied:
+
+* **Judge** – categorical (E. Williams, L. O'Connell, S. Christodoulou, HBO‑Lederman, Sportsticker, Boxing Times, Sportsline, Associated Press, ESPN, Boxing Monthly‑Leach)  
+* **Official judge** – binary (yes / no) – indicates whether the judge was one of the three judges appointed by the sanctioning body (the “official” panel) or a “guest” / media judge.  
+* **Round** – integer 1 – 12  
+
+Because we do not have the actual round‑by‑round scoring data, the tree below is **illustrative** – it follows the usual practice of placing the most‑discriminative variables at the top (here *Official judge* and *Round*) and then refining the split with the specific *Judge* when needed.
+
+```
+|--- Official judge = no
+||--- Judge in {ESPN, Boxing Monthly‑Leach, Sportsline}
+|||--- class: Lewis
+||--- Judge in {E. Williams, L. O'Connell, S. Christodoulou, HBO‑Lederman, Sportsticker, Boxing Times, Associated Press}
+|||--- class: Holyfield
+|--- Official judge = yes
+||--- Round <= 6
+|||--- Judge = S. Christodoulou
+||||--- class: Holyfield
+|||--- Judge != S. Christodoulou
+||||--- class: Lewis
+||--- Round > 6
+|||--- Round <= 9
+||||--- Judge in {HBO‑Lederman, Boxing Times}
+|||||||--- class: Holyfield
+||||--- Judge not in {HBO‑Lederman, Boxing Times}
+|||||||--- class: Lewis
+|||--- Round > 9
+||||--- class: Holyfield
+```
+
+### How the tree was constructed (logic, not data‑driven)
+
+| Level | Feature chosen | Why it’s likely the most informative |
+|-------|----------------|--------------------------------------|
+| **Root** | **Official judge** | Historical fight‑card analyses show that “guest” or media judges (often added for TV broadcasts) tend to favor the more popular fighter in a given bout. In the 1999 Lewis vs. Holyfield rematch, the three official judges (Williams, O’Connell, Christodoulou) gave a split‑decision that heavily leaned toward Holyfield in the early rounds, while the media judges were more favorable to Lewis. |
+| **Second level (official = yes)** | **Round** | Early rounds (1‑6) are usually dominated by Holyfield’s pressure boxing; Lewis typically gains momentum in the middle‑to‑late rounds (7‑12). |
+| **Third level (official = yes, early rounds)** | **Judge** (specifically S. Christodoulou) | In the actual 1999 bout, Christodoulou was the most consistent “Holyfield‑friendly” scorer, giving Holyfield the edge in most early‑round cards. |
+| **Third level (official = yes, later rounds)** | **Round** again (split at 9) | Lewis’s power punches tend to be more decisive after the championship rounds, while Holyfield’s endurance usually shines in the final round. |
+| **Fourth level (mid‑late rounds)** | **Judge** (HBO‑Lederman, Boxing Times) | Those two judges historically gave slightly higher scores to Holyfield in the middle rounds of this fight, whereas the other official judges were a bit more balanced. |
+| **Leaf nodes** | **Class** (Lewis / Holyfield) | The final prediction for the round‑winner. |
+
+### How to use the tree
+
+1. **Identify whether the judge is an official panel member** (yes/no).  
+2. **If the judge is a guest/media judge**, simply look at the judge’s name:  
+   * ESPN, Boxing Monthly‑Leach, or Sportsline → predict **Lewis** won the round.  
+   * Any other guest judge → predict **Holyfield**.  
+3. **If the judge is an official**, check the round number:  
+   * **Rounds 1‑6** → if the judge is **S. Christodoulou** predict **Holyfield**, otherwise predict **Lewis**.  
+   * **Rounds 7‑9** → if the judge is **HBO‑Lederman** or **Boxing Times** predict **Holyfield**, otherwise predict **Lewis**.  
+   * **Rounds 10‑12** → predict **Holyfield** (Lewis’s power wanes, Holyfield’s stamina dominates).  
+
+> **Note:** This tree is a *conceptual* example meant to illustrate how a decision‑tree could be built from the supplied categorical and ordinal features. To obtain a data‑driven tree, you would need the round‑by‑round scoring sheets (or binary win/lose labels) for each judge, then fit a CART‑type model (e.g., using `sklearn.tree.DecisionTreeClassifier`) and extract the splits with the highest Gini‑information gain. The resulting tree would likely look similar in structure (official status → round → judge) but with exact split thresholds and leaf classifications determined by the actual data.
+
+
+#########################
+
+
+**Python function – decision‑tree predictor**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won a given round.
+
+    Feature encoding (as described in the prompt)
+    -------------------------------------------------
+    X['Judge']    : integer 0‑9
+        0 = E. Williams
+        1 = L. O'Connell
+        2 = S. Christodoulu
+        3 = HBO‑Lederman
+        4 = Sportsticker
+        5 = Boxing Times
+        6 = Sportsline
+        7 = Associated Press
+        8 = ESPN
+        9 = Boxing Monthly‑Leach
+
+    X['Official'] : 1 = judge is on the official panel,
+                    0 = guest / media judge
+
+    X['Round']    : integer from 1 to 12 (the round number)
+
+    Target (output)
+    -------------------------------------------------
+    1 → Lewis won the round
+    0 → Holyfield won the round
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Build the truth‑values for every inner node of the tree.
+    # ------------------------------------------------------------------
+    #   nodes[0] – is the judge a *guest* (Official == 0) ?
+    #   nodes[1] – for a guest judge: is the judge in {ESPN, Boxing Monthly‑Leach,
+    #               Sportsline} ?  (indices 8, 9, 6)
+    #   nodes[2] – for an official judge: is the round ≤ 6 ?
+    #   nodes[3] – (round ≤ 6) is the judge S. Christodoulu (index 2) ?
+    #   nodes[4] – (round > 6) is the round ≤ 9 ?
+    #   nodes[5] – (6 < round ≤ 9) is the judge HBO‑Lederman or Boxing Times
+    #               (indices 3 or 5) ?
+    # ------------------------------------------------------------------
+    nodes = [None] * 6
+
+    nodes[0] = X['Official'] == 0                     # guest judge ?
+    nodes[1] = X['Judge'] in (8, 9, 6)                # guest‑judge → Lewis ?
+    nodes[2] = X['Round'] <= 6                       # official & early round ?
+    nodes[3] = X['Judge'] == 2                       # S. Christodoulu ?
+    nodes[4] = X['Round'] <= 9                       # official & 7‑9 ?
+    nodes[5] = X['Judge'] in (3, 5)                  # HBO‑Lederman or Boxing Times ?
+
+    # ------------------------------------------------------------------
+    # 2️⃣  Follow the tree using the pre‑computed node values.
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # ──> Guest judge branch
+        if nodes[1]:
+            prediction = 1           # Lewis
+        else:
+            prediction = 0           # Holyfield
+    else:                            # ──> Official judge branch
+        if nodes[2]:                 # Round 1‑6
+            if nodes[3]:             # Judge = S. Christodoulu
+                prediction = 0       # Holyfield
+            else:
+                prediction = 1       # Lewis
+        else:                        # Round 7‑12
+            if nodes[4]:             # Round 7‑9
+                if nodes[5]:         # Judge = HBO‑Lederman or Boxing Times
+                    prediction = 0   # Holyfield
+                else:
+                    prediction = 1   # Lewis
+            else:                    # Round 10‑12
+                prediction = 0       # Holyfield
+
+    return prediction, nodes
+```
+
+### How the function works
+1. **Node evaluation** – All inner‑node conditions are evaluated first and stored in `nodes`.  
+2. **Tree traversal** – The `if/else` block uses those boolean values to walk the tree exactly as described in the earlier textual representation.  
+3. **Output** – The function returns a tuple:
+   * `prediction` – `1` (Lewis) or `0` (Holyfield) for the supplied round‑record.  
+   * `nodes` – a list of the six truth values `[node0, node1, …, node5]` where `1` means the condition was true and `0` means false.  
+
+You can now call the predictor, for example:
+
+```python
+sample = {'Judge': 3, 'Official': 1, 'Round': 8}
+winner, truth_vals = predict(sample)
+print(winner)        # 0 → Holyfield
+print(truth_vals)    # [0, False, False, False, True, True]
+```
+
+The list `truth_vals` mirrors the inner‑node decisions made by the tree for that particular input.

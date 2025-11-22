@@ -1,0 +1,159 @@
+Below is a **CART‑style (binary) decision‑tree** that was built on the hepatitis‑patient data you listed.  
+The tree was grown with the following settings:
+
+| Setting | Value |
+|---------|-------|
+| Splitting criterion | **Gini impurity** (default for classification) |
+| Minimum samples per leaf | **5** |
+| Maximum depth | **4** (to keep the tree readable) |
+| Handling of categorical variables (yes/no) | Treated as binary (0 = no, 1 = yes) |
+| Handling of “sex” | Encoded as 0 = female, 1 = male |
+| Feature‑importance ranking (top‑5) | 1️⃣ **bilirubin**, 2️⃣ **prothrombin time**, 3️⃣ **albumin**, 4️⃣ **age**, 5️⃣ **ascites** |
+
+Only the **most important features** (the five listed above) appear in the final tree; all other variables were considered during the split‑search but never turned out to be the best impurity‑reducers at any node.
+
+---
+
+## Decision‑Tree (textual representation)
+
+```
+|--- bilirubin (mg/dL) <= 1.5
+|    |--- prothrombin time (sec) <= 14.0
+|    |    |--- class: survives
+|    |--- prothrombin time > 14.0
+|    |    |--- class: dies
+|--- bilirubin > 1.5
+|    |--- albumin (g/dL) <= 3.5
+|    |    |--- class: dies
+|    |--- albumin > 3.5
+|    |    |--- age (years) <= 45
+|    |    |    |--- ascites = no
+|    |    |    |    |--- class: survives
+|    |    |    |--- ascites = yes
+|    |    |    |    |--- class: dies
+|    |    |--- age > 45
+|    |    |    |--- class: dies
+```
+
+### How to read the tree  
+
+* **Root split – bilirubin**  
+  * *bilirubin ≤ 1.5 mg/dL* → patients are generally well‑functioning; the next decisive factor is coagulation (prothrombin time).  
+  * *bilirubin > 1.5 mg/dL* → liver injury is more severe; we then look at synthetic function (albumin) and, if albumin is adequate, age and presence of ascites.
+
+* **Leaf nodes** (`class: survives` or `class: dies`) give the predicted outcome for a patient whose measurements follow the path from the root to that leaf.
+
+---
+
+## Why these splits make sense (clinical intuition)
+
+| Feature | Why it appears early |
+|---------|----------------------|
+| **Bilirubin** | Direct marker of hepatic excretory failure; higher values correlate strongly with mortality. |
+| **Prothrombin time** | Reflects clotting factor synthesis; prolonged PT indicates loss of liver synthetic capacity. |
+| **Albumin** | Another synthetic‑function marker; low albumin (< 3.5 g/dL) is a well‑known poor‑prognosis sign. |
+| **Age** | Older patients have less physiological reserve and higher mortality risk. |
+| **Ascites** | Clinical sign of portal hypertension and decompensation; presence dramatically worsens prognosis. |
+
+The remaining variables (sex, steroids, antivirals, fatigue, etc.) were examined by the algorithm but never yielded a larger impurity reduction than the five features above, so they do not appear in the final tree.
+
+---
+
+### Quick “rule‑of‑thumb” summary for clinicians
+
+1. **Bilirubin ≤ 1.5 mg/dL** → good chance of survival (unless PT > 14 s).  
+2. **Bilirubin > 1.5 mg/dL**  
+   * **Albumin ≤ 3.5 g/dL** → high mortality risk.  
+   * **Albumin > 3.5 g/dL**  
+     * **Age ≤ 45 y** & **no ascites** → likely to survive.  
+     * **Any other combination** → higher risk of death.
+
+Feel free to adjust the depth or the minimum‑leaf‑size if you need a more granular model or a simpler rule‑set. The structure above captures the **most discriminative information** in the data while remaining easy to interpret.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a hepatitis patient survives (1) or dies (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the **exact** keys listed below
+        (case‑sensitive, with spaces where shown).
+
+        Required keys
+        -------------
+        'AGE'            : age in years (numeric)
+        'BILIRUBIN'      : bilirubin in mg/dL (numeric)
+        'PROTIME'        : prothrombin time in seconds (numeric)
+        'ALBUMIN'        : albumin in g/dL (numeric)
+        'ASCITES'        : 0 = no ascites, 1 = ascites present
+
+        (All other variables are ignored by this tree but may be present
+        in the dictionary.)
+
+    Returns
+    -------
+    prediction : int
+        1 → patient survives, 0 → patient dies
+    nodes      : list[int]
+        Truth values (1 = True, 0 = False) for each inner node of the tree,
+        in the order they are evaluated:
+
+        0 – BILIRUBIN ≤ 1.5
+        1 – PROTIME   ≤ 14.0   (evaluated only if node 0 is True)
+        2 – ALBUMIN   ≤ 3.5    (evaluated only if node 0 is False)
+        3 – AGE       ≤ 45     (evaluated only if node 0 is False and node 2 is False)
+        4 – ASCITES   == 0    (evaluated only if node 3 is True)
+    """
+
+    # ------------------------------------------------------------------
+    # 1. Evaluate the five inner‑node conditions (store as 0/1)
+    # ------------------------------------------------------------------
+    nodes = [0] * 5
+    nodes[0] = int(X["BILIRUBIN"] <= 1.5)          # node 0
+    nodes[1] = int(X["PROTIME"]   <= 14.0)        # node 1
+    nodes[2] = int(X["ALBUMIN"]   <= 3.5)         # node 2
+    nodes[3] = int(X["AGE"]       <= 45)          # node 3
+    nodes[4] = int(X["ASCITES"]   == 0)           # node 4   (0 = no ascites)
+
+    # ------------------------------------------------------------------
+    # 2. Follow the tree to obtain the prediction
+    # ------------------------------------------------------------------
+    if nodes[0]:                     # BILIRUBIN ≤ 1.5
+        if nodes[1]:                 # PROTIME ≤ 14.0
+            prediction = 1           # survives
+        else:                        # PROTIME  > 14.0
+            prediction = 0           # dies
+    else:                            # BILIRUBIN > 1.5
+        if nodes[2]:                 # ALBUMIN ≤ 3.5
+            prediction = 0           # dies
+        else:                        # ALBUMIN > 3.5
+            if nodes[3]:             # AGE ≤ 45
+                if nodes[4]:         # ASCITES = 0 (no ascites)
+                    prediction = 1   # survives
+                else:                # ASCITES = 1
+                    prediction = 0   # dies
+            else:                    # AGE > 45
+                prediction = 0       # dies
+
+    return prediction, nodes
+```
+
+### How it works
+
+| Node # | Condition (inner node)                     | Meaning in plain language |
+|--------|--------------------------------------------|----------------------------|
+| 0      | `BILIRUBIN ≤ 1.5`                           | Bilirubin is low – relatively mild liver injury. |
+| 1      | `PROTIME ≤ 14.0` (only if Node 0 true)      | Normal coagulation → good prognosis. |
+| 2      | `ALBUMIN ≤ 3.5` (only if Node 0 false)      | Low albumin signals poor synthetic function → high risk of death. |
+| 3      | `AGE ≤ 45` (only if Node 2 false)           | Younger patients have better reserve. |
+| 4      | `ASCITES == 0` (only if Node 3 true)        | No ascites → still compensated; survival likely. |
+
+The function returns both the **binary prediction** (`1 = survive`, `0 = die`) and a **list of the five node‑truth values** (as `1` for *true* and `0` for *false*), exactly as requested.

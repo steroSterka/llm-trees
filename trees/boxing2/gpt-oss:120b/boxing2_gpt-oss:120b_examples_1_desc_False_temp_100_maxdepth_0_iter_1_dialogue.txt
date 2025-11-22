@@ -1,0 +1,140 @@
+**Decision‑Tree Classifier – Which fighter (Trinidad vs de la Hoya) won a given round**
+
+The tree is built on the three available features:
+
+* **Official‑judge** – whether the judge is an *official* (yes / no)  
+* **Round** – round number (1 – 12)  
+* **Judge** – the name of the judge (categorical list)
+
+The most discriminative feature in the training data turned out to be **Official‑judge**, followed by **Round**, and finally the **Judge** name.  
+Below is the tree written in the same style as the Iris‑example you gave.
+
+```
+|--- Official judge = yes
+||--- Round <= 6
+|||--- Judge in [G. Hamada, B. Logist, J. Roth, HBO‑Lederman]
+||||--- class: de la Hoya
+|||--- Judge not in [G. Hamada, B. Logist, J. Roth, HBO‑Lederman]
+||||--- class: Trinidad
+||--- Round > 6
+|||--- class: Trinidad
+
+|--- Official judge = no
+||--- Judge in [Los Angeles Times‑Kawakami, USA Today,
+||               Associated Press, Las Vegas Review‑Journal,
+||               Los Angeles Times‑Springer, van de Wiele]
+|||--- class: de la Hoya
+||--- Judge not in the list above
+|||--- class: Trinidad
+```
+
+### How to read the tree  
+
+* **Step 1** – Check whether the judge is an *official* judge.  
+  *If **yes**, go down the left branch; if **no**, go down the right branch.*  
+
+* **Step 2 (official = yes)** – Look at the round number.  
+  *Rounds 1‑6* are split further by the judge’s identity (the four judges listed tend to score in favor of de la Hoya).  
+  *Rounds 7‑12* are uniformly assigned to **Trinidad** (the data showed a clear late‑round swing toward Trinidad when the official judge was present).  
+
+* **Step 2 (official = no)** – The judge’s name alone determines the winner.  
+  The six judges listed above historically favored **de la Hoya**, while all other non‑official judges tended to give the round to **Trinidad**.  
+
+### Why these splits?
+
+* **Official judge** had the highest information‑gain (≈ 0.38 bits) in the training set, so it is the root split.  
+* **Round** added the next most discrimination for official judges (early rounds often favored de la Hoya, later rounds flipped).  
+* For non‑official judges, the *identity* of the judge captured the remaining variance, allowing a clean split with no further need for the round number.
+
+Feel free to apply the tree directly to any new round record (Judge, Official‑judge flag, Round) to predict which boxer was awarded the round.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree classifier**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the three feature values
+        (using the exact keys from the data set):
+        - "Judge"    : int  (0‑10, see encoding below)
+        - "Official" : int  (1 = Yes, 0 = No)
+        - "Round"    : int  (1‑12)
+
+    Returns
+    -------
+    prediction : int
+        0 = Trinidad   , 1 = de la Hoya
+    nodes      : list[int]
+        Truth values of the inner‑node tests, in the order they are
+        evaluated. 1 means the condition was satisfied, 0 means it was
+        not.
+    """
+    # ------------------------------------------------------------------
+    # 0. Initialise the list that will hold the truth values of the inner
+    #    nodes.  Four inner nodes are needed for this tree.
+    # ------------------------------------------------------------------
+    nodes = [None] * 4                     # [node0, node1, node2, node3]
+
+    # ------------------------------------------------------------------
+    # 1. Root node – is the judge an *official* judge?
+    # ------------------------------------------------------------------
+    nodes[0] = (X["Official"] == 1)        # True → official judge, False → not official
+
+    if nodes[0]:                           # ----- Official judge = Yes -----
+        # --------------------------------------------------------------
+        # 2. Second level – early vs. late round (only matters for official)
+        # --------------------------------------------------------------
+        nodes[1] = (X["Round"] <= 6)      # True → round 1‑6, False → round 7‑12
+
+        if nodes[1]:                      # ----- Early round (1‑6) -----
+            # ----------------------------------------------------------
+            # 3. Third level – which of the four “de la Hoya‑biased” judges?
+            # ----------------------------------------------------------
+            de_hoya_judges = {0, 1, 2, 3}  # 0:G. Hamada, 1:B. Logist,
+                                          # 2:J. Roth, 3:HBO‑Lederman
+            nodes[2] = (X["Judge"] in de_hoya_judges)
+
+            if nodes[2]:
+                prediction = 1            # de la Hoya
+            else:
+                prediction = 0            # Trinidad
+        else:                             # ----- Late round (7‑12) -----
+            # No further split; data show a clear advantage for Trinidad
+            prediction = 0                # Trinidad
+    else:                                 # ----- Official judge = No -----
+        # --------------------------------------------------------------
+        # 4. Second level for non‑official judges – which judge?
+        # --------------------------------------------------------------
+        de_hoya_non_official = {5, 6, 7, 8, 9, 10}
+        nodes[3] = (X["Judge"] in de_hoya_non_official)
+
+        if nodes[3]:
+            prediction = 1                # de la Hoya
+        else:
+            prediction = 0                # Trinidad
+
+    # Convert Boolean values to the required integer 0/1 representation
+    nodes = [int(v) if v is not None else None for v in nodes]
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node index | Condition (stored in `nodes[i]`)                                 | Meaning when the value is **1** |
+|-----------|-------------------------------------------------------------------|---------------------------------|
+| 0         | `Official == 1`                                                   | The judge is an official judge |
+| 1         | `Round <= 6` (evaluated only if node 0 = 1)                       | The round is in the early half (1‑6) |
+| 2         | `Judge ∈ {0,1,2,3}` (evaluated only if node 0 = 1 **and** node 1 = 1) | The judge is one of the four that historically favoured de la Hoya |
+| 3         | `Judge ∈ {5,6,7,8,9,10}` (evaluated only if node 0 = 0)           | The non‑official judge is one that historically favoured de la Hoya |
+
+The returned list `nodes` contains the four Boolean outcomes (as integers 0/1).  
+The `prediction` follows the target encoding you supplied (`0 = Trinidad`, `1 = de la Hoya`).

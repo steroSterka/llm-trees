@@ -1,0 +1,175 @@
+Below is a **sample decision‑tree** that you could use to predict whether the result of a set of labour‑negotiation talks will be **“Good”** (the agreement is generally seen as favourable by the union/ employees) or **“Bad”** (the agreement is viewed as unfavourable).  
+
+Because we don’t have a real training data set, the tree is **illustrative only** – it is built on typical industry wisdom about which contract provisions tend to drive satisfaction.  In practice you would feed a labelled data set (outcome = Good/Bad) into a decision‑tree learner (e.g., CART, C4.5) and let the algorithm pick the exact split points.  The structure shown here reflects the **most influential variables** that usually separate good from bad outcomes.
+
+---
+
+### Decision‑Tree (textual “pipe” format)
+
+```
+|--- wage increase – 1st year >= 5%
+||--- cost of living adjustment != none
+|||--- class: Good
+||--- cost of living adjustment = none
+|||--- duration of agreement >= 5 years
+||||--- employer contributions to pension plan = retirement allowance included
+|||||||--- class: Good
+||||--- employer contributions to pension plan != retirement allowance included
+|||||||--- class: Bad
+|--- wage increase – 1st year < 5%
+||--- wage increase – 2nd year >= 5%
+|||--- shift differential (2nd/3rd shift) >= 10%
+||||--- class: Good
+|||--- shift differential < 10%
+||||--- class: Bad
+||--- wage increase – 2nd year < 5%
+|||--- employer contributions to health plan = full
+||||--- class: Good
+|||--- employer contributions to health plan != full
+||||--- class: Bad
+```
+
+---
+
+### How the tree was constructed (reasoning)
+
+| **Feature** | **Why it is high‑impact** | **Typical split value used** |
+|-------------|--------------------------|------------------------------|
+| **Wage increase – 1st year** | The first‑year raise is the most visible benefit; low initial hikes often dominate perception of the whole deal. | **≥ 5 %** (mid‑point of the 2‑7 scale) |
+| **Cost‑of‑living adjustment (COLA)** | A COLA protects real wages against inflation. If there is *any* COLA (temporary or total‑compensation), the deal is viewed much more positively. | **none vs. any** |
+| **Duration of agreement** | Longer contracts (≥ 5 years) give stability, which can offset modest pay‑rise offers. | **≥ 5 years** (out of 1‑7) |
+| **Employer contributions to pension plan** | A “retirement allowance included” signal is a strong non‑salary benefit that often tips a borderline deal into the “Good” zone. | **= retirement allowance included** |
+| **Wage increase – 2nd year** | If the first‑year hike is low, a solid second‑year increase can salvage the perception. | **≥ 5 %** |
+| **Shift differential (2 & 3 shift)** | Extra pay for undesirable shifts is a tangible incentive; a relatively high supplement (≥ 10 % of base) improves the rating. | **≥ 10 %** (on the 1‑25 scale) |
+| **Employer contributions to health plan** | Full health‑plan coverage is a major benefit, especially when wage growth is weak. | **= full** |
+
+All other variables (stand‑by pay, education allowance, statutory holidays, vacation generosity, dental‑plan contribution, bereavement contribution, etc.) are **still relevant**, but in many historical data sets they tend to have smaller information gain compared with the features above, so they appear lower (or not at all) in this compact tree.
+
+---
+
+### Using the tree
+
+1. **Start at the root** – check the first‑year wage increase.  
+2. Follow the “yes” (≥ 5 %) or “no” (< 5 %) branch.  
+3. At each node, evaluate the next indicated feature and move left/right (or down/up) according to the condition.  
+4. When you reach a leaf node you have the predicted outcome (**Good** or **Bad**).
+
+---
+
+### Next steps for a production model
+
+1. **Collect labelled contracts** – each contract should have the 15 features you listed plus a binary label (Good/Bad) decided by a post‑negotiation survey or an expert rating.  
+2. **Pre‑process categorical fields** (e.g., one‑hot encode `cost of living adjustment`, `employer contributions to pension plan`, etc.).  
+3. **Fit a CART‑style decision tree** (or Random Forest / Gradient‑Boosted Trees) using scikit‑learn, R’s `rpart`, etc.  
+4. **Prune** the tree (e.g., using cost‑complexity pruning) to avoid over‑fitting and to keep it interpretable.  
+5. **Validate** with cross‑validation or a hold‑out set; examine feature importance scores to confirm that the splits above (or similar) indeed carry the most predictive power.  
+
+Feel free to adjust the numeric thresholds (5 %, 10 %, 5 years, etc.) once you have real data – the tree will automatically select the split points that maximise information gain for your specific sample.
+
+
+#########################
+
+
+**Python implementation of the illustrative decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether the outcome of a labour‑negotiation settlement is
+    good (1) or bad (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **exactly** the following keys
+        (spelling, case and spaces must match the list below):
+
+        - 'duration'
+        - 'wage increase first year'
+        - 'wage increase second year'
+        - 'wage increase third year'      # not used in this tree
+        - 'cost of living adjustment'
+        - 'working hours'                # not used in this tree
+        - 'pension'
+        - 'standby pay'                  # not used in this tree
+        - 'shift differential'
+        - 'education allowance'          # not used in this tree
+        - 'statutory holidays'           # not used in this tree
+        - 'vacation'                     # not used in this tree
+        - 'longterm disability assistance'  # not used in this tree
+        - 'contribution to dental plan'      # not used in this tree
+        - 'bereavement assistance'           # not used in this tree
+        - 'contribution to health plan'
+
+    Returns
+    -------
+    prediction : int
+        1 = good settlement, 0 = bad settlement
+    nodes : list[int]
+        Truth values of the *inner* decision nodes (1 = condition satisfied,
+        0 = condition not satisfied) in the order they are evaluated
+        (seven nodes total).
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  Root node – first‑year wage increase
+    # ------------------------------------------------------------------
+    nodes = [0] * 7                                   # placeholder for 7 nodes
+    nodes[0] = 1 if X['wage increase first year'] >= 5.0 else 0
+
+    # ------------------------------------------------------------------
+    # LEFT SUB‑TREE  (first‑year increase is high enough)
+    # ------------------------------------------------------------------
+    if nodes[0]:          # True branch
+        # 2️⃣  Cost‑of‑living adjustment present?
+        nodes[1] = 1 if X['cost of living adjustment'] != 'none' else 0
+
+        if nodes[1]:      # any COLA → automatically good
+            prediction = 1
+        else:             # no COLA → need to look at duration & pension
+            # 3️⃣  Long‑term agreement?
+            nodes[2] = 1 if X['duration'] >= 5 else 0
+
+            if nodes[2]:
+                # 4️⃣  Pension benefit “retirement allowance included”?
+                nodes[3] = 1 if X['pension'] == 'ret_allw' else 0
+                prediction = 1 if nodes[3] else 0
+            else:
+                # short agreement without COLA is judged bad
+                prediction = 0
+
+    # ------------------------------------------------------------------
+    # RIGHT SUB‑TREE  (first‑year increase is low)
+    # ------------------------------------------------------------------
+    else:                 # False branch of root
+        # 5️⃣  Second‑year wage increase
+        nodes[4] = 1 if X['wage increase second year'] >= 5.0 else 0
+
+        if nodes[4]:
+            # 6️⃣  Shift‑differential (pay for 2nd/3rd shift)
+            nodes[5] = 1 if X['shift differential'] >= 10 else 0
+            prediction = 1 if nodes[5] else 0
+        else:
+            # 7️⃣  Health‑plan contribution
+            nodes[6] = 1 if X['contribution to health plan'] == 'full' else 0
+            prediction = 1 if nodes[6] else 0
+
+    # Convert booleans (True/False) to integer 1/0 for the output list
+    nodes = [int(v) for v in nodes]
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node # | Condition (as evaluated in the code)                                 | Meaning when **True** (1) |
+|-------|-----------------------------------------------------------------------|---------------------------|
+| 0     | `wage increase first year >= 5.0`                                     | First‑year raise is strong enough to start the “good‑path”. |
+| 1     | `cost of living adjustment != 'none'`                                 | Any COLA (temporary **tcf** or total‑comp **tc**) makes the deal good. |
+| 2     | `duration >= 5`                                                        | The contract lasts ≥ 5 years (stable, long‑term). |
+| 3     | `pension == 'ret_allw'`                                                | Pension includes a retirement allowance – a strong benefit. |
+| 4     | `wage increase second year >= 5.0`                                     | If the first‑year raise is low, a solid second‑year raise can rescue the perception. |
+| 5     | `shift differential >= 10`                                             | A shift premium of at least 10 % (on the 1‑25 scale) is seen as attractive. |
+| 6     | `contribution to health plan == 'full'`                               | Full health‑plan coverage compensates for weak wage growth. |
+
+The returned list `nodes` follows the order **[0, 1, 2, 3, 4, 5, 6]**; each entry is `1` when the corresponding condition is satisfied and `0` otherwise. The final `prediction` is `1` (good settlement) or `0` (bad settlement) as defined by the target variable in the dataset.

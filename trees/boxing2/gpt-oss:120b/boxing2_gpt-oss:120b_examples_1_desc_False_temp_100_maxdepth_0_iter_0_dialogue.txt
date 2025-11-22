@@ -1,0 +1,173 @@
+Below is a **sample decision‑tree** that could be used to predict which fighter—**Trinidad** or **de la Hoya**—won a given round, based only on the three categorical features you supplied:
+
+* **Judge** – the name of the judge who scored the round  
+* **Official judge** – whether the judge was the designated “official” (yes / no)  
+* **Round** – the round number (1 – 12)
+
+> **Important note:**  
+> No actual scoring data were provided, so the splits below are **illustrative only**. They are built on reasonable assumptions (e.g., some judges historically favored one fighter, official judges tend to be more balanced, and the later rounds often favored the boxer with better stamina). If you have a real data set you can replace the split thresholds and leaf‑class assignments with those that best fit your observations.
+
+---
+
+### Decision‑Tree (textual “ASCII” format)
+
+```
+|--- Official judge = yes
+||--- Judge in [G. Hamada, B. Logist, J. Roth, HBO‑Lederman]
+|||--- class: Trinidad
+||--- Judge in [Sportsticker, Los Angeles Times‑Kawakami,
+||               USA Today, Associated Press,
+||               Las Vegas Review‑Journal,
+||               Los Angeles Times‑Springer, van de Wiele]
+|||--- class: de la Hoya
+|--- Official judge = no
+||--- Round <= 6
+|||--- class: de la Hoya
+||--- Round > 6
+|||--- class: Trinidad
+```
+
+#### How to read the tree
+
+* **First split – “Official judge”**  
+  *If the judge is the official scorer* → go down the left branch.  
+  *If the judge is a “non‑official” (media) scorer* → go down the right branch.
+
+* **Left branch (Official judge = yes)** – the name of the judge matters most.  
+  * Judges **G. Hamada, B. Logist, J. Roth, HBO‑Lederman** have historically given more rounds to **Trinidad** → leaf = **Trinidad**.  
+  * All other judges in the list have tended to favour **de la Hoya** → leaf = **de la Hoya**.
+
+* **Right branch (Official judge = no)** – the round number becomes the key factor.  
+  * **Rounds 1‑6** (early rounds) → the faster, technically‑oriented **de la Hoya** often took the advantage → leaf = **de la Hoya**.  
+  * **Rounds 7‑12** (later rounds) → Trinidad’s power and stamina usually turned the tide → leaf = **Trinidad**.
+
+---
+
+### Why these features are placed where they are
+
+| Feature | Reason it appears early in the tree |
+|---------|--------------------------------------|
+| **Official judge** | Official judges score the bout under stricter, more uniform criteria, so their presence creates a clear split between “official” and “media” scoring styles. |
+| **Judge (name)** | Among official judges, personal scoring tendencies (biases, style preferences) are the strongest predictor of who receives the round. |
+| **Round** | When the scorer is a media journalist (non‑official), the round‑by‑round dynamics of the fight (early‑round speed vs. late‑round power) dominate the decision. |
+
+---
+
+### How to use this tree in practice
+
+```python
+def predict_winner(judge, official, round_num):
+    # official = 'yes' or 'no'
+    if official == 'yes':
+        if judge in ['G. Hamada', 'B. Logist', 'J. Roth', 'HBO-Lederman']:
+            return 'Trinidad'
+        else:
+            return 'de la Hoya'
+    else:          # official == 'no'
+        if round_num <= 6:
+            return 'de la Hoya'
+        else:
+            return 'Trinidad'
+```
+
+Replace the lists of judges or the round cutoff (`6`) with the values that best match your actual scoring data, and the tree will give you a rule‑based classifier for each round of the Trinidad vs. de la Hoya fight.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that must contain the three feature keys
+        exactly as they appear in the data set:
+            - "Judge"    : int  (0‑10, see encoding below)
+            - "Official" : int  (1 = Yes, 0 = No)
+            - "Round"    : int  (1‑12)
+
+    Returns
+    -------
+    prediction : int
+        0 = Trinidad   (the target encoding you supplied)
+        1 = de la Hoya
+    nodes : list[int]
+        Truth values of the *inner* decision nodes.
+        1  → the condition at that node is satisfied,
+        0  → the condition is not satisfied.
+        Order = [node0, node1, node2] (see the tree diagram below).
+    """
+
+    # ------------------------------------------------------------------
+    # 1.  Compute the truth value of each inner node (store as 0/1)
+    # ------------------------------------------------------------------
+    # node0 : is the judge an *official* judge ?
+    nodes = [0] * 3                     # we have three inner nodes
+    nodes[0] = 1 if X["Official"] == 1 else 0
+
+    # node1 : (only relevant when node0 == 1)
+    #        Does the judge belong to the “Trinidad‑biased” group ?
+    #        Group A = {0:G. Hamada, 1:B. Logist, 2:J. Roth, 3:HBO‑Lederman}
+    #        All other judges (4‑10) tended to favour de la Hoya.
+    nodes[1] = 1 if (nodes[0] == 1 and X["Judge"] <= 3) else 0
+
+    # node2 : (only relevant when node0 == 0, i.e. a media judge)
+    #        Are we in the later half of the bout ?
+    nodes[2] = 1 if (nodes[0] == 0 and X["Round"] > 6) else 0
+
+    # ------------------------------------------------------------------
+    # 2.  Follow the tree to obtain the prediction
+    # ------------------------------------------------------------------
+    #  ├─ node0 (Official?)
+    #  │   ├─ Yes  → node1 (Judge group)
+    #  │   │       ├─ True  → Trinidad (0)
+    #  │   │       └─ False → de la Hoya (1)
+    #  │   └─ No   → node2 (Round)
+    #  │               ├─ True  → Trinidad (0)
+    #  │               └─ False → de la Hoya (1)
+
+    if nodes[0]:                 # Official judge = Yes
+        if nodes[1]:             # Judge in group A (0‑3)
+            prediction = 0       # Trinidad
+        else:                    # Judge 4‑10
+            prediction = 1       # de la Hoya
+    else:                        # Official judge = No (media)
+        if nodes[2]:             # Round > 6
+            prediction = 0       # Trinidad
+        else:                    # Round ≤ 6
+            prediction = 1       # de la Hoya
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node | Condition (human‑readable)                              | Python test (stored in `nodes[i]`) |
+|------|----------------------------------------------------------|------------------------------------|
+| 0    | *Official judge?* (Yes = 1)                              | `X["Official"] == 1`               |
+| 1    | *If official, is the judge one of the “Trinidad‑biased”*| `X["Judge"] <= 3` (only when node 0 is true) |
+| 2    | *If not official, is the round later than 6?*            | `X["Round"] > 6` (only when node 0 is false) |
+
+The returned list `nodes` always has three entries, each being `1` (condition true) or `0` (condition false), regardless of which branch of the tree is actually taken.  
+
+The **prediction** follows the tree described in the table above and respects the target encoding you supplied:
+
+* `0` → **Trinidad**
+* `1` → **de la Hoya**
+
+You can call the function with a dictionary that matches the exact feature names, e.g.:
+
+```python
+sample = {"Judge": 2, "Official": 1, "Round": 4}
+pred, path = predict(sample)
+print(pred)   # → 0 (Trinidad)
+print(path)   # → [1, 1, 0]
+```
+
+Feel free to replace the judge groups or the round cutoff (`6`) with values that better reflect your real scoring data; the structure of the function will stay the same.

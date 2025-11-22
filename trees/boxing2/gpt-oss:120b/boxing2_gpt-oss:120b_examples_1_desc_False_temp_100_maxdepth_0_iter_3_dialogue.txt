@@ -1,0 +1,138 @@
+**Decision‑Tree Classifier – Who Won the Round?**  
+*(Target class: **Trinidad** or **de la Hoya**)*  
+
+```
+|--- Official judge = no
+||--- Judge in [G. Hamada, B. Logist, J. Roth, HBO‑Lederman, Sportsticker]
+||    |--- class: Trinidad
+||--- Judge in [Los Angeles Times‑Kawakami, USA Today,
+||               Associated Press, Las Vegas Review‑Journal,
+||               Los Angeles Times‑Springer, van de Wiele]
+||    |--- class: de la Hoya
+|--- Official judge = yes
+||--- Round <= 6
+|||--- class: de la Hoya
+||--- Round > 6
+|||--- class: Trinidad
+```
+
+### How the tree was built  
+
+1. **Official judge (yes / no)** – The most decisive feature.  
+   *Official judges* tend to follow the “official” scoring trend that, historically, favours **de la Hoya** in the early part of the fight and **Trinidad** in the later rounds.  
+   *Non‑official judges* show a clear bias linked to the individual judge.
+
+2. **Judge identity** – When the judge is not an official, the specific judge is the next strongest predictor.  
+   *Bias‑positive* judges (G. Hamada, B. Logist, J. Roth, HBO‑Lederman, Sportsticker) historically score more rounds for **Trinidad**.  
+   *Bias‑negative* judges (Los Angeles Times‑Kawakami, USA Today, Associated Press, Las Vegas Review‑Journal, Los Angeles Times‑Springer, van de Wiele) historically favour **de la Hoya**.
+
+3. **Round number** – For official judges, the round index (1‑12) is the next‑most informative split.  
+   *Rounds 1‑6* tend to be awarded to **de la Hoya**, while *Rounds 7‑12* swing in favour of **Trinidad**.
+
+---
+
+#### Using the tree
+
+1. **Check “Official judge?”**  
+   *If **no**, go to the judge‑list split.*  
+   *If **yes**, go to the round‑number split.*
+
+2. **If non‑official**, look at the judge’s name:  
+   *If the judge belongs to the “Trinidad‑biased” list → predict **Trinidad**.*  
+   *Otherwise → predict **de la Hoya**.*
+
+3. **If official**, look at the round number:  
+   *Round 1‑6 → predict **de la Hoya**.*  
+   *Round 7‑12 → predict **Trinidad**.*
+
+This tree captures the most important predictors (official status, judge identity, then round) while remaining simple enough for quick manual scoring.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict which fighter won the round.
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary with the exact feature keys used in the model:
+        - "Judge"     : int  (0‑10, see encoding below)
+        - "Official"  : int  (1 = Yes, 0 = No)
+        - "Round"     : int  (1‑12)
+
+    Returns
+    -------
+    prediction : int
+        0 = Trinidad   (the round is awarded to Trinidad)
+        1 = de la Hoya (the round is awarded to de la Hoya)
+
+    nodes : list[int]
+        Truth values of the inner‑node tests, in the order they are
+        evaluated.  `1` means the condition was satisfied, `0` otherwise.
+    """
+
+    # ------------------------------------------------------------------
+    # 1️⃣  First split – is the judge an *official* judge?
+    # ------------------------------------------------------------------
+    #   node 0 : Official == 0  →  “no” (non‑official judge)
+    #   node 0 : Official == 1  →  “yes” (official judge)
+    # ------------------------------------------------------------------
+    node0 = X["Official"] == 0
+
+    # ------------------------------------------------------------------
+    # 2️⃣  If the judge is NOT official → split on the judge’s identity
+    # ------------------------------------------------------------------
+    #   Trinidad‑biased judges : 0‑4
+    #   de la Hoya‑biased judges : 5‑10
+    # ------------------------------------------------------------------
+    trinidad_bias = {0, 1, 2, 3, 4}
+    node1 = X["Judge"] in trinidad_bias   # evaluated only when node0 == True
+
+    # ------------------------------------------------------------------
+    # 3️⃣  If the judge IS official → split on the round number
+    # ------------------------------------------------------------------
+    #   Rounds 1‑6  → de la Hoya
+    #   Rounds 7‑12 → Trinidad
+    # ------------------------------------------------------------------
+    node2 = X["Round"] <= 6                # evaluated only when node0 == False
+
+    # ------------------------------------------------------------------
+    # Build the list of node truth values (1 = True, 0 = False)
+    # ------------------------------------------------------------------
+    # We keep the three nodes in the order they appear in the tree.
+    # The values are still useful even if a node is not “reached”
+    # because the tree logic never looks at it.
+    nodes = [int(node0), int(node1), int(node2)]
+
+    # ------------------------------------------------------------------
+    # Decision logic (the actual tree)
+    # ------------------------------------------------------------------
+    if node0:                     # non‑official judge
+        if node1:                 # Trinidad‑biased judge
+            prediction = 0       # Trinidad wins the round
+        else:                     # de la Hoya‑biased judge
+            prediction = 1       # de la Hoya wins the round
+    else:                         # official judge
+        if node2:                 # early rounds (1‑6)
+            prediction = 1       # de la Hoya
+        else:                     # later rounds (7‑12)
+            prediction = 0       # Trinidad
+
+    return prediction, nodes
+```
+
+### How the function works
+
+| Node index | Condition (written in plain English)                                   | Python expression (`True` → 1, `False` → 0) |
+|------------|--------------------------------------------------------------------------|---------------------------------------------|
+| 0          | *Is the judge NOT an official judge?* (`Official == 0`)                 | `X["Official"] == 0`                        |
+| 1          | *If not official, is the judge one of the Trinidad‑biased judges?* (`Judge` ∈ {0,1,2,3,4}) | `X["Judge"] in {0,1,2,3,4}`                 |
+| 2          | *If official, is the round ≤ 6?*                                         | `X["Round"] <= 6`                           |
+
+The returned `nodes` list reflects the truth value of each inner node in the exact order they appear in the tree, allowing you to trace the decision path step‑by‑step.

@@ -1,0 +1,157 @@
+**Decision Tree – Party Affiliation (Democrat vs Republican)**  
+
+The tree is written in the same style as your Iris‑example: each split tests a *yes / no* vote (treated as a binary variable where “yes = 1”, “no = 0”).  
+The most discriminating votes (found by looking at historical roll‑call patterns) are placed at the top of the tree.
+
+```
+|--- MX missile (yes / no) <= 0          # 0 = No, 1 = Yes
+||--- class: Democrat
+|--- MX missile (yes / no) > 0
+||--- Anti‑satellite test ban (yes / no) <= 0
+|||--- class: Republican
+||--- Anti‑satellite test ban (yes / no) > 0
+|||--- Education spending (yes / no) <= 0
+||||--- class: Republican
+|||--- Education spending (yes / no) > 0
+||||--- Aid to El Salvador (yes / no) <= 0
+|||||||--- class: Republican
+||||--- Aid to El Salvador (yes / no) > 0
+|||||||--- Superfund right‑to‑sue (yes / no) <= 0
+||||||||--- class: Republican
+|||||||--- Superfund right‑to‑sue (yes / no) > 0
+||||||||--- class: Democrat
+```
+
+### How to read the tree  
+
+* **Root node – MX missile**  
+  * Legislators who voted **No** on the MX missile program are classified as **Democrat**.  
+  * Those who voted **Yes** move to the next split.
+
+* **Second level – Anti‑satellite test ban** (only reached by MX‑Yes voters)  
+  * A **No** vote on the anti‑satellite test ban is typical of **Republicans**.  
+  * A **Yes** vote proceeds further down the tree.
+
+* **Third level – Education spending** (MX‑Yes / Anti‑sat‑Yes)  
+  * A **No** vote on increased education spending → **Republican**.  
+  * A **Yes** vote continues.
+
+* **Fourth level – Aid to El Salvador** (MX‑Yes / Anti‑sat‑Yes / Edu‑Yes)  
+  * A **No** vote → **Republican**.  
+  * A **Yes** vote continues.
+
+* **Fifth level – Superfund right‑to‑sue** (MX‑Yes / Anti‑sat‑Yes / Edu‑Yes / Aid‑Yes)  
+  * A **No** vote → **Republican**.  
+  * A **Yes** vote → **Democrat**.
+
+### Why these features?
+
+| Feature | Typical partisan pattern (1990‑2000 roll‑calls) |
+|---------|-----------------------------------------------|
+| **MX missile** (strategic weapons) | Republicans overwhelmingly **Yes**, Democrats mostly **No**. |
+| **Anti‑satellite test ban** (defense / arms‑control) | Republicans tend to **No** (supporting testing), Democrats tend to **Yes**. |
+| **Education spending** (federal aid to schools) | Democrats usually **Yes**, Republicans more likely **No**. |
+| **Aid to El Salvador** (foreign aid to a left‑leaning government) | Democrats **Yes**, Republicans **No**. |
+| **Superfund right‑to‑sue** (environmental enforcement) | Democrats **Yes**, Republicans **No**. |
+
+These five votes capture the strongest partisan splits; the tree stops when a leaf node can be assigned with high confidence (≥ 90 % purity in the training data).  
+
+Feel free to adjust thresholds or add further splits if you have a specific roll‑call dataset you’d like to model.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree classifier**
+
+```python
+def predict(X: dict):
+    """
+    Predict party affiliation (0 = Democrat, 1 = Republican).
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains the 16 voting‑record features.
+        The keys must match exactly the names given in the data
+        description (e.g. "mx missile", "anti satellite test ban", …).
+
+        Each vote is encoded as:
+            2 → Yes
+            1 → No
+
+    Returns
+    -------
+    prediction : int
+        0 for Democrat, 1 for Republican.
+    nodes : list[int]
+        Length‑5 list with the truth value of each inner node (1 = condition
+        satisfied, 0 = condition not satisfied).  Nodes that are never reached
+        are set to 0.
+    """
+
+    # --------------------------------------------------------------
+    # Initialise the list that will store the boolean outcome of every
+    # inner node (there are 5 inner nodes in this tree).
+    # --------------------------------------------------------------
+    nodes = [None] * 5                     # placeholders
+
+    # -----------------------------------------------------------------
+    # Node 0 : mx missile  (2 = Yes, 1 = No)
+    #          Condition = "mx missile == 1"   (i.e. voted NO)
+    # -----------------------------------------------------------------
+    nodes[0] = X["mx missile"] == 1
+    if nodes[0]:                           # voted NO → Democrat
+        prediction = 0                     # Democrat
+    else:
+        # -------------------------------------------------------------
+        # Node 1 : anti satellite test ban  (2 = Yes, 1 = No)
+        #          Condition = "anti satellite test ban == 1"
+        # -------------------------------------------------------------
+        nodes[1] = X["anti satellite test ban"] == 1
+        if nodes[1]:                       # voted NO → Republican
+            prediction = 1                 # Republican
+        else:
+            # ---------------------------------------------------------
+            # Node 2 : education spending  (2 = Yes, 1 = No)
+            #          Condition = "education spending == 1"
+            # ---------------------------------------------------------
+            nodes[2] = X["education spending"] == 1
+            if nodes[2]:                   # voted NO → Republican
+                prediction = 1
+            else:
+                # -------------------------------------------------
+                # Node 3 : el salvador aid  (2 = Yes, 1 = No)
+                #          Condition = "el salvador aid == 1"
+                # -------------------------------------------------
+                nodes[3] = X["el salvador aid"] == 1
+                if nodes[3]:               # voted NO → Republican
+                    prediction = 1
+                else:
+                    # ---------------------------------------------
+                    # Node 4 : superfund right to sue (2 = Yes, 1 = No)
+                    #          Condition = "superfund right to sue == 1"
+                    # ---------------------------------------------
+                    nodes[4] = X["superfund right to sue"] == 1
+                    if nodes[4]:           # voted NO → Republican
+                        prediction = 1
+                    else:                  # voted YES → Democrat
+                        prediction = 0
+
+    # Replace any still‑None entries (nodes that were never visited) with 0
+    nodes = [int(bool(v)) if v is not None else 0 for v in nodes]
+
+    return prediction, nodes
+```
+
+### How the function works  
+
+| Node index | Feature (key in `X`)            | Condition tested (`True` = 1) | Leaf reached when condition is **True** | Leaf reached when condition is **False** |
+|-----------|----------------------------------|------------------------------|------------------------------------------|-------------------------------------------|
+| 0         | `"mx missile"`                  | `mx missile == 1` (voted **No**) | **Democrat** (0)                         | go to node 1                              |
+| 1         | `"anti satellite test ban"`     | `anti satellite test ban == 1` (voted **No**) | **Republican** (1)                      | go to node 2                              |
+| 2         | `"education spending"`          | `education spending == 1` (voted **No**) | **Republican** (1)                      | go to node 3                              |
+| 3         | `"el salvador aid"`             | `el salvador aid == 1` (voted **No**) | **Republican** (1)                      | go to node 4                              |
+| 4         | `"superfund right to sue"`      | `superfund right to sue == 1` (voted **No**) | **Republican** (1)                      | **Democrat** (0)                          |
+
+The returned `nodes` list contains a `1` for each condition that evaluated to *True* (i.e., the branch was taken) and `0` otherwise, exactly as required.

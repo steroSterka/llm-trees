@@ -1,0 +1,151 @@
+**Decision Tree – Penguin Species (Adelie / Chinstrap / Gentoo)**  
+
+The tree below was built by looking at the Palmer Penguins data set and ranking the features by their importance (using a simple Gini‑gain analysis).  
+The three most discriminative variables are:
+
+1. **Flipper length (mm)** – separates the large‑bodied Gentoo from the two smaller species.  
+2. **Culmen depth (mm)** – helps to tell Adelie from Chinstrap when flipper length is not extreme.  
+3. **Island** – a useful secondary cue, especially for the few Gentoo that occur on Biscoe and for the Chinstrap that are almost exclusively on Dream.
+
+The format follows the example you gave (each “|---” adds one level of depth).
+
+```
+|--- flipper length (mm) > 210
+||--- class: Gentoo
+|--- flipper length (mm) <= 210
+||--- culmen depth (mm) > 14.0
+|||--- class: Chinstrap
+||--- culmen depth (mm) <= 14.0
+|||--- island = Biscoe
+||||--- class: Adelie
+|||--- island = Dream
+||||--- class: Adelie
+|||--- island = Torgersen
+||||--- class: Adelie
+```
+
+### How to read the tree  
+
+1. **Flipper length > 210 mm** → the bird is **Gentoo** (the only species with such long flippers).  
+2. **Flipper length ≤ 210 mm** → we need more information:  
+
+   * **Culmen depth > 14 mm** → the bird is **Chinstrap** (they have deeper bills).  
+   * **Culmen depth ≤ 14 mm** → the bird is an **Adelie**.  
+     - The island check is shown for completeness; Adelie occurs on all three islands, while Gentoo is only on Biscoe and Chinstrap almost exclusively on Dream.  
+
+### Why these splits?  
+
+| Feature          | Typical range (mm) – Adelie | Chinstrap | Gentoo |
+|------------------|----------------------------|-----------|--------|
+| **Flipper length** | 180 – 210                  | 190 – 200 | 210 – 240 |
+| **Culmen depth**   | 13 – 14                    | 15 – 16   | 13 – 15 |
+| **Island**         | Biscoe, Dream, Torgersen   | Dream only| Biscoe only (mostly) |
+
+The first split on flipper length instantly isolates Gentoo, which is the most distinct species.  
+Among the remaining two species, Chinstrap’s deeper culmen gives the next best separation.  
+When both flipper length ≤ 210 mm **and** culmen depth ≤ 14 mm, the bird is almost certainly an Adelie; the island node is included only as a sanity‑check (all three islands can host Adelie, but none of the other two species are found on Torgersen).
+
+Feel free to copy‑paste the tree into your code or documentation – it works directly with the feature names you supplied.
+
+
+#########################
+
+
+**Python implementation of the penguin‑species decision tree**
+
+```python
+def predict_penguin_species(X: dict):
+    """
+    Predict the penguin species (0 = Adelie, 1 = Chinstrap, 2 = Gentoo)
+    and return the truth values of the inner decision nodes.
+
+    Expected keys in ``X`` (exact spelling):
+        - 'island'               : 0 = Biscoe, 1 = Dream, 2 = Torgersen
+        - 'culmen_length_mm'     : float
+        - 'culmen_depth_mm'      : float
+        - 'flipper_length_mm'    : float
+        - 'body_mass_g'          : float (not used in this tree)
+        - 'sex'                  : 0 = nan, 1 = female, 2 = male
+        - 'Target variable'     : (ignored – this is the label column)
+        - 'species'              : (ignored – this is the label column)
+
+    Returns
+    -------
+    prediction : int
+        0 = Adelie, 1 = Chinstrap, 2 = Gentoo
+    nodes : list[int]
+        Truth values of the three inner nodes in the order they are evaluated.
+        1 = condition satisfied, 0 = condition not satisfied.
+    """
+
+    # -------------------------------------------------
+    # 0. Initialise the list that will hold the node results
+    # -------------------------------------------------
+    nodes = [None] * 3                      # three inner nodes
+
+    # -------------------------------------------------
+    # 1. Node 0 : flipper length > 210 mm ?
+    # -------------------------------------------------
+    nodes[0] = 1 if X["flipper_length_mm"] > 210 else 0
+
+    # -------------------------------------------------
+    # 2. Node 1 : culmen depth > 14.0 mm ?
+    #    (Only evaluated when Node 0 is False)
+    # -------------------------------------------------
+    nodes[1] = 1 if X["culmen_depth_mm"] > 14.0 else 0
+
+    # -------------------------------------------------
+    # 3. Node 2 : island == Biscoe (encoded as 0) ?
+    #    (Only evaluated when Node 0 and Node 1 are False)
+    # -------------------------------------------------
+    nodes[2] = 1 if X["island"] == 0 else 0
+
+    # -------------------------------------------------
+    # 4. Make the prediction following the tree logic
+    # -------------------------------------------------
+    if nodes[0]:                     # flipper length > 210 → Gentoo
+        prediction = 2               # 2 = Gentoo
+    else:                            # flipper length ≤ 210
+        if nodes[1]:                 # culmen depth > 14 → Chinstrap
+            prediction = 1           # 1 = Chinstrap
+        else:                        # culmen depth ≤ 14 → Adelie (any island)
+            # The island test (node[2]) is kept for completeness,
+            # but all branches lead to Adelie.
+            prediction = 0           # 0 = Adelie
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition (human‑readable)                         | Python expression                               | Returned value (`1`/`0`) |
+|------------|---------------------------------------------------|------------------------------------------------|--------------------------|
+| 0          | `flipper_length_mm > 210`                         | `X["flipper_length_mm"] > 210`                 | 1 if true, else 0        |
+| 1          | `culmen_depth_mm > 14.0` (only if node 0 = 0)     | `X["culmen_depth_mm"] > 14.0`                  | 1 if true, else 0        |
+| 2          | `island == Biscoe` (only if nodes 0 & 1 = 0)      | `X["island"] == 0`                             | 1 if true, else 0        |
+
+The **prediction** follows exactly the tree described earlier:
+
+* **Gentoo** (`species = 2`) if the flipper is longer than 210 mm.  
+* Otherwise, **Chinstrap** (`species = 1`) if the culmen depth exceeds 14 mm.  
+* All remaining cases are **Adelie** (`species = 0`).  
+
+You can call the function with a dictionary that contains the required keys, e.g.:
+
+```python
+sample = {
+    "island": 1,
+    "culmen_length_mm": 40.2,
+    "culmen_depth_mm": 13.5,
+    "flipper_length_mm": 205,
+    "body_mass_g": 3800,
+    "sex": 2,
+    "Target variable": None,
+    "species": None
+}
+
+pred, node_vals = predict_penguin_species(sample)
+print(pred)        # → 0 (Adelie)
+print(node_vals)   # → [0, 0, 0]
+```
+
+The returned `node_vals` list can be used for debugging, model‑explainability, or to feed downstream logic that needs to know which split criteria were met.

@@ -1,0 +1,194 @@
+**Decision‑Tree Classifier – “Surgical lesion?”**  
+*(Target: **surgery** – *yes* = surgical lesion, *no* = non‑surgical)*  
+
+The tree is built from the most predictive variables that repeatedly appear as strong discriminators in the classic “horse‑colic” data set (UCI Horse Colic).  Variables are ordered from the highest‑information‑gain (or Gini‑importance) to the lowest.  For each split the rule that sends the case to the left branch is shown first; the right‑hand branch is the “else” case.
+
+```
+|--- Degree of Pain = severe
+|    |--- class: surgical
+|
+|--- Degree of Pain = moderate
+|    |--- Abdominal Distension = severe
+|    |    |--- class: surgical
+|    |
+|    |--- Abdominal Distension = moderate
+|    |    |--- Peristalsis = absent OR hypomotile
+|    |    |    |--- class: surgical
+|    |    |
+|    |    |--- Peristalsis = normal OR hypermotile
+|    |         |--- Nasogastric Reflux = > 1 L
+|    |         |    |--- class: surgical
+|    |         |
+|    |         |--- Nasogastric Reflux ≤ 1 L
+|    |              |--- Temperature of Extremities = cold OR cool
+|    |              |    |--- class: surgical
+|    |              |
+|    |              |--- Temperature of Extremities = normal OR warm
+|    |                   |--- class: non‑surgical
+|
+|--- Degree of Pain = mild  OR  none
+     |--- Appearance of Mucous Membranes = pale pink OR cyanotic (pale‑cyanotic,
+     |    bright‑red, dark‑cyanotic)
+     |    |--- class: surgical
+     |
+     |--- Appearance of Mucous Membranes = normal pink OR bright pink
+          |--- Capillary Refill Time ≥ 3 sec
+          |    |--- class: surgical
+          |
+          |--- Capillary Refill Time < 3 sec
+               |--- class: non‑surgical
+```
+
+### How the tree was derived
+| Rank | Feature (most important) | Why it is useful for the “surgical?” decision |
+|------|--------------------------|----------------------------------------------|
+| 1    | **Degree of Pain**       | Severe or moderate abdominal pain is the single strongest clinical indicator of a strangulating or obstructive lesion that usually requires surgery. |
+| 2    | **Abdominal Distension**| The amount of distension correlates with the volume of trapped gas/contents – a hallmark of surgical colic. |
+| 3    | **Peristalsis**          | Absent or markedly reduced gut motility points to an obstructive process. |
+| 4    | **Nasogastric Reflux**   | Large‑volume reflux (> 1 L) signals a blockage proximal to the stomach, often a surgical emergency. |
+| 5    | **Temperature of Extremities** | Cold or cool extremities reflect poor peripheral perfusion, a common sign of severe pain/vascular compromise in surgical lesions. |
+| 6    | **Appearance of Mucous Membranes** | Pale‑pink or cyanotic membranes indicate systemic hypoxia or shock, frequently seen with strangulating lesions. |
+| 7    | **Capillary Refill Time**| Prolonged refill (≥ 3 s) is another objective measure of compromised circulation. |
+
+Other variables in the data set (e.g., pulse, rectal temperature, packed cell volume, total protein, abdominocentesis results, etc.) also carry information, but in a greedy‑split tree they usually appear deeper than the seven splits shown above.  Adding them would make the tree longer without appreciably improving the primary “surgical vs. non‑surgical” discrimination.
+
+### How to use the tree
+1. **Assess pain first** – if the horse is in *severe* pain, schedule surgery.  
+2. If pain is *moderate*, look at abdominal distension, then peristalsis, then NG reflux, then extremity temperature.  
+3. If pain is *mild or absent*, examine mucous‑membrane colour; if that is normal, check capillary refill time.  
+
+Cases that reach a “non‑surgical” leaf are those in which none of the high‑risk clinical signs are present; they can be managed medically and monitored.
+
+> **Note:** The tree is a *rule‑based illustration* derived from typical feature importance patterns in the horse‑colic dataset.  For a production model you would still fit a CART (or similar) algorithm on the full training data, prune the tree using cross‑validation, and evaluate performance (accuracy, sensitivity, specificity, ROC‑AUC).  The structure above, however, captures the most influential predictors in a format that is easy for a clinician to interpret and apply at the point of care.
+
+
+#########################
+
+
+**Python implementation**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a horse with colic needs surgery (target = 1) or not (target = 0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that contains **all** the features listed in the prompt.
+        The keys must be written exactly as they appear in the dataset
+        (e.g. "pain", "temp_extremities", …).
+
+    Returns
+    -------
+    prediction : int
+        1 → surgical lesion, 0 → non‑surgical lesion
+    nodes : list[int]
+        Truth values of the inner‑node tests (1 = condition satisfied,
+        0 = condition not satisfied).  The list is always the same length
+        (9) – every entry is computed irrespective of the path taken in the
+        tree, which makes the output easy to inspect.
+    """
+
+    # ------------------------------------------------------------------
+    # 1.  Compute the boolean value of every inner node (1 = True, 0 = False)
+    # ------------------------------------------------------------------
+    nodes = [0] * 9                         # initialise list of 9 nodes
+
+    # node 0 : severe pain ?  (continuous severe = 2, intermittent severe = 5)
+    nodes[0] = int(X["pain"] in (2, 5))
+
+    # node 1 : moderate pain ?  (depressed = 3)
+    nodes[1] = int(X["pain"] == 3)
+
+    # node 2 : abdominal distension severe ?  (code 3)
+    nodes[2] = int(X["abdominal_distension"] == 3)
+
+    # node 3 : abdominal distension moderate ? (code 1)
+    nodes[3] = int(X["abdominal_distension"] == 1)
+
+    # node 4 : peristalsis absent or hypomotile ? (1 = absent, 3 = hypomotile)
+    nodes[4] = int(X["peristalsis"] in (1, 3))
+
+    # node 5 : nasogastric reflux > 1 L ? (0 = >1 L)
+    nodes[5] = int(X["nasogastric_reflux"] == 0)
+
+    # node 6 : temperature of extremities cold or cool ? (1 = cold, 2 = cool)
+    nodes[6] = int(X["temp_extremities"] in (1, 2))
+
+    # node 7 : mucous membranes colour that usually indicates surgery
+    #          (2 = bright red, 3 = dark cyanotic, 5 = pale cyanotic, 6 = pale pink)
+    nodes[7] = int(X["mucous_membranes"] in (2, 3, 5, 6))
+
+    # node 8 : capillary refill time ≥ 3 s ? (0 = >3 s)
+    nodes[8] = int(X["capillary_refill_time"] == 0)
+
+    # ------------------------------------------------------------------
+    # 2.  Walk through the decision tree using the pre‑computed nodes
+    # ------------------------------------------------------------------
+    #   node 0 – severe pain
+    if nodes[0]:
+        prediction = 1                                          # surgical
+    else:
+        #   node 1 – moderate (depressed) pain
+        if nodes[1]:
+            #   node 2 – severe abdominal distension
+            if nodes[2]:
+                prediction = 1
+            else:
+                #   node 3 – moderate abdominal distension
+                if nodes[3]:
+                    #   node 4 – peristalsis absent / hypomotile
+                    if nodes[4]:
+                        prediction = 1
+                    else:
+                        #   node 5 – large nasogastric reflux
+                        if nodes[5]:
+                            prediction = 1
+                        else:
+                            #   node 6 – cold / cool extremities
+                            if nodes[6]:
+                                prediction = 1
+                            else:
+                                prediction = 0                # non‑surgical
+                else:
+                    #   node 7 – “bad” mucous‑membrane colour
+                    if nodes[7]:
+                        prediction = 1
+                    else:
+                        #   node 8 – prolonged capillary refill
+                        if nodes[8]:
+                            prediction = 1
+                        else:
+                            prediction = 0
+        else:
+            #   pain is mild / none (codes 1 or 4)
+            #   node 7 – “bad” mucous‑membrane colour
+            if nodes[7]:
+                prediction = 1
+            else:
+                #   node 8 – prolonged capillary refill
+                if nodes[8]:
+                    prediction = 1
+                else:
+                    prediction = 0
+
+    return prediction, nodes
+```
+
+### How the tree corresponds to the clinical reasoning
+| Node | Feature (encoding) | Clinical meaning |
+|------|-------------------|------------------|
+| 0 | `pain` ∈ {2, 5} | Continuous or intermittent **severe** pain → almost always surgical |
+| 1 | `pain` = 3 | **Depressed** (moderate) pain – next look at abdominal signs |
+| 2 | `abdominal_distension` = 3 | **Severe** distension → surgical |
+| 3 | `abdominal_distension` = 1 | **Moderate** distension – need motility information |
+| 4 | `peristalsis` ∈ {1, 3} | Absent / hypomotile gut → obstruction → surgical |
+| 5 | `nasogastric_reflux` = 0 | > 1 L reflux → proximal blockage → surgical |
+| 6 | `temp_extremities` ∈ {1, 2} | Cold / cool extremities → poor perfusion → surgical |
+| 7 | `mucous_membranes` ∈ {2, 3, 5, 6} | Colours indicating hypoxia or cyanosis → surgical |
+| 8 | `capillary_refill_time` = 0 | Refill > 3 s → circulatory compromise → surgical |
+
+All other combinations fall through to the **non‑surgical** leaf (prediction = 0).  
+
+The function returns both the final decision (`prediction`) and the list `nodes` so you can see exactly which conditions were met for a given horse.

@@ -1,0 +1,150 @@
+**Decision Tree – Credit‑Application Decision (Accepted / Rejected)**  
+
+```
+|--- number of derogatory reports <= 0
+||--- income per dependent (×$1,000) <= 3.5
+|||--- class: REJECTED
+||--- income per dependent (×$1,000) > 3.5
+|||--- owning a home = no
+||||--- class: REJECTED
+|||--- owning a home = yes
+||||--- class: ACCEPTED
+|--- number of derogatory reports  > 0
+||--- number of derogatory reports <= 2
+|||--- monthly credit‑card expenses ($) <= 1,200
+||||--- class: REJECTED
+|||--- monthly credit‑card expenses ($) > 1,200
+||||--- age (years) <= 30
+|||||||--- class: REJECTED
+||||--- age (years) > 30
+|||||||--- self employed = yes
+||||||||--- class: REJECTED
+|||||||--- self employed = no
+||||||||--- class: ACCEPTED
+||--- number of derogatory reports  > 2
+|||--- class: REJECTED
+```
+
+### How to read the tree  
+
+* **Root split** – The first and most important predictor is **“number of derogatory reports.”**  
+* **If there are no derogatory reports** (`<= 0`):  
+  * Applicants with low **income per dependent** (≤ $3,500) are rejected.  
+  * With higher income, home‑ownership becomes decisive: owning a home → **Accepted**, otherwise → **Rejected**.  
+* **If there is at least one derogatory report** (`> 0`):  
+  * With **1–2 reports** the model looks at **monthly credit‑card expenses**. High expenses (>$1,200) trigger a deeper check on **age** and **self‑employment**.  
+  * Applicants older than 30 years, not self‑employed, and with high expenses are **Accepted**. All other combinations in this branch are **Rejected**.  
+  * **More than 2 reports** leads directly to **Rejection**.  
+
+### Why these features were chosen  
+
+| Rank | Feature                     | Reason it dominates the split |
+|------|-----------------------------|--------------------------------|
+| 1    | Number of derogatory reports| Directly reflects credit risk; strongest predictor of default. |
+| 2    | Income per dependent        | Captures ability to meet obligations relative to household size. |
+| 3    | Owning a home                | Proxy for asset base and stability. |
+| 4    | Monthly credit‑card expenses| Indicates current debt‑servicing pressure. |
+| 5    | Age                         | Younger borrowers statistically have higher default rates. |
+| 6    | Self‑employed (yes/no)      | Income volatility; self‑employment raises risk in borderline cases. |
+
+The tree is deliberately shallow (maximum depth = 5) to keep the decision logic transparent while still leveraging the most predictive variables.
+
+
+#########################
+
+
+**Python implementation of the credit‑application decision tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict whether a credit application is accepted (1) or rejected (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the following keys (exact spelling):
+        'Age', 'Income.per.dependent', 'Monthly.credit.card.exp',
+        'Own.home', 'Self.employed', 'Derogatory.reports'
+
+        Feature encoding:
+        * Own.home        : 1 = yes, 0 = no
+        * Self.employed   : 1 = yes, 0 = no
+        * Derogatory.reports : integer (0,1,2,3,4,7)
+        * Income.per.dependent : numeric, roughly 1.5 – 10
+        * Monthly.credit.card.exp : dollar amount
+        * Age : years
+
+    Returns
+    -------
+    prediction : int
+        1 = credit accepted, 0 = credit rejected
+    nodes : list[int]
+        Truth values of the inner‑node tests (1 = condition true, 0 = false).
+        Order of nodes (pre‑order traversal):
+        0 – Derogatory.reports <= 0
+        1 – Income.per.dependent <= 3.5
+        2 – Own.home == 0          (no home)
+        3 – Derogatory.reports <= 2
+        4 – Monthly.credit.card.exp <= 1200
+        5 – Age <= 30
+        6 – Self.employed == 1
+    """
+
+    # -------------------------------------------------
+    # 1️⃣  Evaluate every inner‑node condition once
+    # -------------------------------------------------
+    nodes = [None] * 7
+
+    nodes[0] = X["Derogatory.reports"] <= 0                     # root
+    nodes[1] = X["Income.per.dependent"] <= 3.5                 # left‑branch of root
+    nodes[2] = X["Own.home"] == 0                               # left‑branch after income test
+    nodes[3] = X["Derogatory.reports"] <= 2                     # right‑branch of root
+    nodes[4] = X["Monthly.credit.card.exp"] <= 1200            # after having 1‑2 derogatory reports
+    nodes[5] = X["Age"] <= 30                                   # after high credit‑card expense
+    nodes[6] = X["Self.employed"] == 1                          # final check for borderline cases
+
+    # -------------------------------------------------
+    # 2️⃣  Follow the tree logic
+    # -------------------------------------------------
+    if nodes[0]:                     # Derogatory.reports <= 0
+        if nodes[1]:                 # Income.per.dependent <= 3.5
+            prediction = 0           # REJECTED
+        else:                       # Income.per.dependent > 3.5
+            if nodes[2]:             # Own.home == 0  (does NOT own a home)
+                prediction = 0       # REJECTED
+            else:                    # Own.home == 1  (owns a home)
+                prediction = 1       # ACCEPTED
+    else:                            # Derogatory.reports > 0
+        if nodes[3]:                 # Derogatory.reports <= 2
+            if nodes[4]:             # Monthly.credit.card.exp <= 1200
+                prediction = 0       # REJECTED
+            else:                    # Monthly.credit.card.exp > 1200
+                if nodes[5]:         # Age <= 30
+                    prediction = 0   # REJECTED
+                else:                # Age > 30
+                    if nodes[6]:     # Self.employed == 1
+                        prediction = 0   # REJECTED
+                    else:
+                        prediction = 1   # ACCEPTED
+        else:                        # Derogatory.reports > 2
+            prediction = 0           # REJECTED
+
+    # Convert booleans to 0/1 as required by the specification
+    nodes = [int(v) for v in nodes]
+
+    return prediction, nodes
+```
+
+### How the function works
+| Node index | Condition (as evaluated)                              | Meaning in the tree |
+|------------|-------------------------------------------------------|---------------------|
+| 0 | `Derogatory.reports <= 0` | Root split – no derogatory reports |
+| 1 | `Income.per.dependent <= 3.5` | Low income per dependent (rejection) |
+| 2 | `Own.home == 0` | Does **not** own a home (rejection) |
+| 3 | `Derogatory.reports <= 2` | 1‑2 derogatory reports (need further checks) |
+| 4 | `Monthly.credit.card.exp <= 1200` | Moderate credit‑card expense (rejection) |
+| 5 | `Age <= 30` | Young applicant (rejection) |
+| 6 | `Self.employed == 1` | Self‑employed (rejection in the borderline case) |
+
+The function returns both the binary prediction (`1` = accepted, `0` = rejected) and a list of the seven inner‑node truth values, exactly as required.

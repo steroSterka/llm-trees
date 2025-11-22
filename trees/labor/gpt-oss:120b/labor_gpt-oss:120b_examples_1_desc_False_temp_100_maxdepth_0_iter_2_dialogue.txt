@@ -1,0 +1,218 @@
+Below is a **sample decision‑tree** that classifies the result of a labour‑negotiation round as **“Good”** (the agreement is generally viewed positively by the workforce) or **“Bad”** (the agreement is viewed negatively).  
+Because no actual data set was supplied, the tree is built on **typical industry wisdom** about which terms tend to drive employee satisfaction the most.  The splits are ordered from the most‑influential feature (top) to the least‑influential (bottom).  
+
+```
+|--- wage increase in first year (≥ 5%)                              
+||--- cost of living adjustment = total compensation adjustment       
+|||--- employer contributions to pension plan = retirement allowance included
+||||--- class: Good
+|||--- employer contributions to pension plan = employee contribution
+||||--- class: Bad
+||--- cost of living adjustment = temporary cost of living adjustment formula
+|||--- standby pay (≥ 10)                                           
+||||--- class: Good
+|||--- standby pay (< 10)                                           
+||||--- class: Bad
+||--- cost of living adjustment = none                               
+|||--- paid vacation days = generous                                
+||||--- class: Good
+|||--- paid vacation days ≠ generous                               
+||||--- class: Bad
+
+|--- wage increase in first year (< 5%)                              
+||--- wage increase in second year (≥ 4%)                           
+|||--- shift differential supplement (≥ 15)                        
+||||--- class: Good
+|||--- shift differential supplement (< 15)                        
+||||--- class: Bad
+||--- wage increase in second year (< 4%)                           
+|||--- education allowance = yes                                  
+||||--- class: Good
+|||--- education allowance = no                                   
+||||--- class: Bad
+
+|--- wage increase in first year = missing (data error)             
+||--- class: Bad
+```
+
+### How the tree was constructed  
+
+| Rank | Feature (most important) | Why it matters (domain insight) |
+|------|---------------------------|----------------------------------|
+| 1 | **Wage increase in first year** | The initial raise sets the tone for the contract; larger first‑year increases are consistently linked to higher employee satisfaction. |
+| 2 | **Cost‑of‑living adjustment (COLA)** | Guarantees that wages keep pace with inflation; a *total‑compensation* COLA is far more valued than a temporary formula or none at all. |
+| 3 | **Employer pension contribution** | A solid retirement benefit (especially a *retirement allowance*) is a strong positive signal. |
+| 4 | **Stand‑by pay** | High standby pay compensates for on‑call demands and is a key driver of perceived fairness. |
+| 5 | **Paid vacation days** | Generous vacation policies are directly correlated with morale. |
+| 6 | **Wage increase in second year** | A respectable second‑year bump can offset a modest first‑year increase. |
+| 7 | **Shift‑differential supplement** | Adequate compensation for 2nd/3rd‑shift work improves acceptance of the deal. |
+| 8 | **Education allowance** | Supports career development and is viewed positively when present. |
+| 9‑14 | Remaining variables (duration of agreement, third‑year wage increase, statutory holidays, long‑term disability help, dental/health/ bereavement contributions) | These have measurable impact but, in typical datasets, explain less variance than the top‑ranked items, so they appear lower or are omitted for brevity. |
+
+### How to read the tree  
+
+* Start at the top and follow the branch that matches the contract’s values.  
+* When you reach a “class: Good” leaf, the negotiation outcome is predicted to be well‑received by the workforce.  
+* A “class: Bad” leaf predicts a generally negative reception.  
+
+> **Note:** This tree is illustrative. For a production‑ready classifier you would need a real dataset of past agreements, train a CART (Classification‑And‑Regression‑Tree) model, and then extract the exact splits and leaf predictions. The structure above shows how such a tree *could* look once the most influential features have been identified.
+
+
+#########################
+
+
+**Python implementation of the decision‑tree**
+
+```python
+def predict(X: dict):
+    """
+    Predict the outcome of a labour‑negotiation round.
+
+    Parameters
+    ----------
+    X : dict
+        A dictionary that contains **exactly** the keys shown below
+        (spelling, spaces and case must match the specification).
+
+        Keys
+        ----
+        'duration'                     : int   (1‑7) – not used in the tree
+        'wage increase first year'    : float (2.0‑7.0)
+        'wage increase second year'   : float (2.0‑7.0)
+        'wage increase third year'    : float (2.0‑7.0)
+        'cost of living adjustment'   : str   {'none','tcf','tc'}
+        'working hours'               : int   (35‑40) – not used in the tree
+        'pension'                      : str   {'none','ret_allw','empl_contr'}
+        'standby pay'                  : int   (2‑25)
+        'shift differential'          : int   (1‑25)
+        'education allowance'         : bool or str  {'true','false', True, False}
+        'statutory holidays'          : int   (9‑15) – not used in the tree
+        'vacation'                     : str   {'ba','avg','gnr'}
+        'longterm disability assistance' : bool or str – not used in the tree
+        'contribution to dental plan' : str   {'none','half','full'} – not used
+        'bereavement assistance'      : bool or str – not used
+        'contribution to health plan' : str   {'none','half','full'} – not used
+        'target' / 'Target variable'  : (output, not needed here)
+
+    Returns
+    -------
+    (prediction, nodes) : tuple
+        *prediction* – 1 = *good* settlement, 0 = *bad* settlement  
+        *nodes*      – list of 9 integers (1 = condition true, 0 = false) that
+                       correspond to the inner‑node tests in the order shown
+                       below.
+
+    Decision‑tree (inner‑node order)
+    ---------------------------------
+    0 – wage increase first year  ≥ 5.0
+    1 – cost of living adjustment == 'tc'
+    2 – pension == 'ret_allw'                     (used only when node 1 is true)
+    3 – cost of living adjustment == 'tcf'        (used only when node 1 is false)
+    4 – standby pay ≥ 10                          (used only when node 3 is true)
+    5 – vacation == 'gnr'                         (used only when node 3 is false)
+    6 – wage increase second year ≥ 4.0           (used only when node 0 is false)
+    7 – shift differential ≥ 15                   (used only when node 6 is true)
+    8 – education allowance == True               (used only when node 6 is false)
+    """
+    # ------------------------------------------------------------------ #
+    # Helper to interpret boolean‑like fields (True/False or strings) #
+    # ------------------------------------------------------------------ #
+    def as_bool(val):
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, str):
+            return val.strip().lower() == "true"
+        return False
+
+    # --------------------------------------------------------------- #
+    # Initialise the list that will hold the 9 inner‑node truth values #
+    # --------------------------------------------------------------- #
+    nodes = [0] * 9
+
+    # --------------------------------------------------------------- #
+    # Node 0 – first‑year wage increase                               #
+    # --------------------------------------------------------------- #
+    nodes[0] = 1 if X["wage increase first year"] >= 5.0 else 0
+
+    if nodes[0]:                     # ----- First‑year increase is good -----
+        # ----------------------------------------------------------- #
+        # Node 1 – COLA = total‑compensation (code 'tc')            #
+        # ----------------------------------------------------------- #
+        nodes[1] = 1 if X["cost of living adjustment"] == "tc" else 0
+
+        if nodes[1]:
+            # --------------------------------------------------- #
+            # Node 2 – Pension contribution = retirement allowance #
+            # --------------------------------------------------- #
+            nodes[2] = 1 if X["pension"] == "ret_allw" else 0
+            prediction = 1 if nodes[2] else 0
+        else:
+            # --------------------------------------------------- #
+            # Node 3 – COLA = temporary formula (code 'tcf')      #
+            # --------------------------------------------------- #
+            nodes[3] = 1 if X["cost of living adjustment"] == "tcf" else 0
+
+            if nodes[3]:
+                # ------------------------------------------------ #
+                # Node 4 – standby pay ≥ 10                        #
+                # ------------------------------------------------ #
+                nodes[4] = 1 if X["standby pay"] >= 10 else 0
+                prediction = 1 if nodes[4] else 0
+            else:
+                # ------------------------------------------------ #
+                # Node 5 – vacation is generous ('gnr')            #
+                # ------------------------------------------------ #
+                nodes[5] = 1 if X["vacation"] == "gnr" else 0
+                prediction = 1 if nodes[5] else 0
+
+    else:                            # ----- First‑year increase is low -----
+        # ----------------------------------------------------------- #
+        # Node 6 – second‑year wage increase ≥ 4.0                  #
+        # ----------------------------------------------------------- #
+        nodes[6] = 1 if X["wage increase second year"] >= 4.0 else 0
+
+        if nodes[6]:
+            # --------------------------------------------------- #
+            # Node 7 – shift differential ≥ 15                   #
+            # --------------------------------------------------- #
+            nodes[7] = 1 if X["shift differential"] >= 15 else 0
+            prediction = 1 if nodes[7] else 0
+        else:
+            # --------------------------------------------------- #
+            # Node 8 – education allowance present                #
+            # --------------------------------------------------- #
+            nodes[8] = 1 if as_bool(X["education allowance"]) else 0
+            prediction = 1 if nodes[8] else 0
+
+    # Return the binary prediction (0 = bad, 1 = good) and the node list
+    return prediction, nodes
+```
+
+### How to use the function
+```python
+sample = {
+    'duration': 5,
+    'wage increase first year': 5.3,
+    'wage increase second year': 3.8,
+    'wage increase third year': 4.0,
+    'cost of living adjustment': 'tc',
+    'working hours': 38,
+    'pension': 'ret_allw',
+    'standby pay': 12,
+    'shift differential': 10,
+    'education allowance': 'false',
+    'statutory holidays': 10,
+    'vacation': 'avg',
+    'longterm disability assistance': True,
+    'contribution to dental plan': 'half',
+    'bereavement assistance': False,
+    'contribution to health plan': 'full',
+    'target': 1                # not needed for prediction
+}
+
+pred, node_vals = predict(sample)
+print("Prediction (1=good, 0=bad):", pred)
+print("Inner‑node truth values:", node_vals)
+```
+
+The function follows exactly the decision‑tree described earlier, returns a single **0/1** prediction, and supplies a list of **9** binary values indicating which inner‑node conditions were satisfied for the given input.

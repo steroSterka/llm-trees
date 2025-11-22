@@ -1,0 +1,173 @@
+**Decision Tree – Credit‑Application Decision (Accept / Reject)**  
+
+*Features used (ordered by importance):*  
+
+1. **Number of derogatory reports** – strongest predictor of risk.  
+2. **Income per dependent** (scaled 1.5 – 10) – indicates repayment capacity.  
+3. **Monthly credit‑card expenses** (as a % of income) – reflects current debt burden.  
+4. **Home ownership** (yes / no) – a proxy for asset stability.  
+5. **Age** (years) – captures credit‑history length and financial maturity.  
+6. **Self‑employment** (yes / no) – considered only when the above variables are borderline.
+
+---  
+
+```
+|--- number of derogatory reports <= 0
+||--- income per dependent >= 4.5
+|||--- monthly credit‑card expense ≤ 20 % of income
+||||--- class: ACCEPTED
+|||--- monthly credit‑card expense  > 20 % of income
+||||--- class: REJECTED
+||--- income per dependent < 4.5
+|||--- owning a home = yes
+||||--- class: ACCEPTED
+|||--- owning a home = no
+||||--- class: REJECTED
+|--- number of derogatory reports > 0
+||--- number of derogatory reports <= 2
+|||--- age ≥ 25
+||||--- class: ACCEPTED
+|||--- age < 25
+||||--- class: REJECTED
+||--- number of derogatory reports > 2
+|||--- class: REJECTED
+```
+
+### How to read the tree  
+
+- **First split** looks at the *number of derogatory reports*.  
+  - **Zero reports** → move to income evaluation.  
+  - **One or two reports** → age becomes decisive.  
+  - **More than two reports** → automatically **REJECTED** (high risk).  
+
+- **When there are no derogatory reports**:  
+  - **Higher income per dependent (≥ 4.5)** is good; then we check whether the applicant’s credit‑card spending is reasonable (≤ 20 % of income).  
+  - **Lower income per dependent (< 4.5)** can still be acceptable if the applicant owns a home (asset cushion).  
+
+- **When there are 1–2 derogatory reports**:  
+  - Applicants **≥ 25 years** old are considered mature enough to offset the minor blemish and are **ACCEPTED**.  
+  - Younger applicants (< 25) are **REJECTED** because the limited credit history combined with a derogatory mark raises risk.
+
+### Why these features matter  
+
+| Feature | Why it’s high‑impact for credit decisions |
+|---------|-------------------------------------------|
+| **Derogatory reports** | Direct evidence of past default or serious delinquency – strongest risk indicator. |
+| **Income per dependent** | Captures disposable income after accounting for household size; higher values mean better repayment ability. |
+| **Credit‑card expense % of income** | Measures current debt‑service load; high percentages suggest over‑extension. |
+| **Home ownership** | Provides collateral and signals financial stability. |
+| **Age** | Older borrowers usually have longer credit histories and more stable earnings. |
+| **Self‑employment** | Only used when other signals are borderline; self‑employment can be higher risk due to income variability. |
+
+Feel free to adjust the numeric thresholds (e.g., 4.5 income score, 20 % expense limit) to better match the actual distribution of your loan‑portfolio data. The structure above captures the most influential variables and can be directly implemented in rule‑based scoring systems or as a baseline model for further refinement with real training data.
+
+
+#########################
+
+
+**Python implementation of the credit‑application decision tree**
+
+```python
+def predict_credit_application(X: dict):
+    """
+    Predict whether a credit application is accepted (1) or rejected (0).
+
+    Parameters
+    ----------
+    X : dict
+        Dictionary that must contain the following keys (exact spelling):
+        'Age', 'Income.per.dependent', 'Monthly.credit.card.exp',
+        'Own.home', 'Self.employed', 'Derogatory.reports'
+
+        * Age – integer, years
+        * Income.per.dependent – float, range 1.5 – 10
+        * Monthly.credit.card.exp – float, dollars
+        * Own.home – 1 (yes) or 0 (no)
+        * Self.employed – 1 (yes) or 0 (no)  (not used in the tree)
+        * Derogatory.reports – integer (0,1,2,3,4,7)
+
+    Returns
+    -------
+    prediction : int
+        1 = accepted, 0 = rejected
+    nodes : list[int]
+        Truth values of the inner‑node tests (1 = True, 0 = False) in the
+        order they appear in the tree.
+    """
+
+    # ------------------------------------------------------------------
+    # 0) First split – derogatory reports
+    # ------------------------------------------------------------------
+    node0 = X["Derogatory.reports"] <= 0          # 1 if no derogatory reports
+    # ------------------------------------------------------------------
+    # 1) When no derogatory reports → look at income per dependent
+    # ------------------------------------------------------------------
+    node1 = X["Income.per.dependent"] >= 4.5       # 1 if relatively high income
+    # ------------------------------------------------------------------
+    # 2) High‑income branch → check credit‑card expense as % of income
+    #    We treat Income.per.dependent as “thousands of $ per dependent”.
+    #    20 % of that amount is the expense threshold.
+    # ------------------------------------------------------------------
+    expense_threshold = 0.20 * X["Income.per.dependent"] * 1_000
+    node2 = X["Monthly.credit.card.exp"] <= expense_threshold
+    # ------------------------------------------------------------------
+    # 3) Low‑income branch (still no derogatory reports) → home ownership
+    # ------------------------------------------------------------------
+    node3 = X["Own.home"] == 1                     # 1 if owns a home
+    # ------------------------------------------------------------------
+    # 4) When there is at least one derogatory report → how many?
+    # ------------------------------------------------------------------
+    node4 = X["Derogatory.reports"] <= 2          # 1 if 1 or 2 reports
+    # ------------------------------------------------------------------
+    # 5) Minor‑derogatory‑report branch → age matters
+    # ------------------------------------------------------------------
+    node5 = X["Age"] >= 25                        # 1 if applicant is 25 or older
+    # ------------------------------------------------------------------
+
+    # Store the boolean results as integers (1 = True, 0 = False)
+    nodes = [int(node0), int(node1), int(node2), int(node3), int(node4), int(node5)]
+
+    # ------------------------------
+    # Decision logic (leaf outcomes)
+    # ------------------------------
+    if node0:                                   # 0 derogatory reports
+        if node1:                               # high income
+            if node2:                           # reasonable card expense
+                prediction = 1                  # ACCEPTED
+            else:                               # expense too high
+                prediction = 0                  # REJECTED
+        else:                                   # lower income
+            if node3:                           # owns a home
+                prediction = 1                  # ACCEPTED
+            else:
+                prediction = 0                  # REJECTED
+    else:                                       # ≥ 1 derogatory report
+        if node4:                               # 1 or 2 reports
+            if node5:                           # age ≥ 25
+                prediction = 1                  # ACCEPTED
+            else:
+                prediction = 0                  # REJECTED
+        else:                                   # > 2 reports
+            prediction = 0                      # REJECTED (high risk)
+
+    return prediction, nodes
+```
+
+### How to use
+
+```python
+sample = {
+    "Age": 30,
+    "Income.per.dependent": 5.2,
+    "Monthly.credit.card.exp": 800,
+    "Own.home": 1,
+    "Self.employed": 0,
+    "Derogatory.reports": 0
+}
+
+pred, node_vals = predict_credit_application(sample)
+print("Prediction (1=accept, 0=reject):", pred)
+print("Inner‑node truth values:", node_vals)
+```
+
+The function follows exactly the tree described earlier, returns the final binary decision (`target` encoding) and a list that records whether each inner‑node condition was satisfied (`1`) or not (`0`).
